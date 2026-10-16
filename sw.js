@@ -1,6 +1,6 @@
 // Offline-Cache: Die App lädt beim ersten Besuch alle Dateien und läuft danach ohne Internet.
 // Bei jeder Änderung an einer Datei VERSION erhöhen, damit Geräte die neue Fassung holen.
-const VERSION = "v1";
+const VERSION = "v2";
 const FILES = [
   "./", "index.html", "style.css", "app.js", "manifest.webmanifest", "vendor/qrcode.js",
   "fonts/fredoka.woff2", "fonts/atkinson-400.woff2", "fonts/atkinson-700.woff2",
