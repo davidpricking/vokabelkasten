@@ -1,0 +1,25 @@
+// Offline-Cache: Die App lädt beim ersten Besuch alle Dateien und läuft danach ohne Internet.
+// Bei jeder Änderung an einer Datei VERSION erhöhen, damit Geräte die neue Fassung holen.
+const VERSION = "v1";
+const FILES = [
+  "./", "index.html", "style.css", "app.js", "manifest.webmanifest", "vendor/qrcode.js",
+  "fonts/fredoka.woff2", "fonts/atkinson-400.woff2", "fonts/atkinson-700.woff2",
+  "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"
+];
+
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener("activate", e => {
+  e.waitUntil(caches.keys()
+    .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+    .then(() => self.clients.claim()));
+});
+
+self.addEventListener("fetch", e => {
+  if (e.request.method !== "GET" || new URL(e.request.url).origin !== location.origin) return;
+  e.respondWith(
+    caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request))
+  );
+});
