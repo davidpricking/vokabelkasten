@@ -5,6 +5,8 @@
 const DAY = 864e5;
 const INTERVAL = [0, 1, 2, 4, 8, 16, 30, 180];          // Tage bis zur nächsten Abfrage, je Fach
 const FACH_LABEL = ["neu", "1 Tag", "2 Tage", "4 Tage", "8 Tage", "16 Tage", "1 Monat", "½ Jahr"];
+const FACH_IN = ["", "morgen", "in 2 Tagen", "in 4 Tagen", "in 8 Tagen", "in 16 Tagen", "in 1 Monat", "in ½ Jahr"];
+const PLACE_LEVEL = 6;                                 // Schnelltest: "Kann ich" legt das Wort direkt in Fach 6
 const ROUND_SIZE = 10;
 const KEY = "vokabelkasten.v1";
 
@@ -48,7 +50,8 @@ function today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTim
 function defaults() {
   return {
     name: "", onboarded: false, langs: [], cur: null, cards: [], log: {}, gram: {},
-    streak: 0, lastDay: 0, newPerDay: 10, aiHelp: false, bot: "chatgpt", speechMode: "say"
+    streak: 0, lastDay: 0, newPerDay: 10, aiHelp: false, bot: "chatgpt", speechMode: "say",
+    goal: 20, sound: true, input: "tiles", xp: 0, badges: {}
   };
 }
 // Ältere Stände ohne Sprachen werden zu einem Kasten "Englisch".
@@ -117,7 +120,10 @@ function check(input, solution) {
 // ---------- Kasten ----------
 function dueCards() { const now = Date.now(); return cardsL().filter(c => c.level > 0 && c.due <= now).sort((a, b) => a.due - b.due); }
 function newLeft() { const l = L(); if (l.newDay !== today()) { l.newDay = today(); l.newCount = 0; } return Math.max(0, S.newPerDay - l.newCount); }
-function newCards() { return cardsL().filter(c => c.level === 0); }
+// Pausierte Units (zum Beispiel Themes, die in der Schule noch nicht dran sind) liefern keine neuen Wörter.
+function isPaused(c) { const p = L().paused; return !!p && p.includes(c.unit); }
+function newCards() { return cardsL().filter(c => c.level === 0 && !isPaused(c)); }
+function levelCounts() { const n = Array(8).fill(0); cardsL().forEach(c => { if (c.level || !isPaused(c)) n[c.level]++; }); return n; }
 function grade(card, result) {
   const wasNew = card.level === 0;
   if (result === "good") card.level = Math.min(7, card.level + 1);
@@ -133,7 +139,7 @@ function dayLog(k = dayKey()) { return S.log[k] || (S.log[k] = { sec: 0, ans: 0,
 function practiced(k) { const d = S.log[k]; return !!d && (d.ans > 0 || d.gram > 0 || d.sec >= 30); }
 // Zählt aktive Zeit in einer Runde (Vokabeln oder Grammatik); Pausen über 60 Sekunden zählen nicht mit.
 function tick() {
-  const run = R || G, now = Date.now();
+  const run = R || G || P, now = Date.now();
   if (run && run.last) dayLog().sec += Math.min(now - run.last, 60000) / 1000;
   if (run) run.last = now;
 }
@@ -199,8 +205,9 @@ function unb64u(str) {
   const s = atob(str.replace(/-/g, "+").replace(/_/g, "/")); const b = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b;
 }
-async function encodePack(name, cards) {
-  const obj = { n: name, l: L().name, c: L().code, w: cards.map(c => { const r = [c.en, c.de]; if (c.ex) r.push(c.ex); return r; }) };
+// Ein Paket ist entweder eine Unit {n, l, c, w:[[wort, deutsch, beispiel]]}
+// oder ein ganzes Buch {t, l, c, u:[{n, w}], p:[pausierte Units]}.
+async function packCode(obj) {
   const bytes = new TextEncoder().encode(JSON.stringify(obj));
   if ("CompressionStream" in window) {
     try {
@@ -210,11 +217,22 @@ async function encodePack(name, cards) {
   }
   return "j" + b64u(bytes);
 }
+function packRows(cards) { return cards.map(c => { const r = [c.en, c.de]; if (c.ex || c.mn) r.push(c.ex || ""); if (c.mn) r.push(c.mn); return r; }); }
+// Eselsbrücken: [art, bild, text, verwechselt mit]; art ist "s" (Schreibweise), "b" (Bedeutung) oder "v" (Verwechslung).
+function mnList(m) {
+  if (!Array.isArray(m)) return undefined;
+  const out = m.filter(x => Array.isArray(x) && "sbv".includes(x[0]) && x[2]).map(x => [x[0], String(x[1] || ""), String(x[2]), String(x[3] || "")]);
+  return out.length ? out : undefined;
+}
+async function encodePack(name, cards) { return packCode({ n: name, l: L().name, c: L().code, w: packRows(cards) }); }
 async function decodePack(code) {
   let bytes = unb64u(code.slice(1));
   if (code[0] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  return { name: String(obj.n || "Neue Unit"), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), rows: (obj.w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || "") })) };
+  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]) }));
+  const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
+    .filter(u => u.rows.length);
+  return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, paused: (obj.p || []).map(String) };
 }
 function appUrl() { return location.origin + location.pathname.replace(/index\.html$/, ""); }
 
@@ -283,17 +301,71 @@ function renderAddLang(first) {
   };
 }
 
+// ---------- Der Karteikasten als Bild ----------
+// Jedes Fach ist ein Abteil mit Trennkarte und Kartenstapel; der Stapel wächst mit der Wurzel der Anzahl.
+function pileH(n, mini) { return n ? Math.min(mini ? 17 : 46, 3 + Math.round(Math.sqrt(n) * (mini ? 2.6 : 5))) : 0; }
+function kastenHtml(counts, mini, label = "Karten pro Fach") {
+  return `<div class="kasten${mini ? " mini" : ""}" role="img" aria-label="${label}: ${counts.map((n, i) => `${i ? "Fach " + i : "neu"} ${n}`).join(", ")}">${counts.map((n, i) =>
+    `<div class="fach" data-f="${i}"><span class="tab">${i === 0 ? "neu" : i}</span><i class="pile" style="height:${pileH(n, mini)}px"></i><b class="cnt">${n}</b>
+      ${mini ? "" : `<span class="when">${i === 0 ? "" : FACH_LABEL[i]}</span>`}</div>`).join("")}</div>`;
+}
+function setFach(f, delta, bump) {
+  const el = $(`.kasten.mini [data-f="${f}"]`); if (!el) return;
+  const b = $(".cnt", el), n = Math.max(0, +b.textContent + delta);
+  b.textContent = n; $(".pile", el).style.height = pileH(n, true) + "px";
+  if (bump) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+}
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Die Karte kommt aus ihrem Fach geflogen ...
+function liftCard(f) {
+  const card = $("#icard"), src = $(`.kasten.mini [data-f="${f}"]`);
+  if (src) src.classList.add("from");
+  if (!card) return;
+  if (!src || reduced() || !card.animate) { card.classList.add("pop"); return; }
+  const a = src.getBoundingClientRect(), b = card.getBoundingClientRect();
+  const dx = a.left + a.width / 2 - (b.left + b.width / 2), dy = a.top + a.height / 2 - (b.top + b.height / 2);
+  card.animate([{ transform: `translate(${dx}px,${dy}px) scale(.1)`, opacity: 0 }, { transform: "translateY(-6px) scale(1.02)", opacity: 1, offset: .7 }, { transform: "none" }],
+    { duration: 480, easing: "cubic-bezier(.2,.7,.3,1)" });
+}
+// ... und nach der Antwort in hohem Bogen in ihr neues Fach. Falsche Antworten wackeln erst und fliegen dann zurück.
+function flyCard(from, to, ok, word) {
+  const box = $(".kasten.mini"); if (!box) return;
+  setFach(from, -1, false);
+  const target = $(`[data-f="${to}"]`, box), card = $("#icard");
+  const land = () => { setFach(to, 1, true); sound("land"); };
+  if (reduced() || !card || !card.animate) return land();
+  const a = card.getBoundingClientRect(), b = target.getBoundingClientRect();
+  const x0 = a.left + a.width / 2, y0 = a.top + 70, dx = b.left + b.width / 2 - x0, dy = b.top + b.height * .35 - y0;
+  const el = document.createElement("div");
+  el.className = "flyer " + (ok ? "good" : "bad"); el.textContent = word; el.setAttribute("aria-hidden", "true");
+  el.style.left = x0 + "px"; el.style.top = y0 + "px"; document.body.append(el);
+  const T = (x, y, s, r) => ({ transform: `translate(-50%,-50%) translate(${x}px,${y}px) scale(${s}) rotate(${r}deg)` });
+  const kf = ok
+    ? [T(0, 0, 1, 0), { ...T(dx * .45, dy * .5 - 80, .75, -14), offset: .55 }, T(dx, dy, .2, 0)]
+    : [T(0, 0, 1, 0), { ...T(-12, 0, 1, -5), offset: .07 }, { ...T(12, 0, 1, 5), offset: .14 }, { ...T(-8, 0, 1, -3), offset: .21 }, { ...T(0, 0, 1, 0), offset: .28 },
+       { ...T(dx * .5, dy * .5 - 40, .7, 12), offset: .65 }, T(dx, dy, .2, 0)];
+  el.animate(kf, { duration: ok ? 650 : 950, easing: "cubic-bezier(.45,0,.25,1)" }).onfinish = () => { el.remove(); land(); };
+}
+
 // ---------- Startseite ----------
 let confirmDelete = null;
+function goalCount() { const d = dayLog(); return d.ans + d.gram; }
+function ringHtml(n, goal) {
+  const r = 34, c = +(2 * Math.PI * r).toFixed(1), f = Math.min(1, n / goal);
+  return `<div class="ring${n >= goal ? " full" : ""}" role="img" aria-label="Tagesziel: ${Math.min(n, goal)} von ${goal} Antworten">
+    <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="${r}" class="ring-bg"/><circle cx="40" cy="40" r="${r}" class="ring-fg" style="stroke-dasharray:${c};--off:${(c * (1 - f)).toFixed(1)}"/></svg>
+    <span>${n >= goal ? "✓" : `${n}<small>/${goal}</small>`}</span></div>`;
+}
 function renderHomeView() {
-  const lang = L();
-  const all = cardsL();
-  const due = dueCards().length;
-  const nl = Math.min(newLeft(), newCards().length);
-  const counts = Array(8).fill(0); all.forEach(c => counts[c.level]++);
-  const max = Math.max(1, ...counts);
+  const lang = L(), all = cardsL(), paused = lang.paused || [];
+  const due = dueCards().length, nl = Math.min(newLeft(), newCards().length), gd = gDue().length;
   const units = [...new Set(all.map(c => c.unit))];
   const dirs = [["de-en", `Deutsch → ${lang.name}`], ["en-de", `${lang.name} → Deutsch`], ["mix", "gemischt"]];
+  const inputs = [["tiles", "Buchstaben und Sprechen"], ["keyboard", "Tastatur"]];
+  const lv = levelOf(S.xp), todo = due + nl + gd;
+  const placeU = units.find(u => !paused.includes(u) && canPlace(u));
+  const parts = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nl && `${nl} neue ${nl === 1 ? "Wort" : "Wörter"}`, gd && `${gd} Grammatik`].filter(Boolean);
+  const earned = BADGES.filter(b => S.badges[b[0]]);
   app.replaceChildren(h(`
     <div class="spread">
       <nav class="langs" aria-label="Sprachen">
@@ -307,68 +379,87 @@ function renderHomeView() {
     </div>
     <header class="top">
       <div><p class="eyebrow">${S.name ? `Hallo, ${esc(S.name)}!` : "Vokabelkasten"}</p><h1>${esc(lang.name)}</h1></div>
+      <button class="lvchip" id="lv" aria-label="Level ${lv}, Abzeichen ansehen"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></button>
     </header>
-    <section class="today">
-      <div class="stats">
-        <div><span class="big">${due}</span><span class="muted small">fällig heute</span></div>
-        <div><span class="big">${nl}</span><span class="muted small">neue Wörter</span></div>
-      </div>
-      ${due + nl ? `<button class="btn wide" id="start">Runde starten</button>` : all.length ? `<p><b>Heute ist alles geschafft.</b></p>` : `<p><b>Füge zuerst Vokabeln hinzu.</b></p>`}
-      <button class="btn ghost wide" id="free" ${all.length ? "" : "disabled"}>Freies Üben</button>
-      <p class="muted small">${due + nl ? `Eine Runde hat bis zu ${ROUND_SIZE} Wörter und dauert etwa 2 Minuten. ` : ""}Freies Üben geht jederzeit, vor allem mit den Wörtern aus den unteren Fächern. Es wirft dich nie zurück.</p>
+    <section class="hero">
+      <div class="herotop">${ringHtml(goalCount(), S.goal)}
+        <div><b class="herotitle">${todo ? "Heute dran" : all.length ? "Heute alles geschafft!" : "Los geht's!"}</b>
+          <span class="muted small">${todo ? parts.join(" · ") : all.length ? "Freies Üben geht immer und wirft dich nie zurück." : "Hol dir zuerst Vokabeln in deinen Kasten."}</span></div></div>
+      <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
+      ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
+    ${placeU ? `<section class="panel place">
+      <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
+      <p class="muted small">Im Schnelltest kommt jedes Wort genau einmal. Was du schon kannst, fliegt gleich nach hinten in Fach ${PLACE_LEVEL}. So lernst du nur, was wirklich neu ist.</p>
+      <button class="btn ghost" data-place="${esc(placeU)}">Schnelltest starten</button></section>` : ""}
+    ${all.length ? `<section>
+      <div class="spread"><h2>Dein Kasten</h2><span class="muted small">${all.length} Wörter</span></div>
+      ${kastenHtml(levelCounts())}
+      <p class="muted small">Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück. Unter jedem Fach steht, wann ein Wort daraus wieder drankommt.</p>
+    </section>` : ""}
     ${grammarCard()}
     <section>
-      <div class="spread"><h2>Dein Kasten</h2><span class="muted small">${all.length} Wörter</span></div>
-      <div class="box" aria-label="Karten pro Fach">
-        ${counts.map((n, i) => `<div class="slot ${i === 0 ? "new" : ""}">
-          <div class="stack"><i style="height:${n ? Math.max(6, Math.round(n / max * 84)) : 0}px"></i></div>
-          <b>${n}</b><span>${i === 0 ? "neu" : "Fach " + i}<br>${i === 0 ? "&nbsp;" : FACH_LABEL[i]}</span></div>`).join("")}
-      </div>
-      <p class="muted small">Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück. Unter jedem Fach steht, wann ein Wort daraus wieder drankommt.</p>
+      <div class="spread"><h2>Abzeichen</h2><button class="link" id="badges">Alle ${BADGES.length} ansehen</button></div>
+      <div class="badgerow">${earned.length ? earned.slice(-6).map(b => `<span class="bdg" title="${esc(b[2])}">${b[1]}</span>`).join("")
+        : `<span class="muted small">Dein erstes Abzeichen bekommst du nach der ersten Runde.</span>`}</div>
     </section>
     <section>
-      <h2>Abfragerichtung</h2>
-      <div class="chips">${dirs.map(([k, l]) => `<button class="chip" data-dir="${k}" aria-pressed="${lang.dir === k}">${l}</button>`).join("")}</div>
-    </section>
-    <section>
-      <div class="spread"><h2>Units</h2><button class="btn small" id="add">+ Vokabeln hinzufügen</button></div>
+      <div class="spread"><h2>Units</h2><button class="btn small" id="add">+ Vokabeln</button></div>
       <div class="units">${units.length ? units.map(u => {
         const cs = all.filter(c => c.unit === u); const sit = cs.filter(c => c.level >= 3).length;
-        const pct = Math.round(sit / cs.length * 100);
-        return `<div class="unit">
+        const pct = Math.round(sit / cs.length * 100), isP = paused.includes(u), fresh = cs.filter(c => c.level === 0).length;
+        return `<div class="unit${isP ? " paused" : ""}">
           <div class="spread"><div><h3 style="overflow-wrap:anywhere">${esc(u)}</h3>
-            <p class="muted small">${cs.length} Wörter · ${pct} % sitzen (ab Fach 3)</p></div>
-            ${u === SAMPLE_UNIT ? '<span class="tag">Beispiel</span>' : ""}</div>
-          <div class="bar"><i style="width:${pct}%"></i></div>
+            <p class="muted small">${cs.length} Wörter · ${isP ? "pausiert" : `${pct} % sitzen (ab Fach 3)`}</p></div>
+            ${u === SAMPLE_UNIT ? '<span class="tag">Beispiel</span>' : isP ? '<span class="tag soft">Pause</span>' : ""}</div>
+          ${isP ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}
           <div class="row">
-            <button class="btn ghost small" data-test="${esc(u)}">Für den Test üben</button>
+            ${isP ? `<button class="btn small" data-unpause="${esc(u)}">Freischalten</button>`
+              : `<button class="btn ghost small" data-test="${esc(u)}">Für den Test üben</button>${canPlace(u) ? `<button class="link" data-place="${esc(u)}">Schnelltest</button>` : ""}`}
             <button class="link" data-share="${esc(u)}">Teilen</button>
+            ${!isP && fresh ? `<button class="link" data-pause="${esc(u)}">Pausieren</button>` : ""}
             ${confirmDelete === u
               ? `<span class="small">Wirklich löschen?</span><button class="link" data-del-yes="${esc(u)}">Ja</button><button class="link" data-del-no>Nein</button>`
               : `<button class="link" data-del="${esc(u)}">Löschen</button>`}
           </div></div>`;
-      }).join("") : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln hinzufügen“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
+      }).join("") : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
+      <p class="muted small">Pausierte Units liefern keine neuen Wörter. Schalte sie frei, wenn das Thema in der Schule drankommt.</p>
     </section>
+    <details class="panel">
+      <summary><b>So wirst du abgefragt</b></summary>
+      <h3>Richtung</h3>
+      <div class="chips">${dirs.map(([k, l]) => `<button class="chip" data-dir="${k}" aria-pressed="${lang.dir === k}">${l}</button>`).join("")}</div>
+      <h3>Antworten mit</h3>
+      <div class="chips">${inputs.map(([k, l]) => `<button class="chip" data-input="${k}" aria-pressed="${S.input === k}">${l}</button>`).join("")}</div>
+      <p class="muted small">Buchstaben und Sprechen: Ins ${esc(lang.name)}e legst du das Wort aus Buchstaben, so übst du die Schreibweise. Ins Deutsche sagst du es ins Mikrofon oder drehst die Karte um.</p>
+    </details>
   `));
-  if ($("#start")) $("#start").onclick = () => startRound(null);
-  $("#free").onclick = () => startRound(FREE);
+  $("#go").onclick = () => todo ? startRound(null) : all.length ? startRound(FREE) : renderImport();
+  if ($("#free")) $("#free").onclick = () => startRound(FREE);
   $("#add").onclick = () => renderImport();
   $("#settings").onclick = () => renderSettings();
   $("#cal").onclick = () => { renderCalendar(); scrollTo(0, 0); };
   $("#addLang").onclick = () => renderAddLang(false);
+  $("#lv").onclick = $("#badges").onclick = () => renderBadges();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
   $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
-  $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); renderHome(); });
+  $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); keepScroll(renderHome); });
+  $$("[data-input]").forEach(b => b.onclick = () => { S.input = b.dataset.input; save(); keepScroll(renderHome); });
   $$("[data-test]").forEach(b => b.onclick = () => startRound(b.dataset.test));
+  $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   $$("[data-share]").forEach(b => b.onclick = () => renderShare(b.dataset.share));
-  $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; renderHome(); });
-  $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; renderHome(); });
+  $$("[data-pause]").forEach(b => b.onclick = () => { lang.paused = [...paused, b.dataset.pause]; save(); keepScroll(renderHome); });
+  $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
+  $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderHome); });
+  $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderHome); });
   $$("[data-del-yes]").forEach(b => b.onclick = () => {
-    const u = b.dataset.delYes; S.cards = S.cards.filter(c => !(c.lang === S.cur && c.unit === u)); confirmDelete = null; save(); renderHome(); toast("Unit gelöscht");
+    const u = b.dataset.delYes; S.cards = S.cards.filter(c => !(c.lang === S.cur && c.unit === u));
+    lang.paused = paused.filter(x => x !== u); confirmDelete = null; save(); keepScroll(renderHome); toast("Unit gelöscht");
   });
-  window.scrollTo(0, 0);
+  if (!keepScroll.on) window.scrollTo(0, 0);
 }
+// Neu zeichnen, ohne nach oben zu springen
+function keepScroll(f) { const y = scrollY; keepScroll.on = true; try { f(); } finally { keepScroll.on = false; } scrollTo(0, y); }
 
 // ---------- Runde ----------
 let R = null;
@@ -376,7 +467,7 @@ const FREE = "\u0000free";
 function startRound(unit) {
   let pick;
   if (unit === FREE) {
-    const all = cardsL();
+    const all = cardsL().filter(c => c.level || !isPaused(c));
     pick = shuffle([...all]).sort((a, b) => a.level - b.level).slice(0, Math.max(ROUND_SIZE, Math.ceil(all.length / 3)));
     pick = shuffle(pick).slice(0, ROUND_SIZE);
   } else if (unit) {
@@ -386,55 +477,173 @@ function startRound(unit) {
     if (pick.length < ROUND_SIZE) pick = pick.concat(newCards().slice(0, Math.min(newLeft(), ROUND_SIZE - pick.length)));
     pick = shuffle(pick);
   }
-  if (!pick.length) { toast("Noch keine Vokabeln vorhanden"); return; }
-  R = { practice: !!unit, unit, queue: pick.map(c => c.id), total: pick.length, done: new Set(), first: {}, good: 0, last: Date.now() };
+  const items = pick.map(c => c.id);
+  if (!unit) items.push(...grammarItems());
+  if (!items.length) { toast("Noch keine Vokabeln vorhanden"); return; }
+  R = { practice: !!unit, unit, queue: items, total: items.length, done: new Set(), first: {}, good: 0, last: Date.now(),
+        combo: 0, best: 0, xp: 0, up: 0, down: 0, gram: {}, timer: 0, newBadges: [] };
   renderCard();
 }
 function dirFor() { const d = L().dir; return d === "mix" ? (Math.random() < .5 ? "de-en" : "en-de") : d; }
+function roundHead() {
+  const pct = Math.round(R.done.size / R.total * 100);
+  return `<div class="progress"><button class="iconbtn" id="quit" aria-label="Runde beenden">${ICON.x}</button>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      ${R.combo >= 3 ? `<span class="combo" aria-label="${R.combo} richtig hintereinander">×${R.combo}</span>` : ""}
+      <span class="small muted" style="font-variant-numeric:tabular-nums">${R.done.size}/${R.total}</span></div>
+    ${R.practice ? "" : kastenHtml(levelCounts(), true)}`;
+}
+function bindQuit() { $("#quit").onclick = () => { clearTimeout(R.timer); stopListening(); tick(); save(); R = null; renderHome(); }; }
 
 function renderCard() {
-  tick();
+  tick(); clearTimeout(R.timer);
   if (!R.queue.length) return renderSummary();
+  if (R.queue[0].startsWith("g|")) return renderRoundTask();
   const card = S.cards.find(c => c.id === R.queue[0]);
   if (!card) { R.queue.shift(); return renderCard(); }
   const dir = dirFor();
   const q = dir === "de-en" ? card.de : card.en;
   const sol = dir === "de-en" ? card.en : card.de;
   const lname = L().name;
-  const lang = dir === "de-en" ? L().code : "de-DE";
   const pool = cardsL().filter(c => c.id !== card.id);
-  const mic = SR && !!lang;
-  const spellOk = /^(en|de)/.test(lang);
-  const useChoice = card.level <= 1 && !R.done.has(card.id) && !(card.id in R.first) && pool.length >= 3 && !R.practice;
-  const pct = Math.round(R.done.size / R.total * 100);
+  const fresh = !R.done.has(card.id) && !(card.id in R.first);
+  const useChoice = card.level <= 1 && fresh && pool.length >= 3 && !R.practice;
+  const mode = useChoice ? "choice" : S.input === "keyboard" ? "keyboard" : dir === "de-en" ? "tiles" : "speak";
   const label = R.unit === FREE ? " · Freies Üben" : R.practice ? " · Testtraining" : "";
-  app.replaceChildren(h(`
-    <div class="progress"><button class="iconbtn" id="quit" aria-label="Runde beenden">${ICON.x}</button>
-      <div class="bar"><i style="width:${pct}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${R.done.size}/${R.total}</span></div>
-    <div class="icard pop">
+  app.replaceChildren(h(`${roundHead()}
+    <div class="icard" id="icard">
       <div class="spread"><span class="eyebrow">${dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
         ${dir === "en-de" && canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
-      <div class="q">${esc(q)}</div>
+      ${card.level === 0 && fresh && !R.practice ? '<span class="newtag">Neues Wort</span>' : ""}
+      ${mode === "speak" ? `<div class="flip" id="flip"><div class="face front"><div class="q">${esc(q)}</div></div><div class="face back"><div class="q">${esc(sol)}</div></div></div>`
+        : `<div class="q">${esc(q)}</div>`}
       <div id="answerArea"></div>
       <div id="fb"></div>
-    </div>
-  `));
-  $("#quit").onclick = () => { stopListening(); tick(); save(); R = null; renderHome(); };
+    </div>`));
+  bindQuit();
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
   if (dir === "en-de" && canHear() && !useChoice) say(card.en);
+  liftCard(card.level);
   const area = $("#answerArea");
-  if (useChoice) {
+  const done = (result, typed) => answered(card, result, sol, dir, typed);
+  if (mode === "choice") {
     const others = shuffle(pool.map(c => dir === "de-en" ? c.en : c.de).filter(x => norm(x) !== norm(sol))).slice(0, 3);
     const opts = shuffle([sol, ...others]);
     area.replaceChildren(h(`<div class="choices">${opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div>`));
     $$(".choice", area).forEach(b => b.onclick = () => {
       const ok = opts[+b.dataset.i] === sol;
-      $$(".choice", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.i] === sol) x.classList.add("right"); });
+      $$(".choice", area).forEach(x => { if (opts[+x.dataset.i] === sol) x.classList.add("right"); });
       if (!ok) b.classList.add("wrong");
-      answered(card, ok ? "good" : "bad", sol, dir);
+      done(ok ? "good" : "bad", ok ? "" : opts[+b.dataset.i]);
     });
-    return;
-  }
+  } else if (mode === "tiles") tilesUi(area, sol, card.level, done);
+  else if (mode === "speak") speakUi(area, sol, done);
+  else keyboardUi(area, sol, dir, done);
+}
+
+// Deutsch → Englisch: Das Wort wird aus Buchstaben-Kacheln gelegt. Leerzeichen, Satzzeichen und ein "to" am Anfang stehen schon da.
+function tileTarget(sol) { return sol.split(/\s*[,;]\s*|\s+\/\s+/)[0].replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim() || sol.trim(); }
+const DECOYS = "eaiotnsrhldcumwfgypbvk";
+function tilesUi(area, sol, level, done) {
+  const target = tileTarget(sol);
+  let pre = "", body = target;
+  if (isEn() && /^to [^ ]/.test(body)) { pre = "to"; body = body.slice(3); }
+  const chars = [...body], isLetter = ch => /\p{L}/u.test(ch);
+  const letters = chars.filter(isLetter);
+  if (letters.length > 22) return keyboardUi(area, sol, "de-en", done);
+  const decoys = [];
+  while (decoys.length < (level >= 4 ? 4 : 2)) { const d = pick([...DECOYS]); if (!decoys.includes(d)) decoys.push(d); }
+  const pool = shuffle([...letters, ...decoys]).map(ch => ({ ch, used: false }));
+  const holes = letters.length, filled = [];
+  let fresh = -1;
+  const draw = () => {
+    let fi = 0;
+    const words = [[]];
+    if (pre) words[0].push(`<span class="lfix">${pre}</span>`), words.push([]);
+    chars.forEach(ch => {
+      if (ch === " ") { words.push([]); return; }
+      const w = words[words.length - 1];
+      if (!isLetter(ch)) { w.push(`<span class="lfix">${esc(ch)}</span>`); return; }
+      const k = fi++, pi = filled[k];
+      w.push(pi === undefined ? `<span class="lslot${k === filled.length ? " cur" : ""}"></span>`
+        : `<button class="lslot full${k === fresh ? " just" : ""}" data-back="${k}" aria-label="${esc(pool[pi].ch)} entfernen">${esc(pool[pi].ch)}</button>`);
+    });
+    area.replaceChildren(h(`<div class="letters" aria-label="Dein Wort">${words.filter(w => w.length).map(w => `<span class="lword">${w.join("")}</span>`).join("")}</div>
+      <div class="lpool">${pool.map((p, i) => `<button class="ltile" data-take="${i}" ${p.used ? "disabled" : ""}>${esc(p.ch)}</button>`).join("")}</div>
+      <div class="row lrow"><button class="link" id="lback" ${filled.length ? "" : "disabled"}>⌫ Zurück</button><button class="link" id="lgive">Weiß ich nicht</button></div>`));
+    $$("[data-take]", area).forEach(b => b.onclick = () => {
+      const i = +b.dataset.take; if (pool[i].used || filled.length >= holes) return;
+      pool[i].used = true; filled.push(i); fresh = filled.length - 1; sound("tap"); draw();
+      if (filled.length === holes) finish();
+    });
+    $$("[data-back]", area).forEach(b => b.onclick = () => { const k = +b.dataset.back; pool[filled[k]].used = false; filled.splice(k, 1); fresh = -1; draw(); });
+    $("#lback").onclick = () => { if (!filled.length) return; pool[filled.pop()].used = false; fresh = -1; draw(); };
+    $("#lgive").onclick = () => done("bad", "");
+  };
+  const finish = () => {
+    let fi = 0;
+    const typed = (pre ? pre + " " : "") + chars.map(ch => isLetter(ch) ? pool[filled[fi++]].ch : ch).join("");
+    done(norm(typed) === norm(target) ? "good" : check(typed, sol), typed);
+  };
+  draw();
+}
+
+// Englisch → Deutsch: sagen statt tippen. Klappt das Mikrofon nicht, wird die Karte umgedreht und selbst bewertet.
+function deForms(sol) {
+  const out = new Set();
+  [sol, sol.replace(/\([^)]*\)/g, ""), sol.replace(/[()]/g, "")].forEach(b => alts(b).forEach(a => {
+    a = a.replace(/[.!?]/g, "").trim(); out.add(a); out.add(a.replace(/^(der|die|das|ein|eine|sich)\s+/, ""));
+  }));
+  return [...out].filter(Boolean);
+}
+function checkSpoken(heard, sol) {
+  const x = norm(heard).replace(/[.,!?]/g, ""), xs = x.replace(/^(der|die|das|ein|eine|einen|sich)\s+/, "");
+  return deForms(sol).some(o => o === x || o === xs || (o.length >= 5 && lev(xs, o) <= 1) || (o.length >= 3 && ` ${x} `.includes(` ${o} `)));
+}
+function speakUi(area, sol, done) {
+  let turned = false;
+  const turn = () => {
+    if (turned) return; turned = true;
+    stopListening();
+    $("#flip").classList.add("turned"); sound("flip");
+    area.replaceChildren(h(`<p class="muted small" style="text-align:center">Wusstest du es?</p>
+      <div class="choices"><button class="choice yes" id="yes">✓ Gewusst</button><button class="choice no" id="no">✗ Nicht gewusst</button></div>`));
+    $("#yes").onclick = () => done("good", "");
+    $("#no").onclick = () => done("bad", "");
+  };
+  area.replaceChildren(h(`<div class="speakbox">
+    ${SR ? `<button class="bigmic" id="bigmic">${ICON.mic}<span>Sag es auf Deutsch</span></button><p class="muted small" id="heard" aria-live="polite"></p>` : ""}
+    <button class="btn ${SR ? "ghost " : ""}wide" id="turn">Karte umdrehen</button></div>`));
+  $("#turn").onclick = turn;
+  $("#flip").onclick = turn;
+  if (SR) $("#bigmic").onclick = () => listenDe(sol, (ok, heard) => {
+    if (ok) { $("#flip").classList.add("turned"); done("good", heard); }
+    else $("#heard").textContent = heard ? `Ich habe „${heard}“ verstanden. Sag es noch einmal oder dreh die Karte um.` : "Nichts gehört. Tipp noch einmal aufs Mikrofon.";
+  }, turn);
+}
+function listenDe(sol, cb, fallback) {
+  if (rec) { stopListening(); return; }
+  const mic = $("#bigmic");
+  rec = new SR(); rec.lang = "de-DE"; rec.interimResults = false; rec.maxAlternatives = 5;
+  mic.classList.add("listening");
+  rec.onresult = e => {
+    const heard = [...e.results[0]].map(a => a.transcript.trim());
+    const hit = heard.find(a => checkSpoken(a, sol));
+    cb(!!hit, hit || heard[0] || "");
+  };
+  rec.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") { toast("Das Mikrofon ist nicht freigegeben. Dreh die Karte um."); fallback(); }
+    else if (e.error === "no-speech") cb(false, "");
+    else if (e.error !== "aborted") { toast("Die Spracheingabe hat nicht geklappt."); fallback(); }
+  };
+  rec.onend = () => { rec = null; mic.classList.remove("listening"); };
+  try { rec.start(); } catch (e) { stopListening(); fallback(); }
+}
+
+// Tastatur, wie früher: tippen oder mit dem Mikrofon sprechen bzw. buchstabieren
+function keyboardUi(area, sol, dir, done) {
+  const lname = L().name, lang = dir === "de-en" ? L().code : "de-DE";
+  const mic = SR && !!lang, spellOk = /^(en|de)/.test(lang);
   area.replaceChildren(h(`<form id="f" autocomplete="off">
     <div class="answerRow">
       <input class="answer" id="ans" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"
@@ -458,12 +667,12 @@ function renderCard() {
     e.preventDefault(); if (!inp.value.trim()) return;
     stopListening();
     inp.disabled = true; $$("button", e.target).forEach(b => b.hidden = true); $(".speechModes") && ($(".speechModes").hidden = true);
-    answered(card, check(inp.value, sol), sol, dir, inp.value);
+    done(check(inp.value, sol), inp.value);
   };
 }
 
 let rec = null;
-function stopListening() { if (rec) { try { rec.abort(); } catch (e) {} rec = null; } const m = $("#mic"); if (m) m.classList.remove("listening"); }
+function stopListening() { if (rec) { try { rec.abort(); } catch (e) {} rec = null; } $$("#mic, #bigmic").forEach(m => m.classList.remove("listening")); }
 function listen(inp, sol, lang, spellOk) {
   if (rec) { stopListening(); return; }
   const mic = $("#mic");
@@ -498,45 +707,282 @@ function aiQuestion(card) {
   const n = L().name;
   return `Erkläre einem Kind aus der 5. Klasse kurz das Wort „${card.en}“ (${n}, auf Deutsch: ${card.de}). Gib eine einfache Erklärung, zwei kurze Beispielsätze auf ${n} mit Übersetzung und eine Eselsbrücke zum Merken. Antworte auf Deutsch.`;
 }
+// Eselsbrücke passend zum Fehler: Schreibfehler → Schreibweise, falsches Wort gewählt → Verwechslung, gar nicht gewusst → Bedeutung.
+function pickMnemonic(card, result, typed, dir) {
+  const m = card.mn; if (!m || result === "good") return null;
+  const by = k => m.filter(x => x[0] === k);
+  const t = norm(typed || "");
+  const vs = t && by("v").find(x => x[3] && alts(x[3]).includes(t));
+  if (vs) return vs;
+  const spelling = dir === "de-en" && t && (result === "near" || lev(t, norm(tileTarget(card.en))) <= 3);
+  return (spelling ? by("s")[0] : null) || by("b")[0] || by("s")[0] || by("v")[0] || null;
+}
+function mnemonicHtml(x, word) {
+  const fr = x[1].split("|"), hot = (x[2].match(/\*\*(.+?)\*\*/) || [])[1] || "";
+  let spell = "";
+  if (x[0] === "s" && word) {
+    const at = hot ? word.toLowerCase().indexOf(hot.toLowerCase()) : -1;
+    spell = `<span class="mword" aria-hidden="true">${[...word].map((ch, i) => `<span class="${at >= 0 && i >= at && i < at + hot.length ? "hot" : ""}" style="--d:${i}">${ch === " " ? "&nbsp;" : esc(ch)}</span>`).join("")}</span>`;
+  }
+  return `<div class="mnemo"><span class="mnemo-pic" aria-hidden="true" data-frames="${esc(x[1])}">${esc(fr[0])}</span>
+    <span><b class="mnemo-k">Eselsbrücke</b>${spell}${gmark(x[2])}</span></div>`;
+}
 function answered(card, result, sol, dir, typed) {
   tick();
-  const firstTime = !(card.id in R.first);
+  $$("#answerArea button, #answerArea input").forEach(x => x.disabled = true);
+  const firstTime = !(card.id in R.first), from = card.level;
   const dl = dayLog(); dl.ans++; if (result !== "bad") dl.right++;
   if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); }
+  const to = card.level, moved = firstTime && !R.practice;
   R.queue.shift();
   if (result === "bad") R.queue.splice(Math.min(R.queue.length, 3), 0, card.id);   // kommt in dieser Runde gleich noch einmal
   else R.done.add(card.id);
+  if (result === "bad") { R.combo = 0; card.miss = (card.miss || 0) + 1; }
+  else if (firstTime) { R.combo++; R.best = Math.max(R.best, R.combo); }
+  if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
+  sound(result === "bad" ? "bad" : "good");
+  const where = !moved ? "" : from === 0 ? "Ab in Fach 1, kommt morgen wieder."
+    : to > from ? `Weiter in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : to < from ? `Zurück in Fach ${to}, kommt morgen wieder.` : `Bleibt in Fach ${to}, kommt morgen wieder.`;
   const msg = result === "good" ? ["good", pick(["Richtig!", "Super!", "Genau!", "Stark!"]), ""]
     : result === "near" ? ["near", "Fast!", `Achte auf die Schreibweise: <span class="sol">${typed ? markDiff(typed, sol) : esc(sol)}</span>`]
     : ["bad", "Noch nicht.", `Richtig ist: <span class="sol">${esc(sol)}</span><span class="small">Das Wort kommt in dieser Runde gleich noch einmal.</span>`];
+  const mn = pickMnemonic(card, result, typed, dir);
   const bot = BOTS[S.bot] || BOTS.chatgpt;
   $("#fb").replaceChildren(h(`<div class="feedback ${msg[0]}"><strong>${msg[1]}</strong>${msg[2] ? `<span class="fbtext">${msg[2]}</span>` : ""}
+      ${where ? `<span class="fachinfo">${where}</span>` : ""}
+      ${mn ? mnemonicHtml(mn, tileTarget(card.en)) : ""}
       ${card.ex ? `<div class="extra"><i>${esc(card.ex)}</i></div>` : ""}
       <div class="row">${canHear() ? `<button class="speak" id="say2">${ICON.speaker}${esc(card.en)}</button>` : ""}
       ${S.aiHelp ? `<a class="speak" id="ask" href="${esc(bot.url(aiQuestion(card)))}" target="_blank" rel="noopener">Frag ${esc(bot.name)}</a>` : ""}</div></div>
-    <button class="btn wide" id="next" style="margin-top:12px">Weiter</button>`));
+    <button class="btn wide${result === "good" ? " auto" : ""}" id="next" style="margin-top:12px">Weiter</button>`));
   if (canHear()) { $("#say2").onclick = () => say(card.en); if (result !== "bad") say(card.en); }
+  playMnemo($("#fb"));
   if ($("#ask") && bot.copyFirst) $("#ask").onclick = () => { copyText(aiQuestion(card)); toast("Frage kopiert. Füge sie im Chat ein."); };
+  addXp(result === "bad" ? 0 : !firstTime ? 4 : (result === "good" ? 10 : 6) + (result === "good" ? Math.min(R.combo - 1, 5) * 2 : 0));
+  checkGoal(); checkBadges();
   save();
+  nextButton(result === "good");
+}
+// Nach einer richtigen Antwort geht es von selbst weiter; wer in die Rückmeldung tippt, hält an.
+function nextButton(auto) {
   const nx = $("#next"); nx.focus({ preventScroll: true }); nx.onclick = renderCard;
+  if (!auto) return;
+  R.timer = setTimeout(renderCard, 1700);
+  $(".feedback").addEventListener("click", () => { clearTimeout(R.timer); nx.classList.remove("auto"); });
+}
+function renderRoundTask() {
+  const item = R.queue[0], [, id, ti] = item.split("|"), d = gData(), t = d && d.topics.find(x => x.id === id), task = t && t.tasks[+ti];
+  if (!task) { R.queue.shift(); R.total--; return renderCard(); }
+  app.replaceChildren(h(`${roundHead()}
+    <div class="icard pop" id="icard"><span class="eyebrow">Grammatik-Kasten · ${esc(t.t)}</span>
+      <div class="gq">${taskQuestion(task)}</div><div id="answerArea"></div><div id="fb"></div></div>`));
+  bindQuit();
+  drawTask(task, $("#answerArea"), (ok, full, why) => {
+    tick();
+    const first = !(item in R.first);
+    dayLog().gram++;
+    if (first) { R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] ?? true) && ok; }
+    R.queue.shift();
+    if (ok) { R.done.add(item); if (first) { R.combo++; R.best = Math.max(R.best, R.combo); } }
+    else { R.combo = 0; R.queue.splice(Math.min(R.queue.length, 3), 0, item); }
+    sound(ok ? "good" : "bad");
+    $("#fb").replaceChildren(h(taskFeedback(ok, full, why, t) + `<button class="btn wide${ok ? " auto" : ""}" id="next" style="margin-top:12px">Weiter</button>`));
+    bindSay($("#fb"));
+    if ($("#say2")) $("#say2").onclick = () => say(full);
+    addXp(ok ? (first ? 10 : 4) : 0);
+    checkGoal(); checkBadges(); save();
+    nextButton(ok);
+  });
 }
 function renderSummary() {
-  tick(); save();
-  const n = R.total, g = R.good;
+  tick();
+  R.finished = true;
+  const gl = Object.entries(R.gram).map(([id, ok]) => gMove(id, ok)).filter(Boolean);
+  checkBadges(); save();
+  const n = R.total, g = R.good, lv = levelOf(S.xp);
   const what = R.unit === FREE ? "Übungsrunde geschafft" : R.practice ? "Testtraining geschafft" : "Runde geschafft";
   app.replaceChildren(h(`<div class="done">
     <p class="eyebrow">${what}</p>
     <div class="score">${g}/${n}</div>
     <p>${g === n ? (S.name ? `Stark, ${esc(S.name)}! Alles beim ersten Versuch gewusst.` : "Alles beim ersten Versuch gewusst.") : "beim ersten Versuch gewusst. Die anderen hast du am Ende auch geschafft."}</p>
     ${R.practice ? '<p class="muted small">Beim freien Üben und beim Testtraining bleiben die Fächer unverändert.</p>'
-      : ""}
+      : `<div class="moves">${R.up ? `<span class="up">${R.up} ${R.up === 1 ? "Karte" : "Karten"} nach hinten</span>` : ""}${R.down ? `<span class="down">${R.down} zurück</span>` : ""}</div>
+         ${kastenHtml(levelCounts())}`}
+    ${gl.map(x => `<p class="small">${x}</p>`).join("")}
+    <div class="xpline"><b>+${R.xp} Punkte</b><span class="lvchip static"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></span></div>
+    ${R.newBadges.length ? `<div class="newbadges">${R.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
     <div class="row" style="justify-content:center"><button class="btn" id="again">Noch eine Runde</button><button class="btn ghost" id="home">Fertig</button></div>
   </div>`));
+  if ((g === n && n >= 5) || R.newBadges.length) confetti();
   const unit = R.practice ? R.unit : null;
-  $("#again").onclick = () => startRound(unit === null && !dueCards().length && !Math.min(newLeft(), newCards().length) ? FREE : unit);
+  $("#again").onclick = () => startRound(unit === null && !dueCards().length && !Math.min(newLeft(), newCards().length) && !gDue().length ? FREE : unit);
   $("#home").onclick = () => { R = null; renderHome(); };
   $("#toCal").onclick = () => { R = null; renderCalendar(); scrollTo(0, 0); };
+  window.scrollTo(0, 0);
+}
+
+// ---------- Schnelltest: Was schon sitzt, fliegt gleich nach hinten ----------
+let P = null;
+function placeable(u) { return cardsL().filter(c => c.unit === u && c.level === 0 && !c.pl); }
+function canPlace(u) { return placeable(u).length >= 5; }
+function startPlace(u) {
+  const ids = placeable(u).map(c => c.id);
+  P = { unit: u, queue: ids, total: ids.length, known: 0, unknown: 0, last: Date.now(), newBadges: [] };
+  renderPlace();
+}
+function renderPlace() {
+  tick();
+  if (!P.queue.length) return renderPlaceDone();
+  const card = S.cards.find(c => c.id === P.queue[0]);
+  if (!card) { P.queue.shift(); return renderPlace(); }
+  const k = P.total - P.queue.length;
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="quit" aria-label="Schnelltest beenden">${ICON.x}</button>
+      <div class="bar"><i style="width:${Math.round(k / P.total * 100)}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${k}/${P.total}</span></div>
+    ${kastenHtml(levelCounts(), true)}
+    <div class="icard" id="icard">
+      <div class="spread"><span class="eyebrow">Schnelltest</span>${canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
+      <div class="flip" id="flip"><div class="face front"><div class="q">${esc(card.en)}</div></div><div class="face back"><div class="q">${esc(card.de)}</div></div></div>
+      <p class="muted small">Weißt du, was das heißt? Tipp auf die Karte, wenn du nachsehen willst.</p>
+      <div class="choices"><button class="choice yes" id="yes">✓ Kann ich</button><button class="choice no" id="no">Noch nicht</button></div>
+    </div>
+    <button class="link" id="stop" style="align-self:center">Rest später testen</button>`));
+  $("#quit").onclick = $("#stop").onclick = () => { tick(); save(); P = null; renderHome(); };
+  if ($("#hear")) $("#hear").onclick = () => say(card.en);
+  $("#flip").onclick = () => { $("#flip").classList.toggle("turned"); sound("flip"); };
+  liftCard(0);
+  const go = known => {
+    $$("#icard button").forEach(b => b.disabled = true); tick();
+    if (known) { card.level = PLACE_LEVEL; card.due = today() + INTERVAL[PLACE_LEVEL] * DAY; P.known++; }
+    else { card.pl = 1; P.unknown++; }
+    P.queue.shift(); S.xp++; save();
+    flyCard(0, known ? PLACE_LEVEL : 0, known, card.en);
+    sound(known ? "good" : "tap");
+    setTimeout(renderPlace, reduced() ? 150 : 720);
+  };
+  $("#yes").onclick = () => go(true);
+  $("#no").onclick = () => go(false);
+}
+function renderPlaceDone() {
+  P.finished = true; checkBadges(); save();
+  const nextU = [...new Set(cardsL().map(c => c.unit))].find(u => u !== P.unit && !(L().paused || []).includes(u) && canPlace(u));
+  app.replaceChildren(h(`<div class="done">
+    <p class="eyebrow">Schnelltest geschafft</p>
+    <div class="score">${P.known}</div>
+    <p>${P.known === 1 ? "Wort kannst" : "Wörter kannst"} du schon. Sie liegen jetzt in Fach ${PLACE_LEVEL} und kommen in einem Monat zur Kontrolle.</p>
+    ${P.unknown ? `<p class="muted">${P.unknown} ${P.unknown === 1 ? "Wort lernst" : "Wörter lernst"} du neu, ${S.newPerDay} am Tag.</p>` : ""}
+    ${kastenHtml(levelCounts())}
+    ${P.newBadges.length ? `<div class="newbadges">${P.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
+    <div class="row" style="justify-content:center">${nextU ? `<button class="btn" id="nextU">Nächste Unit testen</button>` : ""}<button class="btn ${nextU ? "ghost" : ""}" id="home">Fertig</button></div>
+  </div>`));
+  if (P.known) confetti();
+  if (nextU) $("#nextU").onclick = () => startPlace(nextU);
+  $("#home").onclick = () => { P = null; renderHome(); };
+  window.scrollTo(0, 0);
+}
+
+// ---------- Punkte, Level, Abzeichen, Konfetti und Töne ----------
+function xpNeed(l) { return 50 * l * (l + 1); }                 // Punkte, ab denen Level l + 1 beginnt
+function levelOf(xp) { let l = 1; while (xp >= xpNeed(l)) l++; return l; }
+function levelPct(xp) { const l = levelOf(xp), a = l > 1 ? xpNeed(l - 1) : 0; return Math.round((xp - a) / (xpNeed(l) - a) * 100); }
+function addXp(n) {
+  if (!n) return;
+  const before = levelOf(S.xp); S.xp += n;
+  const d = dayLog(); d.xp = (d.xp || 0) + n; if (R) R.xp += n;
+  const fb = $("#fb .feedback");
+  if (fb && !reduced()) { const el = document.createElement("span"); el.className = "xpfloat"; el.textContent = "+" + n; fb.append(el); setTimeout(() => el.remove(), 1300); }
+  if (levelOf(S.xp) > before) setTimeout(() => celebrate(`Level ${levelOf(S.xp)} erreicht!`), 600);
+}
+function checkGoal() {
+  const d = dayLog();
+  if (!d.goalHit && goalCount() >= S.goal) { d.goalHit = true; setTimeout(() => celebrate("Tagesziel geschafft!"), 300); }
+}
+function celebrate(msg) { confetti(); sound("up"); toast(msg); }
+const BADGES = [
+  ["first", "🎒", "Erste Runde", "Die erste Runde geschafft"],
+  ["perfect", "💯", "Fehlerfrei", "Eine Runde mit mindestens 5 Fragen ohne Fehler"],
+  ["combo10", "⚡", "Zehn am Stück", "10 Antworten hintereinander richtig"],
+  ["goal", "🎯", "Tagesziel", "Zum ersten Mal das Tagesziel geschafft"],
+  ["goal7", "🏅", "Sieben Tagesziele", "An 7 Tagen das Tagesziel geschafft"],
+  ["streak3", "🔥", "Drei Tage", "3 Tage am Stück geübt"],
+  ["streak7", "☄️", "Eine Woche", "7 Tage am Stück geübt"],
+  ["streak30", "🌋", "Ein Monat", "30 Tage am Stück geübt"],
+  ["place", "🔎", "Schnelltest", "Einen Schnelltest bis zum Ende gemacht"],
+  ["words50", "🌱", "50 Wörter", "50 Wörter liegen ab Fach 3"],
+  ["words100", "🌿", "100 Wörter", "100 Wörter liegen ab Fach 3"],
+  ["words250", "🌳", "250 Wörter", "250 Wörter liegen ab Fach 3"],
+  ["words500", "🏰", "500 Wörter", "500 Wörter liegen ab Fach 3"],
+  ["fach7", "🏆", "Ganz hinten", "Ein Wort hat Fach 7 erreicht"],
+  ["gram5", "🧩", "Grammatik-Profi", "5 Grammatikthemen geübt"],
+  ["level5", "⭐", "Level 5", "Level 5 erreicht"],
+  ["level10", "🌟", "Level 10", "Level 10 erreicht"]
+];
+function badgeTest() {
+  const sit = S.cards.filter(c => c.level >= 3).length, streak = liveStreak(), lv = levelOf(S.xp);
+  const goals = Object.values(S.log).filter(d => d.goalHit).length;
+  const gram = Object.values(S.gram).reduce((n, g) => n + Object.keys(g).length, 0);
+  return {
+    first: !!(R && R.finished), perfect: !!(R && R.finished && R.good === R.total && R.total >= 5), combo10: !!(R && R.best >= 10),
+    goal: goals >= 1, goal7: goals >= 7, streak3: streak >= 3, streak7: streak >= 7, streak30: streak >= 30, place: !!(P && P.finished),
+    words50: sit >= 50, words100: sit >= 100, words250: sit >= 250, words500: sit >= 500, fach7: S.cards.some(c => c.level === 7),
+    gram5: gram >= 5, level5: lv >= 5, level10: lv >= 10
+  };
+}
+function checkBadges() {
+  const t = badgeTest(), fresh = [];
+  BADGES.forEach(([id, icon, name]) => { if (t[id] && !S.badges[id]) { S.badges[id] = dayKey(); fresh.push({ icon, name }); } });
+  if (!fresh.length) return;
+  const run = R || P || G;
+  if (run && run.newBadges) run.newBadges.push(...fresh);
+  setTimeout(() => toast(`Neues Abzeichen: ${fresh[0].icon} ${fresh[0].name}`), 900);
+}
+function renderBadges() {
+  const lv = levelOf(S.xp);
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Level und Abzeichen</h2></div>
+    <section class="hero">
+      <div class="spread"><b class="herotitle">Level ${lv}</b><span class="muted small">${S.xp} Punkte</span></div>
+      <div class="bar"><i style="width:${levelPct(S.xp)}%"></i></div>
+      <p class="muted small">Noch ${xpNeed(lv) - S.xp} Punkte bis Level ${lv + 1}. Richtig beim ersten Versuch gibt 10 Punkte, mehrere richtig hintereinander geben Extrapunkte.</p>
+    </section>
+    <div class="badgegrid">${BADGES.map(([id, icon, name, how]) => `<div class="badge${S.badges[id] ? " got" : ""}">
+      <span aria-hidden="true">${icon}</span><b>${esc(name)}</b><span class="muted small">${esc(how)}</span></div>`).join("")}</div>`));
+  $("#back").onclick = renderHome;
+  window.scrollTo(0, 0);
+}
+function confetti() {
+  if (reduced()) return;
+  const c = document.createElement("canvas"), dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+  c.className = "confetti"; c.width = W * dpr; c.height = H * dpr; c.setAttribute("aria-hidden", "true"); document.body.append(c);
+  const x = c.getContext("2d"); x.scale(dpr, dpr);
+  const cols = ["#0E7C5F", "#FFD43B", "#F08A24", "#E8574A", "#3C8DDE", "#9B5DE5"];
+  const ps = [...Array(150)].map(() => ({ x: W / 2 + (Math.random() - .5) * 80, y: H * .35, vx: (Math.random() - .5) * 15, vy: -Math.random() * 13 - 4,
+    r: Math.random() * 6, vr: (Math.random() - .5) * .4, w: 6 + Math.random() * 6, h: 4 + Math.random() * 4, c: pick(cols) }));
+  let f = 0;
+  (function step() {
+    x.clearRect(0, 0, W, H);
+    ps.forEach(p => { p.vy += .32; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); x.restore(); });
+    if (++f < 120) requestAnimationFrame(step); else c.remove();
+  })();
+}
+let AC = null;
+const SND = {
+  good: [[784, 0, .1], [1175, .07, .16]], bad: [[196, 0, .22, "triangle"]], land: [[1046, 0, .05, "triangle", .06]],
+  tap: [[660, 0, .03, "triangle", .04]], flip: [[440, 0, .06, "triangle", .05], [660, .05, .06, "triangle", .05]],
+  up: [[523, 0, .12], [659, .1, .12], [784, .2, .12], [1047, .3, .35]]
+};
+function sound(k) {
+  if (!S.sound) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = AC.currentTime + .01;
+    SND[k].forEach(([f, t, d, type = "sine", v = .1]) => {
+      const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t0 + t); g.gain.exponentialRampToValueAtTime(v, t0 + t + .012); g.gain.exponentialRampToValueAtTime(.0001, t0 + t + d);
+      o.connect(g); g.connect(AC.destination); o.start(t0 + t); o.stop(t0 + t + d + .05);
+    });
+  } catch (e) {}
 }
 
 // ---------- Vokabeln hinzufügen ----------
@@ -627,17 +1073,54 @@ function renderImport(prefill) {
     const unit = $("#unitName").value.trim() || "Neue Unit";
     const good = rows.filter(r => r.en.trim() && r.de.trim());
     if (!good.length) { toast("Die Liste ist leer"); return; }
-    const existing = new Set(cardsL().filter(c => c.unit === unit).map(c => norm(c.en) + "|" + norm(c.de)));
-    let added = 0;
-    good.forEach(r => {
-      const k = norm(r.en) + "|" + norm(r.de); if (existing.has(k)) return; existing.add(k);
-      S.cards.push({ id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 }); added++;
-    });
-    dayLog().added += added;
+    const added = addCards(unit, good);
     save(); rows = []; photo = null; importName = "";
     toast(added ? `${added} Vokabeln übernommen` : "Diese Vokabeln sind schon in der Unit"); renderHome();
   };
   if (rows.length) renderReview();
+}
+// Übernimmt Zeilen in eine Unit; doppelte Wörter in derselben Unit werden übersprungen.
+function addCards(unit, list) {
+  const existing = new Set(cardsL().filter(c => c.unit === unit).map(c => norm(c.en) + "|" + norm(c.de)));
+  let added = 0;
+  list.forEach(r => {
+    const k = norm(r.en) + "|" + norm(r.de); if (existing.has(k)) return; existing.add(k);
+    const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
+    if (r.mn) c.mn = r.mn;
+    S.cards.push(c); added++;
+  });
+  dayLog().added += added;
+  return added;
+}
+// Ein Link mit einem ganzen Buch: Jede Unit lässt sich gleich lernen oder erst einmal pausieren.
+let bookSel = null;
+function renderBook(p) {
+  if (!bookSel) bookSel = p.units.map(u => !p.paused.includes(u.name));
+  const have = new Set(cardsL().map(c => c.unit)), total = p.units.reduce((n, u) => n + u.rows.length, 0);
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Vokabeln übernehmen</h2></div>
+    <section class="hero">
+      <b class="herotitle">${esc(p.title || "Vokabelpaket")}</b>
+      <span class="muted small">${esc(p.lang)} · ${p.units.length} Units · ${total} Wörter</span>
+    </section>
+    <section class="panel">
+      <h3>Was soll gleich drankommen?</h3>
+      ${p.units.map((u, i) => `<label class="toggle bookrow"><span><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></span>
+        <input type="checkbox" data-b="${i}" ${bookSel[i] ? "checked" : ""}></label>`).join("")}
+      <p class="muted small">Mit Haken kommen die Wörter gleich dran. Ohne Haken liegen sie pausiert im Kasten, bis du sie freischaltest.</p>
+    </section>
+    <button class="btn wide" id="save">Alle übernehmen</button>`));
+  $("#back").onclick = () => { bookSel = null; renderHome(); };
+  $$("[data-b]").forEach(x => x.onchange = () => bookSel[+x.dataset.b] = x.checked);
+  $("#save").onclick = () => {
+    const lang = L(); let added = 0;
+    lang.paused = (lang.paused || []).filter(u => !p.units.some(x => x.name === u));
+    p.units.forEach((u, i) => { added += addCards(u.name, u.rows); if (!bookSel[i]) lang.paused.push(u.name); });
+    bookSel = null; save();
+    toast(added ? `${added} Vokabeln übernommen` : "Diese Vokabeln sind schon in deinem Kasten");
+    renderHome();
+  };
+  window.scrollTo(0, 0);
 }
 function addParsed(text) {
   const p = parseList(text);
@@ -692,14 +1175,32 @@ function gStore() { return S.gram[S.cur] || (S.gram[S.cur] = {}); }
 // **fett** in den Texten wird markiert; alles andere wird als Text ausgegeben.
 function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>"); }
 function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
+// Grammatik-Kasten: Geübte Themen bekommen ein Fach und melden sich in wachsenden Abständen in der Tagesrunde.
+function gDue() {
+  const d = gData(); if (!d) return [];
+  const st = gStore(), now = Date.now();
+  return d.topics.filter(t => gReady(t) && st[t.id] && st[t.id].box && st[t.id].due <= now).sort((a, b) => st[a.id].due - st[b.id].due);
+}
+function grammarItems() {
+  const t = gDue()[0]; if (!t) return [];
+  return shuffle(t.tasks.map((_, i) => i)).slice(0, 3).map(i => `g|${t.id}|${i}`);
+}
+function gMove(id, ok) {
+  const d = gData(), t = d && d.topics.find(x => x.id === id), st = gStore()[id]; if (!t || !st) return "";
+  const b0 = st.box || 1;
+  st.box = ok ? Math.min(7, b0 + 1) : Math.max(1, b0 - 2); st.due = today() + INTERVAL[st.box] * DAY;
+  return ok ? `Grammatik „${esc(t.t)}“ wandert weiter in Fach ${st.box}.` : `Grammatik „${esc(t.t)}“ rutscht zurück in Fach ${st.box} und kommt morgen wieder.`;
+}
 function grammarCard() {
   const d = gData(); if (!d) return "";
   const ready = d.topics.filter(gReady), st = gStore();
-  const done = ready.filter(t => st[t.id]).length;
+  const done = ready.filter(t => st[t.id]).length, due = gDue().length;
+  const counts = Array(8).fill(0); ready.forEach(t => counts[st[t.id] && st[t.id].box || 0]++);
   return `<section class="panel gcard">
-      <div class="spread"><div><h2>Grammatik</h2><p class="muted small">${done} von ${ready.length} Themen geübt</p></div>
+      <div class="spread"><div><h2>Grammatik-Kasten</h2><p class="muted small">${done} von ${ready.length} Themen geübt${due ? ` · ${due} fällig` : ""}</p></div>
         <button class="btn small" id="gram">Öffnen</button></div>
-      <p class="muted small">Jedes Thema wird erst erklärt, mit Beispielen. Danach kommen 8 kurze Aufgaben.</p>
+      ${done ? kastenHtml(counts, true, "Grammatikthemen pro Fach") : ""}
+      <p class="muted small">${done ? "Fällige Themen hängt die App mit 3 kurzen Aufgaben an deine Tagesrunde." : "Jedes Thema wird erst erklärt, mit Beispielen. Danach kommen 8 kurze Aufgaben, und das Thema zieht in den Kasten ein."}</p>
     </section>`;
 }
 function renderGrammar() {
@@ -736,12 +1237,69 @@ function renderGrammar() {
   window.scrollTo(0, 0);
 }
 function explainHtml(t) {
-  return `<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>
+  return `${(t.anim || []).map(morphHtml).join("")}<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>
     ${t.ex && t.ex.length ? `<div class="gexamples"><p class="eyebrow">Beispiele</p>${t.ex.map(([f, de]) =>
       `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${esc(de)}</span></span>
         ${canHear() ? `<button class="iconbtn gsay" data-say="${esc(f.replace(/\*\*/g, ""))}" aria-label="Vorlesen">${ICON.speaker}</button>` : ""}</div>`).join("")}</div>` : ""}`;
 }
-function bindSay(root = document) { $$("[data-say]", root).forEach(b => b.onclick = () => say(b.dataset.say)); }
+function bindSay(root = document) { $$("[data-say]", root).forEach(b => b.onclick = () => say(b.dataset.say)); playMorphs(root); }
+// ---------- Bewegte Eselsbrücken ----------
+// Grammatik: Satz a verwandelt sich in Satz b. Gleiche Wörter gleiten an ihren neuen Platz,
+// was wegfällt, fällt herunter, und was neu ist, springt von oben hinein.
+function morphHtml(m) {
+  return `<div class="morph" data-a="${esc(m.a)}" data-b="${esc(m.b)}"><div class="mline" aria-label="${esc(m.a)} wird zu ${esc(m.b)}"></div>
+    ${m.hint ? `<p class="mhint">${gmark(m.hint)}</p>` : ""}<button class="link mreplay" type="button">Nochmal ansehen</button></div>`;
+}
+function playMorphs(root = document) { $$(".morph", root).forEach(el => { if (!el.dataset.on) { el.dataset.on = 1; $(".mreplay", el).onclick = () => runMorph(el); runMorph(el); } }); }
+function runMorph(el) {
+  const line = $(".mline", el), A = el.dataset.a.split(" "), B = el.dataset.b.split(" ");
+  const core = w => w.toLowerCase().replace(/[.,!?]/g, "");
+  clearTimeout(el._t);
+  const used = new Set(), pre = {};
+  const map = B.map((w, j) => {
+    let k = A.findIndex((x, i) => !used.has(i) && core(x) === core(w));
+    if (k < 0) { k = A.findIndex((x, i) => !used.has(i) && core(x).length >= 2 && (core(w).startsWith(core(x)) || core(x).startsWith(core(w)))); if (k >= 0) pre[j] = Math.min(core(A[k]).length, core(w).length); }
+    if (k >= 0) used.add(k);
+    return k;
+  });
+  const bHtml = B.map((w, j) => map[j] < 0 ? `<span class="mtok mnew">${esc(w)}</span>`
+    : pre[j] !== undefined && core(w).length > pre[j] ? `<span class="mtok" data-k="${map[j]}">${esc(w.slice(0, pre[j]))}<span class="mnew">${esc(w.slice(pre[j]))}</span></span>`
+    : `<span class="mtok" data-k="${map[j]}">${esc(w)}</span>`).join(" ");
+  if (reduced() || !line.animate) { line.innerHTML = bHtml; return; }
+  line.innerHTML = A.map((w, i) => `<span class="mtok" data-i="${i}">${esc(w)}</span>`).join(" ");
+  el._t = setTimeout(() => {
+    if (!line.isConnected) return;
+    const box = line.getBoundingClientRect();
+    const old = $$(".mtok", line).map(x => x.getBoundingClientRect());
+    line.innerHTML = bHtml;
+    A.forEach((w, i) => {
+      if (used.has(i)) return;
+      const g = document.createElement("span"); g.className = "mtok mgone"; g.textContent = w;
+      g.style.left = old[i].left - box.left + "px"; g.style.top = old[i].top - box.top + "px"; line.append(g);
+      g.animate([{ transform: "none", opacity: 1 }, { transform: "translateY(34px) rotate(14deg)", opacity: 0 }], { duration: 650, easing: "ease-in", fill: "forwards" });
+    });
+    $$(".mtok[data-k]", line).forEach(x => {
+      const o = old[+x.dataset.k], n = x.getBoundingClientRect();
+      x.animate([{ transform: `translate(${o.left - n.left}px,${o.top - n.top}px)` }, { transform: "none" }], { duration: 700, easing: "cubic-bezier(.5,0,.2,1)" });
+    });
+    $$(".mnew", line).forEach((x, i) => x.animate([{ transform: "translateY(-36px) scale(1.4)", opacity: 0 }, { transform: "translateY(4px) scale(1.15)", opacity: 1, offset: .7 }, { transform: "none", opacity: 1 }],
+      { duration: 550, delay: 550 + i * 120, easing: "ease-out", fill: "backwards" }));
+    el._t = setTimeout(() => { if (line.isConnected && (el._n = (el._n || 0) + 1) < 3) runMorph(el); }, 4200);
+  }, 1300);
+}
+// Wörter: Die Bilder der Eselsbrücke laufen wie ein kleiner Film nacheinander ab; die Merkstelle im Wort springt hinein.
+function playMnemo(root) {
+  $$(".mnemo-pic[data-frames]", root).forEach(el => {
+    const fr = el.dataset.frames.split("|"); let i = 0;
+    if (fr.length < 2 || reduced()) { el.textContent = fr[fr.length - 1]; return; }
+    const step = () => {
+      if (!el.isConnected) return;
+      el.textContent = fr[i % fr.length]; el.animate([{ transform: "scale(.4) rotate(-10deg)", opacity: 0 }, { transform: "scale(1.15)", opacity: 1, offset: .6 }, { transform: "none" }], { duration: 450, easing: "ease-out" });
+      if (++i < fr.length * 2) setTimeout(step, i % fr.length ? 1000 : 1700);
+    };
+    step();
+  });
+}
 function renderTopic(id) {
   const d = gData(), t = d.topics.find(x => x.id === id), band = d.bands.find(b => b.id === t.band);
   const r = gStore()[t.id];
@@ -758,32 +1316,18 @@ function renderTopic(id) {
   window.scrollTo(0, 0);
 }
 function startGrammar(t) {
-  G = { t, queue: shuffle(t.tasks.map((_, i) => i)), total: t.tasks.length, done: new Set(), first: {}, good: 0, last: Date.now() };
+  G = { t, queue: shuffle(t.tasks.map((_, i) => i)), total: t.tasks.length, done: new Set(), first: {}, good: 0, last: Date.now(), newBadges: [] };
   renderTask();
 }
 // Vergleich ohne Groß-/Kleinschreibung, Satzzeichen am Ende und mit einheitlichen Apostrophen.
 function gnorm(s) { return norm(s).replace(/[,!?.]/g, "").replace(/\s+/g, " ").trim(); }
-function renderTask() {
-  tick();
-  if (!G.queue.length) return renderGSummary();
-  const t = G.t, i = G.queue[0], task = t.tasks[i], [type, q] = task;
-  const pct = Math.round(G.done.size / G.total * 100);
-  const lang = L().code;
-  const question = type === "order" ? "Bring die Wörter in die richtige Reihenfolge."
-    : esc(q).replace(/___/g, '<span class="gapline" aria-label="Lücke">&nbsp;</span>');
-  app.replaceChildren(h(`
-    <div class="progress"><button class="iconbtn" id="quit" aria-label="Übung beenden">${ICON.x}</button>
-      <div class="bar"><i style="width:${pct}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${G.done.size}/${G.total}</span></div>
-    <div class="icard pop">
-      <span class="eyebrow">${esc(t.t)}</span>
-      <div class="gq">${question}</div>
-      <div id="answerArea"></div>
-      <div id="fb"></div>
-    </div>
-    <details class="panel gagain"><summary><b>Erklärung ansehen</b></summary>${explainHtml(t)}</details>`));
-  $("#quit").onclick = () => { tick(); save(); G = null; renderGrammar(); };
-  bindSay();
-  const area = $("#answerArea");
+function taskQuestion(task) {
+  return task[0] === "order" ? "Bring die Wörter in die richtige Reihenfolge."
+    : esc(task[1]).replace(/___/g, '<span class="gapline" aria-label="Lücke">&nbsp;</span>');
+}
+// Zeichnet eine Aufgabe (auswählen, Lücke, Reihenfolge) und meldet done(richtig, ganzer Satz, Begründung).
+function drawTask(task, area, done) {
+  const [type, q] = task;
   if (type === "pick") {
     const right = task[2][0], opts = shuffle([...task[2]]);
     area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}">${esc(o)}</button>`).join("")}</div>`));
@@ -791,19 +1335,18 @@ function renderTask() {
       const ok = opts[+b.dataset.k] === right;
       $$(".choice", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
       if (!ok) b.classList.add("wrong");
-      gAnswered(ok, q.includes("___") ? q.replace("___", right) : right, task[3]);
+      done(ok, q.includes("___") ? q.replace("___", right) : right, task[3]);
     });
   } else if (type === "gap") {
     const sols = task[2].split("|");
     area.replaceChildren(h(`<form id="f" autocomplete="off">
       <input class="answer" id="ans" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Lücke ausfüllen …" aria-label="Deine Antwort">
       <button class="btn wide" type="submit" style="margin-top:12px">Prüfen</button></form>`));
-    const inp = $("#ans"); setTimeout(() => inp.focus({ preventScroll: true }), 50);
-    $("#f").onsubmit = e => {
+    const inp = $("#ans", area); setTimeout(() => inp.focus({ preventScroll: true }), 50);
+    $("#f", area).onsubmit = e => {
       e.preventDefault(); if (!inp.value.trim()) return;
       inp.disabled = true; $("button", e.target).hidden = true;
-      const ok = sols.some(s => gnorm(s) === gnorm(inp.value));
-      gAnswered(ok, q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", sols[0]), task[3]);
+      done(sols.some(s => gnorm(s) === gnorm(inp.value)), q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", sols[0]), task[3]);
     };
   } else {
     const sols = q.split("|"), words = sols[0].replace(/[.!?]$/, "").split(" ");
@@ -815,16 +1358,42 @@ function renderTask() {
       area.replaceChildren(h(`<div class="oline" aria-label="Dein Satz">${picked.map((x, k) => `<button class="tile" data-back="${k}">${esc(x.w)}</button>`).join("") || '<span class="muted small">Tipp die Wörter unten an.</span>'}</div>
         <div class="opool">${pool.map((x, k) => `<button class="tile" data-take="${k}">${esc(x.w)}</button>`).join("")}</div>
         <button class="btn wide" id="chk" ${pool.length ? "disabled" : ""}>Prüfen</button>`));
-      $$("[data-take]", area).forEach(b => b.onclick = () => { picked.push(pool.splice(+b.dataset.take, 1)[0]); draw(); });
+      $$("[data-take]", area).forEach(b => b.onclick = () => { picked.push(pool.splice(+b.dataset.take, 1)[0]); sound("tap"); draw(); });
       $$("[data-back]", area).forEach(b => b.onclick = () => { pool.push(picked.splice(+b.dataset.back, 1)[0]); draw(); });
-      $("#chk").onclick = () => {
+      $("#chk", area).onclick = () => {
         $$(".tile, #chk", area).forEach(x => x.disabled = true);
-        const ok = sols.some(s => gnorm(s) === gnorm(picked.map(x => x.w).join(" ")));
-        gAnswered(ok, sols[0], task[2]);
+        done(sols.some(s => gnorm(s) === gnorm(picked.map(x => x.w).join(" "))), sols[0], task[2]);
       };
     };
     draw();
   }
+}
+function taskFeedback(ok, full, why, t) {
+  const say1 = canHear() ? `<button class="speak" id="say2">${ICON.speaker}Anhören</button>` : "";
+  return ok
+    ? `<div class="feedback good"><strong>${pick(["Richtig!", "Super!", "Genau!", "Stark!"])}</strong><span class="sol">${esc(full)}</span><div class="row">${say1}</div></div>`
+    : `<div class="feedback bad"><strong>Noch nicht.</strong><span class="fbtext">Richtig ist: <span class="sol">${esc(full)}</span>
+        ${why ? `<span class="small">${esc(why)}</span>` : ""}<span class="small">Die Aufgabe kommt gleich noch einmal.</span></span><div class="row">${say1}</div>
+        ${t ? `<details class="gagain" open><summary><b>Erklärung</b></summary>${explainHtml(t)}</details>` : ""}</div>`;
+}
+function renderTask() {
+  tick();
+  if (!G.queue.length) return renderGSummary();
+  const t = G.t, i = G.queue[0], task = t.tasks[i];
+  const pct = Math.round(G.done.size / G.total * 100);
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="quit" aria-label="Übung beenden">${ICON.x}</button>
+      <div class="bar"><i style="width:${pct}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${G.done.size}/${G.total}</span></div>
+    <div class="icard pop">
+      <span class="eyebrow">${esc(t.t)}</span>
+      <div class="gq">${taskQuestion(task)}</div>
+      <div id="answerArea"></div>
+      <div id="fb"></div>
+    </div>
+    <details class="panel gagain"><summary><b>Erklärung ansehen</b></summary>${explainHtml(t)}</details>`));
+  $("#quit").onclick = () => { tick(); save(); G = null; renderGrammar(); };
+  bindSay();
+  drawTask(task, $("#answerArea"), gAnswered);
 }
 function gAnswered(ok, full, why) {
   tick();
@@ -832,31 +1401,36 @@ function gAnswered(ok, full, why) {
   dayLog().gram++;
   if (firstTime) { G.first[i] = ok; if (ok) G.good++; }
   if (ok) G.done.add(i); else G.queue.splice(Math.min(G.queue.length, 3), 0, i);
-  const say1 = canHear() ? `<button class="speak" id="say2">${ICON.speaker}Anhören</button>` : "";
-  $("#fb").replaceChildren(h(ok
-    ? `<div class="feedback good"><strong>${pick(["Richtig!", "Super!", "Genau!", "Stark!"])}</strong><span class="sol">${esc(full)}</span><div class="row">${say1}</div></div>`
-    : `<div class="feedback bad"><strong>Noch nicht.</strong><span class="fbtext">Richtig ist: <span class="sol">${esc(full)}</span>
-        ${why ? `<span class="small">${esc(why)}</span>` : ""}<span class="small">Die Aufgabe kommt gleich noch einmal.</span></span><div class="row">${say1}</div></div>`));
+  sound(ok ? "good" : "bad");
+  $("#fb").replaceChildren(h(taskFeedback(ok, full, why)));
   $("#fb").append(h(`<button class="btn wide" id="next" style="margin-top:12px">Weiter</button>`));
   if ($("#say2")) $("#say2").onclick = () => say(full);
+  addXp(ok ? (firstTime ? 10 : 4) : 0);
+  checkGoal(); checkBadges();
   save();
   const nx = $("#next"); nx.focus({ preventScroll: true }); nx.onclick = renderTask;
 }
 function renderGSummary() {
   tick();
-  const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id];
-  st[t.id] = { best: Math.max(old ? old.best : 0, g / n), last: dayKey(), n: (old ? old.n : 0) + 1 };
+  const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id], ok = g / n >= .75;
+  st[t.id] = { best: Math.max(old ? old.best : 0, g / n), last: dayKey(), n: (old ? old.n : 0) + 1, box: old && old.box || 0, due: old ? old.due : 0 };
+  if (!old || !old.box) { st[t.id].box = ok ? 2 : 1; st[t.id].due = today() + INTERVAL[st[t.id].box] * DAY; }
+  else gMove(t.id, ok);
+  G.finished = true; checkBadges();
   save();
-  const d = gData(), ready = d.topics.filter(gReady), next = ready[ready.indexOf(t) + 1];
+  const d = gData(), ready = d.topics.filter(gReady), next = ready[ready.indexOf(t) + 1], box = st[t.id].box;
   app.replaceChildren(h(`<div class="done">
     <p class="eyebrow">${esc(t.t)} geschafft</p>
     <div class="score">${g}/${n}</div>
     <p>${g === n ? (S.name ? `Stark, ${esc(S.name)}! Alles beim ersten Versuch richtig.` : "Alles beim ersten Versuch richtig.") : "beim ersten Versuch richtig. Die anderen hast du am Ende auch geschafft."}</p>
     <p class="gstars big" aria-label="Sterne">${gStars(st[t.id])}</p>
+    <p class="small">Im Grammatik-Kasten liegt das Thema jetzt in Fach ${box} und meldet sich ${FACH_IN[box]} in deiner Tagesrunde.</p>
+    ${G.newBadges && G.newBadges.length ? `<div class="newbadges">${G.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
     <div class="row" style="justify-content:center"><button class="btn" id="again">Nochmal</button>
       ${next ? `<button class="btn ghost" id="next">Nächstes Thema</button>` : ""}<button class="btn ghost" id="list">Übersicht</button></div>
   </div>`));
+  if (g === n) confetti();
   $("#again").onclick = () => startGrammar(t);
   if (next) $("#next").onclick = () => { G = null; renderTopic(next.id); };
   $("#list").onclick = () => { G = null; renderGrammar(); };
@@ -960,6 +1534,13 @@ function renderSettings(msg) {
       <button class="btn ghost small" id="addLang2" style="align-self:flex-start">+ Sprache hinzufügen</button>
     </section>
     <section class="panel">
+      <h3>Tagesziel</h3>
+      <div class="chips">${[10, 20, 30, 50].map(n => `<button class="chip" data-goal="${n}" aria-pressed="${S.goal === n}">${n} Antworten</button>`).join("")}</div>
+      <p class="muted small">Der Ring auf der Startseite füllt sich mit jeder Antwort, auch bei Grammatik. 20 Antworten sind etwa 5 Minuten.</p>
+      <label class="toggle"><span><b>Töne</b><br><span class="muted small">Kurze Klänge bei richtig, falsch und wenn eine Karte im Fach landet.</span></span>
+        <input type="checkbox" id="sound" ${S.sound ? "checked" : ""}></label>
+    </section>
+    <section class="panel">
       <h3>Neue Wörter pro Tag</h3>
       <div class="chips">${[5, 10, 15, 20].map(n => `<button class="chip" data-npd="${n}" aria-pressed="${S.newPerDay === n}">${n}</button>`).join("")}</div>
       <p class="muted small">Mehr neue Wörter heißt später auch mehr Wiederholungen. 10 am Tag sind etwa 10 Minuten.</p>
@@ -988,7 +1569,7 @@ function renderSettings(msg) {
   `));
   $("#back").onclick = () => { confirmLangDelete = null; renderHome(); };
   if ($("#install")) $("#install").onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => {}); deferredInstall = null; renderSettings(); };
-  $$("[data-npd]").forEach(b => b.onclick = () => { S.newPerDay = +b.dataset.npd; save(); renderSettings(); });
+  $$("[data-npd]").forEach(b => b.onclick = () => { S.newPerDay = +b.dataset.npd; save(); keepScroll(renderSettings); });
   $("#nameForm").onsubmit = e => { e.preventDefault(); S.name = $("#nameIn").value.trim().slice(0, 30); S.onboarded = true; save(); toast("Name gespeichert"); };
   $("#addLang2").onclick = () => renderAddLang(false);
   $$("[data-ldel]").forEach(b => b.onclick = () => { confirmLangDelete = b.dataset.ldel; renderSettings(); });
@@ -999,6 +1580,8 @@ function renderSettings(msg) {
     confirmLangDelete = null; save(); renderSettings("Sprache gelöscht.");
   });
   $("#aiHelp").onchange = e => { S.aiHelp = e.target.checked; save(); };
+  $$("[data-goal]").forEach(b => b.onclick = () => { S.goal = +b.dataset.goal; save(); keepScroll(renderSettings); });
+  $("#sound").onchange = e => { S.sound = e.target.checked; save(); if (S.sound) sound("good"); };
   $("#bot").onchange = e => { S.bot = e.target.value; save(); };
   $("#export").onclick = () => {
     const blob = new Blob([JSON.stringify(S, null, 1)], { type: "application/json" });
@@ -1023,11 +1606,13 @@ async function boot() {
     history.replaceState(null, "", location.pathname);
     try {
       const p = await decodePack(m[1]);
-      if (p.rows.length) {
+      if (p.units.length) {
+        if (!S.onboarded) { S.onboarded = true; }
         const ex = S.langs.find(l => l.name.toLowerCase() === p.lang.toLowerCase());
         if (ex) S.cur = ex.id; else addLang(p.lang, p.code);
         save();
-        renderImport(p); return;
+        if (p.units.length === 1) renderImport({ name: p.units[0].name, rows: p.units[0].rows }); else renderBook(p);
+        return;
       }
     } catch (e) {}
     toast("Dieser Link enthält keine lesbare Unit.");
