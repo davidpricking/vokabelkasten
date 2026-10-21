@@ -1,9 +1,10 @@
 // Grammatik-Themen nach dem Bildungsplan Baden-Württemberg (Gymnasium, G9, Fassung V3.0 vom 23. März 2026).
-// Der Bildungsplan nennt nur Doppelklassen (5/6, 7/8 …). Die Aufteilung auf Klasse 5 und 6 ist ein Vorschlag
-// nach der Reihenfolge üblicher Schulbücher und lässt sich hier pro Thema über "band" ändern.
+// Der Bildungsplan nennt nur Doppelklassen (5/6, 7/8 …). Klasse 5 folgt der Reihenfolge des Lehrwerks
+// Camden Town 5 (Gymnasium), Theme 1 bis 6. Die übrigen Themen von 5/6 stehen vorläufig unter Klasse 6.
+// Die Zuordnung lässt sich pro Thema über "band" ändern.
 //
 // Aufbau eines Themas:
-//   id, band (Schlüssel aus bands), t (Titel wie im Bildungsplan), de (deutscher Untertitel),
+//   id, band (Schlüssel aus bands; ein band kann mit review: [ids] Themen zum Wiederholen zeigen), t (Titel wie im Bildungsplan), de (deutscher Untertitel),
 //   rez: true = im Bildungsplan nur rezeptiv (erkennen statt selbst bilden),
 //   g8: true = steht nur im Bildungsplan G8 (V2, gilt noch für die älteren Jahrgänge),
 //   explain: Absätze der Erklärung (**fett** wird markiert), ex: Beispiele [Fremdsprache, Deutsch],
@@ -16,16 +17,22 @@ window.GRAMMAR = {
   Englisch: {
     source: "Bildungsplan BW, Gymnasium (G9), Englisch als erste Fremdsprache, V3.0 (2026)",
     bands: [
-      { id: "5", label: "Klasse 5", note: "Bildungsplan Klassen 5/6, Aufteilung auf Klasse 5 und 6 ist ein Vorschlag" },
-      { id: "6", label: "Klasse 6", note: "Bildungsplan Klassen 5/6, Aufteilung auf Klasse 5 und 6 ist ein Vorschlag" },
+      { id: "ct-1", group: "Klasse 5 · Camden Town", label: "Theme 1 · New in Camden" },
+      { id: "ct-2", group: "Klasse 5 · Camden Town", label: "Theme 2 · At school" },
+      { id: "ct-3", group: "Klasse 5 · Camden Town", label: "Theme 3 · Hobbies and activities" },
+      { id: "ct-4", group: "Klasse 5 · Camden Town", label: "Theme 4 · Birthdays" },
+      { id: "ct-5", group: "Klasse 5 · Camden Town", label: "Theme 5 · Pets and animals" },
+      { id: "ct-6", group: "Klasse 5 · Camden Town", label: "Theme 6 · Holidays in Britain", note: "Im Buch freiwillig. Keine neue Grammatik, nur Wiederholung",
+        review: ["simplepresent", "presentprog", "questions", "bequestions"] },
+      { id: "6", label: "Klasse 6", note: "Bildungsplan Klassen 5/6, Reihenfolge ist ein Vorschlag" },
       { id: "7/8", label: "Klassen 7/8" },
       { id: "9/10", label: "Klassen 9/10" },
       { id: "11", label: "Klasse 11" },
       { id: "12/13", label: "Klassen 12/13" }
     ],
     topics: [
-      // ---------- Klasse 5 ----------
-      { id: "plural", band: "5", t: "Singular and plural of nouns", de: "Einzahl und Mehrzahl",
+      // ---------- Klasse 5, Theme 1 ----------
+      { id: "plural", band: "ct-1", t: "Singular and plural of nouns", de: "Einzahl und Mehrzahl",
         explain: [
           "Meist hängst du einfach **-s** an: book → book**s**, cat → cat**s**.",
           "Nach s, sh, ch und x kommt **-es**: bus → bus**es**, box → box**es**, watch → watch**es**.",
@@ -43,7 +50,7 @@ window.GRAMMAR = {
           ["pick", "There are two ___ at the door.", ["women", "womans", "womens"], "woman → women ist unregelmäßig."],
           ["pick", "My ___ hurt after the long walk.", ["feet", "foots", "feets"], "foot → feet ist unregelmäßig."]
         ] },
-      { id: "articles", band: "5", t: "Definite and indefinite article", de: "a, an und the",
+      { id: "articles", band: "ct-1", t: "Definite and indefinite article", de: "a, an und the",
         explain: [
           "**a** steht vor einem Konsonanten-**Laut**: a dog, a book, a **u**niform (gesprochen „ju“).",
           "**an** steht vor einem Vokal-**Laut**: an apple, an orange, an **h**our (das h hört man nicht).",
@@ -61,78 +68,97 @@ window.GRAMMAR = {
           ["pick", "I've got ___ idea!", ["an", "a"], "idea fängt mit einem Vokal-Laut an."],
           ["pick", "There's ___ elephant in the zoo.", ["an", "a"], "elephant fängt mit einem Vokal-Laut an."]
         ] },
-      { id: "simplepresent", band: "5", t: "Simple present", de: "Gewohnheiten und Tatsachen",
+      { id: "tobe", band: "ct-1", t: "Personal pronouns and to be", de: "ich, du, er … und sein",
         explain: [
-          "Das simple present benutzt du für Gewohnheiten, Regeln und Dinge, die immer so sind. Signalwörter: always, usually, often, sometimes, never, every day.",
-          "Bei **he, she, it** hängst du ein **-s** an: I play → she play**s**. Merksatz: „He, she, it – das s muss mit!“",
-          "Nach s, sh, ch, x und o kommt **-es**: watch → watch**es**, go → go**es**. Konsonant + y wird zu **-ies**: fly → fl**ies**.",
-          "Unregelmäßig: have → **has**, be → **is**."
+          "Personalpronomen: **I, you, he, she, it, we, you, they**. I schreibst du immer groß.",
+          "**he** steht für Jungen und Männer, **she** für Mädchen und Frauen, **it** für Dinge: Where's my bag? – **It** is under the desk.",
+          "to be heißt sein: I **am**, you **are**, he/she/it **is**, we/you/they **are**.",
+          "Kurzformen: I**'m**, you**'re**, he**'s**, it**'s**, we**'re**, they**'re**. Verneint: I**'m not**, he **isn't**, they **aren't**."
         ],
-        ex: [["I **play** football every Friday.", "Ich spiele jeden Freitag Fußball."], ["My sister **watches** TV after school.", "Meine Schwester sieht nach der Schule fern."], ["Tom **has** a dog.", "Tom hat einen Hund."]],
+        ex: [["I**'m** eleven.", "Ich bin elf."], ["My sister **is** at school.", "Meine Schwester ist in der Schule."], ["We **aren't** hungry.", "Wir haben keinen Hunger."]],
         tasks: [
-          ["gap", "She ___ to school by bus. (go)", "goes", "she → -s, und nach o kommt -es."],
-          ["gap", "My dad ___ the dishes every evening. (wash)", "washes", "Nach sh kommt -es."],
-          ["gap", "We ___ English on Mondays. (have)", "have", "Bei we bleibt das Verb ohne -s."],
-          ["gap", "Emma ___ a cat. (have)", "has", "Emma = she, und have wird zu has."],
-          ["gap", "The baby ___ a lot. (cry)", "cries", "Konsonant + y wird zu -ies."],
-          ["pick", "Ben and Lisa ___ in Leeds.", ["live", "lives"], "Ben and Lisa = they, also ohne -s."],
-          ["pick", "It ___ a lot in Wales.", ["rains", "rain"], "it → das s muss mit."],
-          ["order", "She always reads in bed.", "always steht vor dem Verb."]
+          ["gap", "I ___ from Germany. (be)", "am|'m", "Zu I gehört am."],
+          ["gap", "My brother ___ twelve. (be)", "is|'s", "my brother = he, also is."],
+          ["gap", "Tom and Lucy ___ my friends. (be)", "are|'re", "Tom and Lucy = they, also are."],
+          ["pick", "Where is my bag? – ___ is under the desk.", ["It", "He", "She"], "Für Dinge nimmst du it."],
+          ["pick", "Emma is new. ___ is from Leeds.", ["She", "He", "It"], "Emma ist ein Mädchen: she."],
+          ["gap", "We ___ late. (nicht sein)", "aren't|are not|'re not"],
+          ["pick", "___ am in class 5b.", ["I", "Me", "My"]],
+          ["pick", "You and Ben ___ in my team.", ["are", "is", "am"], "You and Ben = ihr, also are."]
         ] },
-      { id: "questions", band: "5", t: "Questions", de: "Fragen stellen",
+      { id: "bequestions", band: "ct-1", t: "Questions with to be", de: "Fragen mit am, is, are",
         explain: [
-          "Fragen im simple present baust du mit **do** oder **does**: **Do** you like pizza? **Does** she like pizza?",
-          "Nach does steht das Verb **ohne -s**: Does he **play** tennis? (nicht: Does he plays)",
-          "Ein Fragewort steht ganz vorn: **Where** do you live? **What** does she want? **When** is your birthday?",
-          "Mit am, is, are und can brauchst du kein do: **Are** you ready? **Is** he at home? **Can** you swim?"
+          "Bei Fragen mit to be tauschen Subjekt und Verb die Plätze: You **are** hungry. → **Are you** hungry?",
+          "Kurzantworten: Are you hungry? – Yes, I **am**. / No, I**'m not**. Is it red? – Yes, it **is**. / No, it **isn't**.",
+          "Fragewörter stehen ganz vorn: **What** is your name? **Where** is the mouse? **How old** are you? **Who** is that? **When** is your birthday?",
+          "Kurz: What's, Where's, Who's."
         ],
-        ex: [["**Do** you **like** cats?", "Magst du Katzen?"], ["**Where does** your aunt **live**?", "Wo wohnt deine Tante?"], ["**Is** your dog old?", "Ist dein Hund alt?"]],
+        ex: [["**Are** you hungry? – Yes, I **am**.", "Hast du Hunger? – Ja."], ["**How old** are you?", "Wie alt bist du?"], ["**Where's** the mouse?", "Wo ist die Maus?"]],
         tasks: [
-          ["pick", "___ you like football?", ["Do", "Does", "Are"], "Bei you nimmst du do."],
-          ["pick", "___ your brother play the guitar?", ["Does", "Do", "Is"], "your brother = he, also does."],
-          ["pick", "___ she at home?", ["Is", "Does", "Do"], "Mit be (is) brauchst du kein do."],
-          ["gap", "Where ___ you live?", "do", "Bei you nimmst du do."],
-          ["gap", "What time ___ the film start?", "does", "the film = it, also does."],
-          ["pick", "Does he ___ chips?", ["like", "likes"], "Nach does steht das Verb ohne -s."],
-          ["pick", "___ is your birthday? – In May.", ["When", "Who", "Where"], "Die Antwort ist eine Zeit, also when."],
-          ["order", "Where does your aunt live?", "Fragewort, dann does, dann Person, dann Verb."]
+          ["pick", "___ you twelve?", ["Are", "Is", "Am"], "Zu you gehört are."],
+          ["pick", "___ your sister at home?", ["Is", "Are", "Am"], "your sister = she, also is."],
+          ["pick", "Are you from London? – No, ___.", ["I'm not", "I amn't", "I not"], "Verneint: I'm not."],
+          ["pick", "___ old are you? – I'm eleven.", ["How", "What", "Who"], "Wie alt = How old."],
+          ["pick", "___ is your teacher? – Mr Brown.", ["Who", "Where", "How"], "Die Antwort ist eine Person: who."],
+          ["gap", "___ is my pencil? – It's on the desk.", "Where", "Die Antwort ist ein Ort: where."],
+          ["order", "Where is your school bag?"],
+          ["pick", "Are your parents at work? – Yes, they ___.", ["are", "is", "am"]]
         ] },
-      { id: "shortanswers", band: "5", t: "Short answers", de: "Kurzantworten",
+      { id: "thereis", band: "ct-1", t: "There is / there are", de: "Es gibt …",
         explain: [
-          "Auf Ja/Nein-Fragen antwortest du im Englischen nicht nur mit Yes oder No. Du nimmst das **Hilfsverb aus der Frage** wieder auf.",
-          "**Do** you like cats? – Yes, I **do**. / No, I **don't**.",
-          "**Is** she nice? – Yes, she **is**. / No, she **isn't**.",
-          "Bei Yes gibt es keine Kurzform: Yes, I **am**. (nicht: Yes, I'm.)"
+          "Mit **there is** und **there are** sagst du, was es irgendwo gibt oder was zu sehen ist.",
+          "**There is** (kurz: there's) steht vor der Einzahl: There's a desk in my room.",
+          "**There are** steht vor der Mehrzahl: There are two windows.",
+          "Verneint: There **isn't** a TV. There **aren't** any chairs. Fragen: **Is there** a cat? **Are there** any books?"
         ],
-        ex: [["Can you swim? – Yes, I **can**.", "Kannst du schwimmen? – Ja."], ["Does Tom like pizza? – No, he **doesn't**.", "Mag Tom Pizza? – Nein."]],
+        ex: [["**There is** a pink school bag on the desk.", "Auf dem Tisch liegt eine pinke Schultasche."], ["**There are** twenty kids in my class.", "In meiner Klasse sind zwanzig Kinder."]],
         tasks: [
-          ["gap", "Do you like cats? – Yes, I ___.", "do"],
-          ["gap", "Does Tom play football? – No, he ___.", "doesn't|does not", "In der Frage steht does, also doesn't."],
-          ["pick", "Are you tired? – Yes, I ___.", ["am", "are", "do"], "Zu you passt in der Antwort I am."],
-          ["pick", "Is it raining? – No, it ___.", ["isn't", "doesn't", "aren't"], "In der Frage steht is, also isn't."],
-          ["gap", "Can your sister swim? – Yes, she ___.", "can"],
-          ["pick", "Are your parents at home? – No, they ___.", ["aren't", "don't", "isn't"], "Zu they passt are, also aren't."],
-          ["pick", "Have you got a pet? – Yes, I ___.", ["have", "got", "do"], "Have you got … ? – Yes, I have."],
-          ["gap", "Does your dog bark a lot? – Yes, it ___.", "does"]
+          ["pick", "___ a cat in the garden.", ["There is", "There are"], "a cat ist Einzahl."],
+          ["pick", "___ three books on the shelf.", ["There are", "There is"], "three books ist Mehrzahl."],
+          ["gap", "There ___ a big tree in our park.", "is|'s"],
+          ["gap", "There ___ lots of shops in Camden.", "are"],
+          ["pick", "___ there a bathroom upstairs?", ["Is", "Are"], "a bathroom ist Einzahl."],
+          ["pick", "There ___ any chairs in the room.", ["aren't", "isn't"], "chairs ist Mehrzahl."],
+          ["order", "There are two beds in my room."],
+          ["pick", "Are there any apples? – Yes, there ___.", ["are", "is"]]
         ] },
-      { id: "negations", band: "5", t: "Negations", de: "Verneinung",
+      { id: "prepositions", band: "ct-1", t: "Prepositions of place", de: "Wo ist etwas?",
         explain: [
-          "Im simple present verneinst du mit **don't** (do not) oder **doesn't** (does not) und dem Verb ohne -s: I **don't like** fish. She **doesn't like** fish.",
-          "Mit am, is, are hängst du **not** an: I'm **not**, he **isn't**, they **aren't**.",
-          "Mit can wird es **can't**: My dog **can't** swim."
+          "Präpositionen sagen, wo etwas ist: **in** (in), **on** (auf), **under** (unter), **next to** (neben), **behind** (hinter), **in front of** (vor), **between** (zwischen).",
+          "Was an der Wand hängt, ist **on** the wall.",
+          "Nach der Präposition kommt meist the oder my: under **the** bed, next to **my** bag."
         ],
-        ex: [["I **don't** like spiders.", "Ich mag keine Spinnen."], ["Max **doesn't** eat meat.", "Max isst kein Fleisch."], ["We **aren't** at home.", "Wir sind nicht zu Hause."]],
+        ex: [["The phone is **under** the bed.", "Das Handy liegt unter dem Bett."], ["The cat is **between** the chairs.", "Die Katze ist zwischen den Stühlen."], ["The poster is **on** the wall.", "Das Poster hängt an der Wand."]],
         tasks: [
-          ["gap", "I ___ like spiders. (nicht)", "don't|do not"],
-          ["gap", "Max ___ like spiders. (nicht)", "doesn't|does not", "Max = he, also doesn't."],
-          ["pick", "She doesn't ___ milk.", ["drink", "drinks"], "Nach doesn't steht das Verb ohne -s."],
-          ["pick", "We ___ at home today.", ["aren't", "don't", "isn't"], "Mit be: we are → we aren't."],
-          ["pick", "My dog ___ swim.", ["can't", "doesn't can", "don't"], "can wird zu can't, ohne do."],
-          ["gap", "It ___ cold today. (nicht sein)", "isn't|is not"],
-          ["order", "My brother doesn't eat meat."],
-          ["pick", "They ___ live in London.", ["don't", "doesn't", "aren't"], "Bei they nimmst du don't."]
+          ["pick", "The book is ___ the desk. (auf)", ["on", "in", "under"]],
+          ["pick", "The ball is ___ the bed. (unter)", ["under", "behind", "on"]],
+          ["pick", "My bag is ___ the chair. (neben)", ["next to", "between", "in front of"]],
+          ["pick", "The dog is ___ the door. (hinter)", ["behind", "in front of", "under"]],
+          ["gap", "The pens are ___ the pencil case. (in)", "in"],
+          ["gap", "Emma is sitting ___ Tom and Ben. (zwischen)", "between"],
+          ["pick", "The bus stop is ___ the school. (vor)", ["in front of", "before", "behind"], "vor einem Ort = in front of."],
+          ["pick", "There's a poster ___ the wall. (an)", ["on", "at", "in"], "an der Wand = on the wall."]
         ] },
-      { id: "commands", band: "5", t: "Commands and requests", de: "Aufforderungen und Bitten",
+      { id: "possessives", band: "ct-1", t: "Possessive determiners", de: "mein, dein, sein …",
+        explain: [
+          "Possessivbegleiter sagen, wem etwas gehört: I → **my**, you → **your**, he → **his**, she → **her**, it → **its**, we → **our**, you → **your**, they → **their**.",
+          "**his** gehört zu einem Jungen oder Mann, **her** zu einem Mädchen oder einer Frau.",
+          "Achtung: **its** (bei Dingen und Tieren) hat keinen Apostroph. **it's** heißt it is.",
+          "Die Form bleibt gleich, auch vor der Mehrzahl: my dog, my dogs."
+        ],
+        ex: [["This is **my** brother. **His** name is Ben.", "Das ist mein Bruder. Er heißt Ben."], ["**Our** school is big.", "Unsere Schule ist groß."], ["The bird is in **its** cage.", "Der Vogel ist in seinem Käfig."]],
+        tasks: [
+          ["pick", "Lisa has got a cat. ___ cat is black.", ["Her", "His", "Their"], "Lisa ist ein Mädchen: her."],
+          ["pick", "Tom is in class 5a. ___ teacher is Mrs Lee.", ["His", "Her", "Its"], "Tom ist ein Junge: his."],
+          ["gap", "We live in Camden. ___ house is green. (wir)", "Our"],
+          ["gap", "I love ___ dog. (ich)", "my"],
+          ["pick", "My parents are nice. ___ car is old.", ["Their", "There", "They're"], "their = ihr (Mehrzahl). there = dort."],
+          ["pick", "The bird is in ___ cage.", ["its", "it's", "his"], "its ohne Apostroph."],
+          ["gap", "Is this ___ pen? (du)", "your"],
+          ["pick", "Max and I are friends. ___ favourite colour is blue.", ["Our", "Their", "My"], "Max and I = wir, also our."]
+        ] },
+      // ---------- Klasse 5, Theme 2 ----------
+      { id: "commands", band: "ct-2", t: "Commands and requests", de: "Aufforderungen und Bitten",
         explain: [
           "Eine Aufforderung beginnt mit dem **Verb in der Grundform**, ohne you: **Open** your books! **Listen**!",
           "Verneint sagst du **Don't**: **Don't** run! **Don't** be late!",
@@ -150,25 +176,43 @@ window.GRAMMAR = {
           ["order", "Don't touch the cake."],
           ["pick", "Sit down, ___.", ["please", "thanks", "sorry"], "Bitten mit please."]
         ] },
-      { id: "wordorder", band: "5", t: "Word order (SPO)", de: "Satzstellung",
+      { id: "can", band: "ct-2", t: "can / can't", de: "können und dürfen",
         explain: [
-          "Im englischen Satz gilt fast immer: **S**ubjekt – **P**rädikat (Verb) – **O**bjekt.",
-          "Das gilt auch, wenn der Satz mit einer Zeitangabe beginnt, anders als im Deutschen: Heute **spiele ich** Fußball. → Today **I play** football.",
-          "Auch im Nebensatz bleibt die Reihenfolge gleich: … because **I like** it. (Deutsch: weil ich es mag.)",
-          "Ort steht vor Zeit, wie im Alphabet O vor Z: I go **to school** **every day**."
+          "Mit **can** sagst du, was jemand kann oder darf: I **can** swim. **Can** I go to the toilet?",
+          "can bleibt bei allen Personen gleich, auch bei he, she, it ohne -s: She **can** sing.",
+          "Danach kommt das Verb in der Grundform ohne to: I can **play**.",
+          "Verneint: **can't** (cannot). Fragen: **Can** you swim? – Yes, I **can**. / No, I **can't**."
         ],
-        ex: [["Today **I play** football.", "Heute spiele ich Fußball."], ["I'm happy because **I have** a new bike.", "Ich bin froh, weil ich ein neues Fahrrad habe."]],
+        ex: [["I **can** play the piano.", "Ich kann Klavier spielen."], ["Dogs **can't** climb trees.", "Hunde können nicht auf Bäume klettern."], ["**Can** I open the window?", "Darf ich das Fenster öffnen?"]],
         tasks: [
-          ["order", "Today I play football.", "Auch nach Today kommt zuerst das Subjekt I."],
-          ["order", "I like Tom because he is funny.", "Im Nebensatz bleibt Subjekt vor Verb: he is."],
-          ["order", "We go to the cinema on Saturday.", "Ort vor Zeit."],
-          ["order", "My mum drinks coffee every morning."],
-          ["pick", "On Sunday ___ my grandma.", ["I visit", "visit I"], "Subjekt vor Verb, auch nach On Sunday."],
-          ["pick", "I'm happy because ___.", ["I have a new bike", "have I a new bike", "a new bike I have"], "Im Nebensatz: Subjekt – Verb – Objekt."],
-          ["pick", "We play ___.", ["in the garden every day", "every day in the garden"], "Ort vor Zeit."],
-          ["order", "She meets her friends in the park after school.", "Ort (in the park) vor Zeit (after school)."]
+          ["pick", "My sister ___ swim very well.", ["can", "cans", "can to"], "can bleibt immer gleich."],
+          ["pick", "Can you ___ the guitar?", ["play", "plays", "to play"], "Nach can steht die Grundform."],
+          ["gap", "Fish ___ walk. (nicht können)", "can't|cannot"],
+          ["pick", "___ I go to the toilet, please?", ["Can", "Do", "Am"], "Darf ich … ? = Can I … ?"],
+          ["gap", "Can your dad cook? – Yes, he ___.", "can"],
+          ["gap", "Can Emma ride a horse? – No, she ___.", "can't|cannot"],
+          ["order", "Can you play basketball?"],
+          ["pick", "Tom ___ come to the party. He's ill.", ["can't", "doesn't can", "not can"], "Verneint: can't, ohne do."]
         ] },
-      { id: "genitive", band: "5", t: "Genitive", de: "Wem gehört was?",
+      { id: "havegot", band: "ct-2", t: "have got / has got", de: "haben, besitzen",
+        explain: [
+          "Mit **have got** sagst du, was jemand hat: I**'ve got** a dog. We**'ve got** maths today.",
+          "Bei he, she, it heißt es **has got**: She**'s got** a new bike. Achtung: he's got = he has got.",
+          "Verneint: I **haven't got** … / She **hasn't got** …",
+          "Fragen: **Have** you **got** a pet? – Yes, I **have**. / No, I **haven't**. **Has** Gillian **got** art today? – No, she **hasn't**."
+        ],
+        ex: [["I **have got** two brothers.", "Ich habe zwei Brüder."], ["Julia **hasn't got** history today.", "Julia hat heute keinen Geschichtsunterricht."], ["**Has** Tom **got** a pet?", "Hat Tom ein Haustier?"]],
+        tasks: [
+          ["gap", "I ___ got a sister. (have)", "have|'ve"],
+          ["gap", "Ben ___ got a new phone. (have)", "has|'s", "Ben = he, also has."],
+          ["pick", "We ___ got maths on Monday.", ["have", "has"]],
+          ["gap", "My parents ___ got a car. (nicht haben)", "haven't|have not"],
+          ["pick", "___ you got a pet?", ["Have", "Has", "Do"]],
+          ["pick", "Has Lucy got a dog? – No, she ___.", ["hasn't", "haven't", "isn't"]],
+          ["order", "Have you got a pencil?"],
+          ["pick", "My cat ___ got green eyes.", ["has", "have"], "my cat = it, also has."]
+        ] },
+      { id: "genitive", band: "ct-2", t: "Genitive", de: "Wem gehört was?",
         explain: [
           "Wem etwas gehört, zeigst du mit **'s**: Tom**'s** bike = das Fahrrad von Tom.",
           "Endet die Mehrzahl auf -s, hängst du nur den Apostroph an: my parent**s'** car = das Auto meiner Eltern.",
@@ -186,7 +230,43 @@ window.GRAMMAR = {
           ["pick", "Is this ___ pen?", ["Emma's", "Emmas", "Emma"], "Besitz: Emma's."],
           ["pick", "That's my ___ room. (Ich habe zwei Brüder.)", ["brothers'", "brother's", "brothers's"], "Zwei Brüder: Mehrzahl auf -s, nur Apostroph."]
         ] },
-      { id: "adverbsfreq", band: "5", t: "Adverbs of place, time and frequency", de: "Wo, wann, wie oft",
+      // ---------- Klasse 5, Theme 3 ----------
+      { id: "simplepresent", band: "ct-3", t: "Simple present", de: "Gewohnheiten und Tatsachen",
+        explain: [
+          "Das simple present benutzt du für Gewohnheiten, Regeln und Dinge, die immer so sind. Signalwörter: always, usually, often, sometimes, never, every day.",
+          "Bei **he, she, it** hängst du ein **-s** an: I play → she play**s**. Merksatz: „He, she, it – das s muss mit!“",
+          "Nach s, sh, ch, x und o kommt **-es**: watch → watch**es**, go → go**es**. Konsonant + y wird zu **-ies**: fly → fl**ies**.",
+          "Unregelmäßig: have → **has**, be → **is**."
+        ],
+        ex: [["I **play** football every Friday.", "Ich spiele jeden Freitag Fußball."], ["My sister **watches** TV after school.", "Meine Schwester sieht nach der Schule fern."], ["Tom **has** a dog.", "Tom hat einen Hund."]],
+        tasks: [
+          ["gap", "She ___ to school by bus. (go)", "goes", "she → -s, und nach o kommt -es."],
+          ["gap", "My dad ___ the dishes every evening. (wash)", "washes", "Nach sh kommt -es."],
+          ["gap", "We ___ English on Mondays. (have)", "have", "Bei we bleibt das Verb ohne -s."],
+          ["gap", "Emma ___ a cat. (have)", "has", "Emma = she, und have wird zu has."],
+          ["gap", "The baby ___ a lot. (cry)", "cries", "Konsonant + y wird zu -ies."],
+          ["pick", "Ben and Lisa ___ in Leeds.", ["live", "lives"], "Ben and Lisa = they, also ohne -s."],
+          ["pick", "It ___ a lot in Wales.", ["rains", "rain"], "it → das s muss mit."],
+          ["order", "She always reads in bed.", "always steht vor dem Verb."]
+        ] },
+      { id: "negations", band: "ct-3", t: "Negations", de: "Verneinung",
+        explain: [
+          "Im simple present verneinst du mit **don't** (do not) oder **doesn't** (does not) und dem Verb ohne -s: I **don't like** fish. She **doesn't like** fish.",
+          "Mit am, is, are hängst du **not** an: I'm **not**, he **isn't**, they **aren't**.",
+          "Mit can wird es **can't**: My dog **can't** swim."
+        ],
+        ex: [["I **don't** like spiders.", "Ich mag keine Spinnen."], ["Max **doesn't** eat meat.", "Max isst kein Fleisch."], ["We **aren't** at home.", "Wir sind nicht zu Hause."]],
+        tasks: [
+          ["gap", "I ___ like spiders. (nicht)", "don't|do not"],
+          ["gap", "Max ___ like spiders. (nicht)", "doesn't|does not", "Max = he, also doesn't."],
+          ["pick", "She doesn't ___ milk.", ["drink", "drinks"], "Nach doesn't steht das Verb ohne -s."],
+          ["pick", "We ___ at home today.", ["aren't", "don't", "isn't"], "Mit be: we are → we aren't."],
+          ["pick", "My dog ___ swim.", ["can't", "doesn't can", "don't"], "can wird zu can't, ohne do."],
+          ["gap", "It ___ cold today. (nicht sein)", "isn't|is not"],
+          ["order", "My brother doesn't eat meat."],
+          ["pick", "They ___ live in London.", ["don't", "doesn't", "aren't"], "Bei they nimmst du don't."]
+        ] },
+      { id: "adverbsfreq", band: "ct-3", t: "Adverbs of place, time and frequency", de: "Wo, wann, wie oft",
         explain: [
           "Häufigkeitsadverbien sagen, wie oft etwas passiert: **always** (immer), **usually** (normalerweise), **often** (oft), **sometimes** (manchmal), **never** (nie).",
           "Sie stehen **vor dem Vollverb**: I **often play** tennis.",
@@ -204,7 +284,44 @@ window.GRAMMAR = {
           ["pick", "They play football ___.", ["there every day", "every day there"], "Ort vor Zeit."],
           ["order", "He is usually at home."]
         ] },
-      { id: "presentprog", band: "5", t: "Present progressive", de: "Was gerade passiert",
+      { id: "shortanswers", band: "ct-3", t: "Short answers", de: "Kurzantworten",
+        explain: [
+          "Auf Ja/Nein-Fragen antwortest du im Englischen nicht nur mit Yes oder No. Du nimmst das **Hilfsverb aus der Frage** wieder auf.",
+          "**Do** you like cats? – Yes, I **do**. / No, I **don't**.",
+          "**Is** she nice? – Yes, she **is**. / No, she **isn't**.",
+          "Bei Yes gibt es keine Kurzform: Yes, I **am**. (nicht: Yes, I'm.)"
+        ],
+        ex: [["Can you swim? – Yes, I **can**.", "Kannst du schwimmen? – Ja."], ["Does Tom like pizza? – No, he **doesn't**.", "Mag Tom Pizza? – Nein."]],
+        tasks: [
+          ["gap", "Do you like cats? – Yes, I ___.", "do"],
+          ["gap", "Does Tom play football? – No, he ___.", "doesn't|does not", "In der Frage steht does, also doesn't."],
+          ["pick", "Are you tired? – Yes, I ___.", ["am", "are", "do"], "Zu you passt in der Antwort I am."],
+          ["pick", "Is it raining? – No, it ___.", ["isn't", "doesn't", "aren't"], "In der Frage steht is, also isn't."],
+          ["gap", "Can your sister swim? – Yes, she ___.", "can"],
+          ["pick", "Are your parents at home? – No, they ___.", ["aren't", "don't", "isn't"], "Zu they passt are, also aren't."],
+          ["pick", "Have you got a pet? – Yes, I ___.", ["have", "got", "do"], "Have you got … ? – Yes, I have."],
+          ["gap", "Does your dog bark a lot? – Yes, it ___.", "does"]
+        ] },
+      { id: "questions", band: "ct-3", t: "Questions", de: "Fragen stellen",
+        explain: [
+          "Fragen im simple present baust du mit **do** oder **does**: **Do** you like pizza? **Does** she like pizza?",
+          "Nach does steht das Verb **ohne -s**: Does he **play** tennis? (nicht: Does he plays)",
+          "Ein Fragewort steht ganz vorn: **Where** do you live? **What** does she want? **When** is your birthday?",
+          "Mit am, is, are und can brauchst du kein do: **Are** you ready? **Is** he at home? **Can** you swim?"
+        ],
+        ex: [["**Do** you **like** cats?", "Magst du Katzen?"], ["**Where does** your aunt **live**?", "Wo wohnt deine Tante?"], ["**Is** your dog old?", "Ist dein Hund alt?"]],
+        tasks: [
+          ["pick", "___ you like football?", ["Do", "Does", "Are"], "Bei you nimmst du do."],
+          ["pick", "___ your brother play the guitar?", ["Does", "Do", "Is"], "your brother = he, also does."],
+          ["pick", "___ she at home?", ["Is", "Does", "Do"], "Mit be (is) brauchst du kein do."],
+          ["gap", "Where ___ you live?", "do", "Bei you nimmst du do."],
+          ["gap", "What time ___ the film start?", "does", "the film = it, also does."],
+          ["pick", "Does he ___ chips?", ["like", "likes"], "Nach does steht das Verb ohne -s."],
+          ["pick", "___ is your birthday? – In May.", ["When", "Who", "Where"], "Die Antwort ist eine Zeit, also when."],
+          ["order", "Where does your aunt live?", "Fragewort, dann does, dann Person, dann Verb."]
+        ] },
+      // ---------- Klasse 5, Theme 4 ----------
+      { id: "presentprog", band: "ct-4", t: "Present progressive", de: "Was gerade passiert",
         explain: [
           "Mit dem present progressive sagst du, was **gerade jetzt** passiert. Signalwörter: now, right now, at the moment, Look!, Listen!",
           "Form: **am/is/are + Verb mit -ing**: I **am reading**. She **is playing**. They **are running**.",
@@ -222,7 +339,7 @@ window.GRAMMAR = {
           ["gap", "What ___ you doing?", "are"],
           ["pick", "Mum ___ dinner right now.", ["is making", "is makeing", "makes"], "make → making, das e fällt weg."]
         ] },
-      { id: "someany", band: "5", t: "some/any", de: "etwas, einige, keine",
+      { id: "someany", band: "ct-4", t: "some/any", de: "etwas, einige, keine",
         explain: [
           "**some** steht meist in **bejahten** Sätzen: I've got **some** apples.",
           "**any** steht in **Fragen** und **verneinten** Sätzen: Have you got **any** apples? I haven't got **any** apples.",
@@ -240,7 +357,98 @@ window.GRAMMAR = {
           ["pick", "There isn't ___ bread left.", ["any", "some"]],
           ["pick", "Can I have ___ water, please?", ["some", "any"], "Bitte: some, auch in der Frage."]
         ] },
-      { id: "simplepast", band: "5", t: "Simple past", de: "Was früher passiert ist",
+      { id: "conjunctions", band: "ct-4", t: "Conjunctions", de: "and, but, or, because, so",
+        explain: [
+          "Konjunktionen verbinden Sätze: **and** (und), **but** (aber), **or** (oder), **because** (weil), **so** (also, deshalb).",
+          "**because** nennt den Grund: I'm happy **because** it's my birthday.",
+          "**so** nennt die Folge: It's raining, **so** we stay at home.",
+          "Nach because bleibt die normale Satzstellung: … because **she loves** her party. (Deutsch: weil sie ihre Party liebt.)"
+        ],
+        ex: [["Caroline is happy **because** she loves her party.", "Caroline ist froh, weil sie ihre Party liebt."], ["I like cats, **but** I don't like dogs.", "Ich mag Katzen, aber keine Hunde."]],
+        tasks: [
+          ["pick", "I like pizza ___ chips.", ["and", "but", "so"]],
+          ["pick", "I'm tired, ___ I go to bed.", ["so", "because", "but"], "Die Folge: so."],
+          ["pick", "Tom is sad ___ his cat is ill.", ["because", "so", "or"], "Der Grund: because."],
+          ["pick", "Do you want tea ___ juice?", ["or", "and", "but"]],
+          ["pick", "Emma likes maths, ___ she doesn't like art.", ["but", "so", "or"]],
+          ["gap", "We stay at home ___ it's raining. (weil)", "because"],
+          ["order", "I'm happy because it's my birthday."],
+          ["pick", "She is happy because ___.", ["she has got a new bike", "has she got a new bike", "she a new bike has got"], "Nach because: Subjekt – Verb – Objekt."]
+        ] },
+      // ---------- Klasse 5, Theme 5 ----------
+      { id: "objectpronouns", band: "ct-5", t: "Object pronouns", de: "mich, dich, ihn …",
+        explain: [
+          "Objektpronomen stehen nach dem Verb oder nach einer Präposition: **me, you, him, her, it, us, you, them**.",
+          "I → **me**, he → **him**, she → **her**, we → **us**, they → **them**. you und it bleiben gleich.",
+          "Gillian sees Oscar. She talks to **him**. Can you help **me**?",
+          "Auch nach Präpositionen: with **us**, for **them**, to **her**."
+        ],
+        ex: [["Gillian sees Oscar. She talks to **him**.", "Gillian sieht Oscar. Sie spricht mit ihm."], ["Can you help **me**?", "Kannst du mir helfen?"], ["I like **them**.", "Ich mag sie."]],
+        tasks: [
+          ["pick", "Where is Tom? I can't see ___.", ["him", "he", "his"]],
+          ["pick", "Lisa is nice. I like ___.", ["her", "she", "hers"]],
+          ["gap", "Can you help ___? (ich)", "me"],
+          ["pick", "My grandparents live in York. We often visit ___.", ["them", "they", "their"]],
+          ["gap", "Come with ___! (wir)", "us"],
+          ["pick", "This is my new bike. Do you like ___?", ["it", "its", "them"]],
+          ["pick", "The dog is hungry. Give ___ some food.", ["it", "its", "it's"]],
+          ["gap", "This present is for ___. (sie, Mehrzahl)", "them"]
+        ] },
+      { id: "modals", band: "ct-5", t: "Modal verbs", de: "must, mustn't, should, shouldn't",
+        explain: [
+          "Modalverben sagen, ob man etwas kann, muss, darf oder sollte: **can** (kann, darf), **must** (muss), **mustn't** (darf nicht), **should** (sollte), **shouldn't** (sollte nicht).",
+          "Wie bei can: kein -s bei he, she, it und danach die Grundform ohne to: He **must go** home.",
+          "Achtung, falscher Freund: **mustn't** heißt **darf nicht**, nicht muss nicht. Dogs mustn't eat chocolate = Hunde dürfen keine Schokolade fressen.",
+          "**should** ist ein Rat: You **should** drink some water."
+        ],
+        ex: [["Dogs **mustn't** eat ice cream.", "Hunde dürfen kein Eis fressen."], ["You **shouldn't** take your pet to school.", "Du solltest dein Haustier nicht mit in die Schule nehmen."], ["I **must** feed my cat.", "Ich muss meine Katze füttern."]],
+        tasks: [
+          ["pick", "You ___ eat chocolate before dinner. (darfst nicht)", ["mustn't", "needn't", "must"], "darf nicht = mustn't."],
+          ["pick", "She ___ go to the vet with her dog. (muss)", ["must", "musts", "must to"], "must bleibt immer gleich."],
+          ["pick", "You're tired. You ___ go to bed. (solltest)", ["should", "shouldn't", "mustn't"]],
+          ["pick", "„Du darfst hier nicht rennen.“ heißt:", ["You mustn't run here.", "You don't must run here.", "You must not to run here."], "darf nicht = mustn't, ohne do und ohne to."],
+          ["gap", "Rabbits ___ live alone. They're happier in pairs. (sollten nicht)", "shouldn't|should not"],
+          ["pick", "He must ___ his room.", ["tidy", "tidies", "to tidy"], "Nach must steht die Grundform."],
+          ["gap", "You ___ feed your pet every day. (musst)", "must"],
+          ["order", "You shouldn't take your pet to school."]
+        ] },
+      { id: "wordorder", band: "ct-5", t: "Word order (SPO)", de: "Satzstellung",
+        explain: [
+          "Im englischen Satz gilt fast immer: **S**ubjekt – **P**rädikat (Verb) – **O**bjekt.",
+          "Das gilt auch, wenn der Satz mit einer Zeitangabe beginnt, anders als im Deutschen: Heute **spiele ich** Fußball. → Today **I play** football.",
+          "Auch im Nebensatz bleibt die Reihenfolge gleich: … because **I like** it. (Deutsch: weil ich es mag.)",
+          "Ort steht vor Zeit, wie im Alphabet O vor Z: I go **to school** **every day**."
+        ],
+        ex: [["Today **I play** football.", "Heute spiele ich Fußball."], ["I'm happy because **I have** a new bike.", "Ich bin froh, weil ich ein neues Fahrrad habe."]],
+        tasks: [
+          ["order", "Today I play football.", "Auch nach Today kommt zuerst das Subjekt I."],
+          ["order", "I like Tom because he is funny.", "Im Nebensatz bleibt Subjekt vor Verb: he is."],
+          ["order", "We go to the cinema on Saturday.", "Ort vor Zeit."],
+          ["order", "My mum drinks coffee every morning."],
+          ["pick", "On Sunday ___ my grandma.", ["I visit", "visit I"], "Subjekt vor Verb, auch nach On Sunday."],
+          ["pick", "I'm happy because ___.", ["I have a new bike", "have I a new bike", "a new bike I have"], "Im Nebensatz: Subjekt – Verb – Objekt."],
+          ["pick", "We play ___.", ["in the garden every day", "every day in the garden"], "Ort vor Zeit."],
+          ["order", "She meets her friends in the park after school.", "Ort (in the park) vor Zeit (after school)."]
+        ] },
+      { id: "thisthat", band: "ct-5", t: "this, that, these, those", de: "dieser hier, der dort",
+        explain: [
+          "**this** (dieser, diese, dieses hier) und **these** (diese hier) zeigen auf etwas in der Nähe.",
+          "**that** (der, die, das dort) und **those** (die dort) zeigen auf etwas weiter weg.",
+          "Einzahl: this, that. Mehrzahl: these, those."
+        ],
+        ex: [["**This** is my hamster.", "Das hier ist mein Hamster."], ["Look at **those** horses!", "Schau dir die Pferde dort an!"]],
+        tasks: [
+          ["pick", "___ book here is great.", ["This", "These", "Those"], "Einzahl, nah: this."],
+          ["pick", "Look at ___ birds over there!", ["those", "these", "that"], "Mehrzahl, weit weg: those."],
+          ["pick", "___ shoes here are too small.", ["These", "This", "Those"], "Mehrzahl, nah: these."],
+          ["pick", "Who is ___ girl over there?", ["that", "those", "this"], "Einzahl, weit weg: that."],
+          ["gap", "Are ___ your keys here on the table? (diese hier)", "these"],
+          ["gap", "Is ___ your house over there? (das dort)", "that"],
+          ["pick", "I like ___ T-shirt. (dieses hier)", ["this", "these", "that"]],
+          ["pick", "___ are my friends Tom and Ben. (diese hier)", ["These", "This", "That"]]
+        ] },
+      // ---------- Klasse 6 ----------
+      { id: "simplepast", band: "6", t: "Simple past", de: "Was früher passiert ist",
         explain: [
           "Mit dem simple past erzählst du, was in der Vergangenheit passiert und abgeschlossen ist. Signalwörter: yesterday, last week, two days ago, in 2020.",
           "Regelmäßige Verben bekommen **-ed**: play → play**ed**, live → live**d**, stop → sto**pped**, cry → cr**ied**.",
@@ -258,7 +466,6 @@ window.GRAMMAR = {
           ["pick", "We didn't ___ the bus.", ["catch", "caught", "catched"], "Nach didn't steht die Grundform."],
           ["gap", "They ___ at home last weekend. (nicht sein)", "weren't|were not", "they → were, verneint weren't."]
         ] },
-      // ---------- Klasse 6 ----------
       { id: "countable", band: "6", t: "Countable and uncountable nouns", de: "Zählbar oder nicht",
         explain: [
           "Zählbare Nomen kannst du zählen: one apple, two apples.",

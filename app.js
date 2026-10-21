@@ -704,19 +704,27 @@ function grammarCard() {
 }
 function renderGrammar() {
   const d = gData(), st = gStore();
+  let group = null;
   const bands = d.bands.map(b => {
     const ts = d.topics.filter(t => t.band === b.id);
-    if (!ts.length) return "";
+    const rev = (b.review || []).map(id => d.topics.find(t => t.id === id)).filter(t => t && gReady(t));
+    if (!ts.length && !rev.length) return "";
+    const head = b.group && b.group !== group ? `<h2 class="ggroup">${esc(b.group)}</h2>` : "";
+    group = b.group || null;
+    const H = b.group ? "h3" : "h2";
     const ready = ts.filter(gReady);
+    if (!ts.length) return `${head}<section><h3>${esc(b.label)}</h3>${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}
+      <div class="gtopics">${rev.map(t => `<button class="gtopic" data-topic="${t.id}"><span><b>${esc(t.t)}</b><span class="muted small">Wiederholung · ${esc(t.de)}</span></span>
+        <span class="gstars">${st[t.id] ? gStars(st[t.id]) : "neu"}</span></button>`).join("")}</div></section>`;
     const item = t => gReady(t)
       ? `<button class="gtopic" data-topic="${t.id}"><span><b>${esc(t.t)}</b><span class="muted small">${esc(t.de)}${t.rez ? " · erkennen" : ""}</span></span>
           <span class="gstars" aria-label="${st[t.id] ? `beste Runde ${Math.round(st[t.id].best * 100)} Prozent` : "noch nicht geübt"}">${st[t.id] ? gStars(st[t.id]) : "neu"}</span></button>`
       : `<li>${esc(t.t)} <span class="muted">· ${esc(t.de)}${t.rez ? " · erkennen" : ""}${t.g8 ? " · nur G8" : ""}</span></li>`;
     return ready.length
-      ? `<section><div class="spread"><h2>${esc(b.label)}</h2><span class="muted small">${ready.filter(t => st[t.id]).length}/${ready.length}</span></div>
+      ? `${head}<section><div class="spread"><${H}>${esc(b.label)}</${H}><span class="muted small">${ready.filter(t => st[t.id]).length}/${ready.length}</span></div>
           ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}
           <div class="gtopics">${ready.map(item).join("")}</div></section>`
-      : `<details class="panel gsoon"><summary><b>${esc(b.label)}</b> <span class="muted small">· ${ts.length} ${ts.length === 1 ? "Thema" : "Themen"}, Übungen folgen</span></summary>
+      : `${head}<details class="panel gsoon"><summary><b>${esc(b.label)}</b> <span class="muted small">· ${ts.length} ${ts.length === 1 ? "Thema" : "Themen"}, Übungen folgen</span></summary>
           ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}<ul>${ts.map(item).join("")}</ul></details>`;
   }).join("");
   app.replaceChildren(h(`

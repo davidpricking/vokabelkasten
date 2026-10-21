@@ -198,3 +198,4 @@ button.streak{color:var(--ink);cursor:pointer}
 .oline .tile{border-color:var(--accent)}
 .gagain summary{cursor:pointer}
 .gagain[open] summary{margin-bottom:10px}
+.ggroup{margin-bottom:-8px}
