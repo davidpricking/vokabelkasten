@@ -505,6 +505,8 @@ function renderCard() {
   const q = dir === "de-en" ? card.de : card.en;
   const sol = dir === "de-en" ? card.en : card.de;
   const lname = L().name;
+  const qHot = dir === "en-de" && hotSpot(card, q);   // schwierige Schreibstelle im englischen Wort leuchtet mit
+  const qHtml = qHot ? spellHtml(q, qHot, "spellq") : esc(q);
   const pool = cardsL().filter(c => c.id !== card.id);
   const fresh = !R.done.has(card.id) && !(card.id in R.first);
   const useChoice = card.level <= 1 && fresh && pool.length >= 3 && !R.practice;
@@ -515,8 +517,8 @@ function renderCard() {
       <div class="spread"><span class="eyebrow">${dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
         ${dir === "en-de" && canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
       ${card.level === 0 && fresh && !R.practice ? '<span class="newtag">Neues Wort</span>' : ""}
-      ${mode === "speak" ? `<div class="flip" id="flip"><div class="face front"><div class="q">${esc(q)}</div></div><div class="face back"><div class="q">${esc(sol)}</div></div></div>`
-        : `<div class="q">${esc(q)}</div>`}
+      ${mode === "speak" ? `<div class="flip" id="flip"><div class="face front"><div class="q">${qHtml}</div></div><div class="face back"><div class="q">${esc(sol)}</div></div></div>`
+        : `<div class="q">${qHtml}</div>`}
       <div id="answerArea"></div>
       <div id="fb"></div>
     </div>`));
@@ -717,13 +719,22 @@ function pickMnemonic(card, result, typed, dir) {
   const spelling = dir === "de-en" && t && (result === "near" || lev(t, norm(tileTarget(card.en))) <= 3);
   return (spelling ? by("s")[0] : null) || by("b")[0] || by("s")[0] || by("v")[0] || null;
 }
-function mnemonicHtml(x, word) {
-  const fr = x[1].split("|"), hot = (x[2].match(/\*\*(.+?)\*\*/) || [])[1] || "";
-  let spell = "";
-  if (x[0] === "s" && word) {
-    const at = hot ? word.toLowerCase().indexOf(hot.toLowerCase()) : -1;
-    spell = `<span class="mword" aria-hidden="true">${[...word].map((ch, i) => `<span class="${at >= 0 && i >= at && i < at + hot.length ? "hot" : ""}" style="--d:${i}">${ch === " " ? "&nbsp;" : esc(ch)}</span>`).join("")}</span>`;
+// Schwierige Stelle der Schreibweise: der fett markierte Teil der Schreib-Eselsbrücke, der im Wort vorkommt (gr**e**y → "e").
+function hotSpot(card, word) {
+  const s = card.mn && card.mn.find(x => x[0] === "s"); if (!s || !word) return null;
+  const w = word.toLowerCase();
+  for (const [, b] of s[2].matchAll(/\*\*(.+?)\*\*/g)) {
+    const k = b.toLowerCase(), at = w.indexOf(k);
+    if (at >= 0 && k.length < w.length) return { at, len: k.length };
   }
+  return null;
+}
+function spellHtml(word, hot, cls = "mword") {
+  return `<span class="${cls}">${[...word].map((ch, i) => `<span class="${hot && i >= hot.at && i < hot.at + hot.len ? "hot" : ""}" style="--d:${i}">${ch === " " ? "&nbsp;" : esc(ch)}</span>`).join("")}</span>`;
+}
+function mnemonicHtml(x, word) {
+  const fr = x[1].split("|");
+  const spell = x[0] === "s" && word ? spellHtml(word, hotSpot({ mn: [x] }, word)).replace("<span", '<span aria-hidden="true"') : "";
   return `<div class="mnemo"><span class="mnemo-pic" aria-hidden="true" data-frames="${esc(x[1])}">${esc(fr[0])}</span>
     <span><b class="mnemo-k">Eselsbrücke</b>${spell}${gmark(x[2])}</span></div>`;
 }
@@ -747,6 +758,9 @@ function answered(card, result, sol, dir, typed) {
     : result === "near" ? ["near", "Fast!", `Achte auf die Schreibweise: <span class="sol">${typed ? markDiff(typed, sol) : esc(sol)}</span>`]
     : ["bad", "Noch nicht.", `Richtig ist: <span class="sol">${esc(sol)}</span><span class="small">Das Wort kommt in dieser Runde gleich noch einmal.</span>`];
   const mn = pickMnemonic(card, result, typed, dir);
+  const hot = dir === "de-en" && hotSpot(card, sol);
+  if (hot && result === "bad") msg[2] = msg[2].replace(`<span class="sol">${esc(sol)}</span>`, spellHtml(sol, hot, "sol mword"));
+  if (hot && result === "good" && !mn) msg[2] = `Merk dir die Stelle: ${spellHtml(sol, hot, "sol mword")}`;
   const bot = BOTS[S.bot] || BOTS.chatgpt;
   $("#fb").replaceChildren(h(`<div class="feedback ${msg[0]}"><strong>${msg[1]}</strong>${msg[2] ? `<span class="fbtext">${msg[2]}</span>` : ""}
       ${where ? `<span class="fachinfo">${where}</span>` : ""}

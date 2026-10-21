@@ -172,6 +172,8 @@ details.panel>summary{cursor:pointer}
 @keyframes wiggle{25%{transform:rotate(-6deg) scale(1.15)}75%{transform:rotate(6deg) scale(1.15)}}
 .mword{display:flex;flex-wrap:wrap;font:600 1.5rem var(--display);letter-spacing:.02em;margin:2px 0 4px}
 .mword span{animation:drop .35s ease calc(var(--d) * 55ms) both}
+.sol.mword{display:inline-flex;font-size:1.3rem;margin:0}
+.spellq .hot{color:var(--bad);display:inline-block;animation:drophot .7s cubic-bezier(.3,1.6,.5,1) .4s both}
 .mword .hot{color:var(--bad);animation:drophot .7s cubic-bezier(.3,1.6,.5,1) calc(var(--d) * 55ms + 500ms) both}
 @keyframes drop{from{transform:translateY(-14px);opacity:0}}
 @keyframes drophot{from{transform:translateY(-30px) scale(1.8);opacity:0}}
