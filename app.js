@@ -1093,12 +1093,15 @@ function renderImport(prefill) {
   };
   if (rows.length) renderReview();
 }
-// Übernimmt Zeilen in eine Unit; doppelte Wörter in derselben Unit werden übersprungen.
+// Übernimmt Zeilen in eine Unit; doppelte Wörter in derselben Unit behalten ihren Lernstand,
+// bekommen aber neue Eselsbrücken und Beispielsätze aus dem Link.
 function addCards(unit, list) {
-  const existing = new Set(cardsL().filter(c => c.unit === unit).map(c => norm(c.en) + "|" + norm(c.de)));
+  const existing = new Map(cardsL().filter(c => c.unit === unit).map(c => [norm(c.en) + "|" + norm(c.de), c]));
   let added = 0;
   list.forEach(r => {
-    const k = norm(r.en) + "|" + norm(r.de); if (existing.has(k)) return; existing.add(k);
+    const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
+    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.ex && !old.ex) old.ex = r.ex.trim(); } return; }
+    existing.set(k, null);
     const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
     if (r.mn) c.mn = r.mn;
     S.cards.push(c); added++;
