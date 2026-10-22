@@ -338,6 +338,17 @@ textarea{min-height:130px;resize:vertical;font-family:ui-monospace,Menlo,Consola
 .duptag{background:var(--muted);color:#fff}
 @keyframes tagpulse{50%{transform:scale(1.15)}}
 
+/* ---------- Tagesaufgaben ---------- */
+.quests{display:flex;flex-direction:column;gap:10px}
+.quest{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.quest b{font-size:.95rem;display:block;margin-bottom:4px}
+.qchk{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:800;color:#fff}
+.quest.ok .qchk{background:var(--good);border-color:var(--good);animation:qpop .5s cubic-bezier(.3,1.7,.5,1)}
+.quest.ok b{text-decoration:line-through;text-decoration-color:var(--good);text-decoration-thickness:2px}
+.quest.ok .bar i{background:var(--good)}
+@keyframes qpop{from{transform:scale(.3)}}
+.questdone{font-weight:800;color:var(--good);animation:qpop .5s cubic-bezier(.3,1.7,.5,1)}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 
 /* Begrüßung und Sprachen */

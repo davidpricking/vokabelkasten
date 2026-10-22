@@ -413,6 +413,7 @@ function ringHtml(n, goal) {
     <span>${n >= goal ? "✓" : `${n}<small>/${goal}</small>`}</span></div>`;
 }
 function renderHomeView() {
+  const qd = checkQuests(); if (qd.length) setTimeout(() => celebrate(`Tagesaufgabe geschafft: ${qd[0]}`), 400);
   const lang = L(), all = cardsL(), paused = lang.paused || [];
   const due = dueCards().length, nl = Math.min(newLeft(), newCards().length), gd = gDue().length;
   const units = [...new Set(all.map(c => c.unit))];
@@ -454,6 +455,7 @@ function renderHomeView() {
       <p class="muted small">Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück. Unter jedem Fach steht, wann ein Wort daraus wieder drankommt.</p>
     </section>` : ""}
     ${grammarCard()}
+    ${questCard()}
     ${albumCard()}
     <section>
       <div class="spread"><h2>Abzeichen</h2><button class="link" id="badges">Alle ${BADGES.length} ansehen</button></div>
@@ -820,7 +822,9 @@ function answered(card, result, sol, dir, typed) {
   else R.done.add(card.id);
   if (result === "bad") { R.combo = 0; card.miss = (card.miss || 0) + 1; }
   else if (firstTime) { R.combo++; R.best = Math.max(R.best, R.combo); }
-  if (moved && from < 3 && to >= 3) R.sat++;
+  if (moved && from < 3 && to >= 3) { R.sat++; dl.sat = (dl.sat || 0) + 1; }
+  if (moved && to > from && result === "good") dl.up = (dl.up || 0) + 1;
+  if (result !== "bad" && firstTime) dl.combo = Math.max(dl.combo || 0, R.combo);
   if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
   sound(result === "bad" ? "bad" : "good");
   const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : rested ? `Bleibt in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : !moved ? "" : from === 0 ? "Ab in Fach 1, kommt morgen wieder."
@@ -885,6 +889,9 @@ function renderSummary() {
   const gl = Object.entries(R.gram).map(([id, ok]) => gMove(id, ok)).filter(Boolean);
   const n = R.total, g = R.good, lv = levelOf(S.xp);
   const earned = R.total >= 5 && !R.packed; if (earned) { R.packed = true; S.packQ.push(makePack(R)); }
+  if (R.total >= 5 && g === n) dayLog().perfect = 1;
+  if (R.unit && R.unit.startsWith(TAG)) dayLog().tag = 1;
+  const doneQ = checkQuests();
   checkBadges(); save();
   const what = R.unit === FREE || (R.unit && R.unit.startsWith(TAG)) ? "Übungsrunde geschafft" : R.practice ? "Testtraining geschafft" : "Runde geschafft";
   app.replaceChildren(h(`<div class="done">
@@ -895,7 +902,8 @@ function renderSummary() {
       : `<div class="moves">${R.up ? `<span class="up">${R.up} ${R.up === 1 ? "Karte" : "Karten"} nach hinten</span>` : ""}${R.down ? `<span class="down">${R.down} zurück</span>` : ""}</div>
          ${kastenHtml(levelCounts())}`}
     ${gl.map(x => `<p class="small">${x}</p>`).join("")}
-    ${earned ? `<button class="packbtn" id="openPack" type="button"><span class="pack mini" aria-hidden="true"><i></i></span><span><b>Neues Sticker-Päckchen!</b><span class="small">Antippen und aufreißen</span></span></button>` : ""}
+    ${doneQ.map(q => `<p class="questdone">✓ Tagesaufgabe geschafft: ${esc(q)}</p>`).join("")}
+    ${earned ? `<button class="packbtn" id="openPack" type="button"><span class="pack mini" aria-hidden="true"><i></i></span><span><b>${S.packQ.length > 1 ? S.packQ.length + " Sticker-Päckchen!" : "Neues Sticker-Päckchen!"}</b><span class="small">Antippen und aufreißen</span></span></button>` : ""}
     <div class="xpline"><b>+${R.xp} Punkte</b><span class="lvchip static"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></span></div>
     ${R.newBadges.length ? `<div class="newbadges">${R.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
@@ -1040,6 +1048,52 @@ function renderBadges() {
   window.scrollTo(0, 0);
 }
 
+// ---------- Tagesaufgaben: drei wechselnde kleine Aufgaben, jede bringt ein Extra-Päckchen ----------
+const QUESTS = [
+  ["goal", "Schaff dein Tagesziel", d => [goalCount(), S.goal]],
+  ["combo", "5 richtig am Stück", d => [d.combo || 0, 5]],
+  ["combo8", "8 richtig am Stück", d => [d.combo || 0, 8]],
+  ["up", "Bring 8 Wörter ein Fach weiter", d => [d.up || 0, 8]],
+  ["sat", "Bring ein Wort bis Fach 3", d => [d.sat || 0, 1], () => cardsL().some(c => c.level === 2)],
+  ["learn", "Lerne 3 neue Wörter", d => [d.learned || 0, 3], () => newCards().length >= 3],
+  ["perfect", "Eine Runde ganz ohne Fehler", d => [d.perfect || 0, 1]],
+  ["tag", "Üben nach Thema: eine Runde", d => [d.tag || 0, 1], () => Object.keys(tagCounts()).length > 0],
+  ["gram", "Eine Grammatik-Aufgabe", d => [d.gram || 0, 1]],
+  ["time", "5 Minuten üben", d => [Math.floor((d.sec || 0) / 60), 5]]
+];
+function todaysQuests() {
+  const d = dayLog();
+  if (!d.quests) {
+    let h = 0; for (const ch of dayKey()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const ok = QUESTS.filter(q => !q[3] || q[3]()), out = [];
+    // "goal" ist jeden zweiten Tag dabei, der Rest wechselt
+    if (h % 2) out.push("goal");
+    while (out.length < 3 && ok.length) { h = (h * 1103515245 + 12345) >>> 0; const q = ok[h % ok.length][0]; if (!out.includes(q) && !(q === "combo8" && out.includes("combo")) && !(q === "combo" && out.includes("combo8"))) out.push(q); if (out.length >= ok.length) break; }
+    d.quests = out; d.qdone = [];
+  }
+  return d.quests.map(id => QUESTS.find(q => q[0] === id)).filter(Boolean);
+}
+// Prüft die Aufgaben; neu geschaffte bringen ein Päckchen, alle drei zusammen ein goldenes.
+function checkQuests() {
+  if (!cardsL().length) return [];
+  const d = dayLog(), qs = todaysQuests(), fresh = [];
+  qs.forEach(([id, name, prog]) => { const [a, b] = prog(d); if (a >= b && !d.qdone.includes(id)) { d.qdone.push(id); fresh.push(name); S.packQ.push(makePack({ up: 4, sat: 0 })); } });
+  if (fresh.length && d.qdone.length === qs.length && !d.gold) { d.gold = 1; S.packQ.push(makePack({ up: 10, sat: 3 }, true)); fresh.push("Alle drei! Goldenes Päckchen"); }
+  if (fresh.length) save();
+  return fresh;
+}
+function questCard() {
+  if (!cardsL().length) return "";
+  const d = dayLog(), qs = todaysQuests(), all = d.qdone.length === qs.length;
+  return `<section class="panel quests">
+    <div class="spread"><h2>Heutige Aufgaben</h2><span class="muted small">${d.qdone.length} von ${qs.length}</span></div>
+    ${qs.map(([id, name, prog]) => { const [a, b] = prog(d), ok = d.qdone.includes(id);
+      return `<div class="quest${ok ? " ok" : ""}"><span class="qchk" aria-hidden="true">${ok ? "✓" : ""}</span><div><b>${esc(name)}</b>
+        <div class="bar"><i style="width:${Math.min(100, Math.round(a / b * 100))}%"></i></div></div><span class="small muted">${Math.min(a, b)}/${b}</span></div>`; }).join("")}
+    <p class="muted small">${all ? "Alles geschafft! Morgen gibt es neue Aufgaben." : "Jede Aufgabe bringt ein Sticker-Päckchen. Alle drei zusammen: ein goldenes Päckchen mit sicherem seltenen Sticker."}</p>
+  </section>`;
+}
+
 // ---------- Sticker-Album: Nach jeder Runde ein Überraschungs-Päckchen ----------
 // [id, englisch, deutsch, Bild, Seltenheit: 0 normal, 1 selten, 2 legendär]
 const ALBUM = [
@@ -1079,13 +1133,13 @@ const RAR = ["Normal", "Selten", "Legendär"];
 const MARKS_FOR_PICK = 5;
 // Wer mehr Wörter in dieser Runde nach hinten gebracht hat, bekommt eher seltene Sticker.
 // Legendäre gibt es nur, wenn ein Wort jetzt sitzt (ab Fach 3) oder das Tagesziel geschafft ist.
-function makePack(run) {
+function makePack(run, gold) {
   const up = run ? run.up : 0, sat = run ? run.sat : 0, firstToday = S.packDay !== dayKey();
   const pLeg = sat || (run && dayLog().goalHit) ? Math.min(.3, .06 + .05 * sat) : 0, pRare = Math.min(.55, .2 + .04 * up);
   const out = [];
   for (let i = 0; i < 3; i++) {
     let r = Math.random() < pLeg ? 2 : Math.random() < pRare ? 1 : 0;
-    if (i === 2 && firstToday && r === 0) r = 1;   // erstes Päckchen des Tages: mindestens ein seltener
+    if (i === 2 && (firstToday || gold) && r === 0) r = 1;   // erstes Päckchen des Tages und goldene: mindestens ein seltener
     const pool = STICKERS.filter(x => x.r === r), missing = pool.filter(x => !S.stickers[x.id] && !out.includes(x.id));
     const pickFrom = missing.length && Math.random() < .7 ? missing : pool;
     out.push(pick(pickFrom).id);
