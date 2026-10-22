@@ -1,11 +1,13 @@
 # Vokabelkasten
 
-Eine Vokabelkasten-App für Englisch ab Klasse 5. Vokabeln lassen sich hineinladen, die ein KI-Chatbot aus dem Foto einer Buchseite erstellt hat.
+Eine Vokabelkasten-App für Englisch ab Klasse 5 und weitere Sprachen. Vokabeln lassen sich hineinladen, die ein KI-Chatbot aus dem Foto einer Buchseite erstellt hat.
 
-Die App läuft im Handy-Browser, lässt sich auf den Startbildschirm legen und funktioniert danach offline. Sie braucht keine Anmeldung und keinen API-Schlüssel. Vokabeln und Lernstand bleiben im Browser auf dem Gerät.
+Die App läuft im Handy-Browser, lässt sich auf den Startbildschirm legen und funktioniert danach offline. Sie braucht keine Anmeldung und keinen API-Schlüssel. Name, Vokabeln und Lernstand bleiben im Browser auf dem Gerät.
 
 ## Was die App kann
 
+- **Persönlich:** Beim ersten Start fragt die App nach dem Namen und der ersten Sprache. Jede Sprache hat ihren eigenen Kasten und erscheint oben als Fahne. Weitere Sprachen kommen über das + dazu.
+- **Übungskalender:** Tage am Stück, Übungszeit heute und diese Woche, ein Monatskalender (Tag antippen zeigt Übungszeit, abgefragte Wörter, Trefferquote und neue Wörter) und die letzten Wochen im Vergleich.
 - **Karteikasten mit 7 Fächern.** Ein Wort kommt nach 1, 2, 4, 8 und 16 Tagen, nach einem Monat und nach einem halben Jahr wieder dran. Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück.
 - **Kurze Runden** mit 10 Wörtern. Neue Wörter kommen zuerst als Auswahl aus vier Antworten, danach zum Eintippen. Falsche Wörter kommen in derselben Runde noch einmal. Bei kleinen Tippfehlern zeigt die App die richtige Schreibweise.
 - **Freies Üben** jederzeit und **Testtraining** für eine einzelne Unit. Beides ändert die Fächer nicht.
