@@ -480,9 +480,11 @@ function renderHomeView() {
       }).join("") : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
       <p class="muted small">Pausierte Units liefern keine neuen Wörter. Schalte sie frei, wenn das Thema in der Schule drankommt.</p>
     </section>
-    ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3).sort((a, b) => n[b] - n[a]).slice(0, 24);
+    ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3 && t !== "allgemein").sort((a, b) => n[b] - n[a]);
+      const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">#${esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
+      const th = ts.filter(t => !GRAM_TAGS.includes(t)), gr = ts.filter(t => GRAM_TAGS.includes(t));
       return ts.length ? `<details class="panel"><summary><b>Nach Thema üben</b></summary>
-      <div class="chips">${ts.map(t => `<button class="chip" data-tag="${esc(t)}">#${esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>
+      ${th.length ? chips(th) : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
       <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Die Fächer bleiben dabei unverändert.</p></details>` : ""; })()}
     <details class="panel">
       <summary><b>So wirst du abgefragt</b></summary>
