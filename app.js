@@ -33,7 +33,10 @@ function flagOf(l) {
 }
 
 // Tags: kleine Stichwörter wie #tiere oder #verb, nach denen man gezielt üben kann.
-const BASE_TAGS = ["nomen", "verb", "adjektiv", "redewendung", "frage", "zahl", "zeit", "familie", "schule", "freizeit", "essen", "tiere", "wetter", "reisen", "kleidung", "körper", "gefühle", "stadt", "zuhause"];
+// Jedes Wort bekommt genau ein Thema und höchstens eine Wortart.
+const THEME_TAGS = ["familie", "schule", "zuhause", "essen", "kleidung", "körper", "gesundheit", "gefühle", "freizeit", "sport", "tiere", "natur", "wetter", "stadt", "fortbewegung", "reisen", "einkaufen", "beruf", "zeit", "zahlen", "farben", "feste", "redemittel", "allgemein"];
+const GRAM_TAGS = ["nomen", "verb", "unregelmäßiges-verb", "adjektiv", "adverb", "präposition", "pronomen", "fragewort", "redewendung"];
+const BASE_TAGS = [...THEME_TAGS, ...GRAM_TAGS];
 function normTag(t) { return String(t).toLowerCase().replace(/^#+/, "").replace(/[^\p{L}\d-]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 24); }
 function tagCounts() { const n = {}; cardsL().forEach(c => (c.tags || []).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
 // Die Tag-Liste für den Auftrag: alle schon benutzten (häufigste zuerst, höchstens 80), dann die Grundliste.
@@ -50,10 +53,11 @@ Regeln:
 - Übernimm den Beispielsatz auf ${n}, wenn einer dasteht. Sonst lass das Feld leer, aber behalte das Semikolon: ${n.toLowerCase()} ; deutsch ; ; #tag
 - Lass Lautschrift und Seitenzahlen weg. Mehrere deutsche Bedeutungen trennst du mit Komma.
 - Wenn die Vorlage eine Überschrift wie „Unit 2“ hat, schreib sie in die erste Zeile mit # und Leerzeichen davor: # Unit 2
-- Tags: Gib jeder Vokabel 1 bis 3 Tags. Ein Tag ist ein kleingeschriebenes deutsches Wort mit # davor, ohne Leerzeichen, z. B. #tiere oder #verb.
-- Wenn in der Vorlage schon Tags, Kategorien oder Themen stehen, übernimm sie als Tags.
-- Sonst wähle die Tags selbst. Nimm zuerst Tags aus dieser Liste: ${tagListForPrompt().map(t => "#" + t).join(" ")}
-- Erfinde nur dann einen neuen Tag, wenn keiner aus der Liste passt. Neue Tags sind allgemein (Thema oder Wortart), nicht das Wort selbst.
+- Tags: Ein Tag ist ein kleingeschriebenes deutsches Wort mit # davor, ohne Leerzeichen. Jede Vokabel bekommt genau einen Themen-Tag und, wenn es passt, einen Wortart-Tag, z. B. #tiere #nomen.
+- Themen-Tags: ${[...new Set([...tagListForPrompt().filter(t => !GRAM_TAGS.includes(t)), ...THEME_TAGS])].map(t => "#" + t).join(" ")}
+- Wortart-Tags: ${GRAM_TAGS.map(t => "#" + t).join(" ")}
+- Wenn in der Vorlage schon Themen oder Kategorien stehen, nimm den passenden Themen-Tag dafür.
+- Passt kein Thema, nimm #allgemein. Erfinde keine neuen Tags.
 Gib nur die Liste als Codeblock aus, ohne weiteren Text.`;
 }
 
