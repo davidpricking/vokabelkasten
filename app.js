@@ -485,7 +485,7 @@ function renderHomeView() {
       const th = ts.filter(t => !GRAM_TAGS.includes(t)), gr = ts.filter(t => GRAM_TAGS.includes(t));
       return ts.length ? `<details class="panel"><summary><b>Nach Thema üben</b></summary>
       ${th.length ? chips(th) : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
-      <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Die Fächer bleiben dabei unverändert.</p></details>` : ""; })()}
+      <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Was du falsch hast, rutscht zwei Fächer zurück.</p></details>` : ""; })()}
     <details class="panel">
       <summary><b>So wirst du abgefragt</b></summary>
       <h3>Richtung</h3>
@@ -808,8 +808,9 @@ function answered(card, result, sol, dir, typed) {
   $$("#answerArea button, #answerArea input").forEach(x => x.disabled = true);
   const firstTime = !(card.id in R.first), from = card.level;
   const dl = dayLog(); dl.ans++; if (result !== "bad") dl.right++;
-  if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); }
-  const to = card.level, moved = firstTime && !R.practice;
+  if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); else if (result === "bad" && card.level > 0) grade(card, "bad"); }
+  // Beim freien Üben ändern nur falsche Antworten die Fächer: Vergessenes kommt bald wieder.
+  const to = card.level, moved = firstTime && !R.practice, slipped = firstTime && R.practice && to < from;
   R.queue.shift();
   if (result === "bad") R.queue.splice(Math.min(R.queue.length, 3), 0, card.id);   // kommt in dieser Runde gleich noch einmal
   else R.done.add(card.id);
@@ -817,7 +818,7 @@ function answered(card, result, sol, dir, typed) {
   else if (firstTime) { R.combo++; R.best = Math.max(R.best, R.combo); }
   if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
   sound(result === "bad" ? "bad" : "good");
-  const where = !moved ? "" : from === 0 ? "Ab in Fach 1, kommt morgen wieder."
+  const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : !moved ? "" : from === 0 ? "Ab in Fach 1, kommt morgen wieder."
     : to > from ? `Weiter in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : to < from ? `Zurück in Fach ${to}, kommt morgen wieder.` : `Bleibt in Fach ${to}, kommt morgen wieder.`;
   const msg = result === "good" ? ["good", pick(["Richtig!", "Super!", "Genau!", "Stark!"]), ""]
     : result === "near" ? ["near", "Fast!", `Achte auf die Schreibweise: <span class="sol">${typed ? markDiff(typed, sol) : esc(sol)}</span>`]
@@ -884,7 +885,7 @@ function renderSummary() {
     <p class="eyebrow">${what}</p>
     <div class="score">${g}/${n}</div>
     <p>${g === n ? (S.name ? `Stark, ${esc(S.name)}! Alles beim ersten Versuch gewusst.` : "Alles beim ersten Versuch gewusst.") : "beim ersten Versuch gewusst. Die anderen hast du am Ende auch geschafft."}</p>
-    ${R.practice ? '<p class="muted small">Beim freien Üben und beim Testtraining bleiben die Fächer unverändert.</p>'
+    ${R.practice ? '<p class="muted small">Beim freien Üben und beim Testtraining ändern nur falsche Antworten die Fächer: Das Wort rutscht zwei Fächer zurück und kommt morgen wieder.</p>'
       : `<div class="moves">${R.up ? `<span class="up">${R.up} ${R.up === 1 ? "Karte" : "Karten"} nach hinten</span>` : ""}${R.down ? `<span class="down">${R.down} zurück</span>` : ""}</div>
          ${kastenHtml(levelCounts())}`}
     ${gl.map(x => `<p class="small">${x}</p>`).join("")}
