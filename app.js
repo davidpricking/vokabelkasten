@@ -32,11 +32,29 @@ function flagOf(l) {
   return p ? p.flag : `<span class="abbr">${esc(l.name.slice(0, 2))}</span>`;
 }
 
+// Tags: kleine Stichwörter wie #tiere oder #verb, nach denen man gezielt üben kann.
+const BASE_TAGS = ["nomen", "verb", "adjektiv", "redewendung", "frage", "zahl", "zeit", "familie", "schule", "freizeit", "essen", "tiere", "wetter", "reisen", "kleidung", "körper", "gefühle", "stadt", "zuhause"];
+function normTag(t) { return String(t).toLowerCase().replace(/^#+/, "").replace(/[^\p{L}\d-]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 24); }
+function tagCounts() { const n = {}; cardsL().forEach(c => (c.tags || []).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
+// Die Tag-Liste für den Auftrag: alle schon benutzten (häufigste zuerst, höchstens 80), dann die Grundliste.
+function tagListForPrompt() {
+  const n = tagCounts(), used = Object.keys(n).sort((a, b) => n[b] - n[a]).slice(0, 80);
+  return [...new Set([...used, ...BASE_TAGS])];
+}
 function photoPrompt() {
   const n = L().name;
-  return `Auf dem Foto ist eine Vokabelseite aus einem ${n}-Schulbuch. Schreib alle Vokabeln als Liste, eine Vokabel pro Zeile, in diesem Format:
-${n.toLowerCase()} ; deutsch ; Beispielsatz
-Übernimm den Beispielsatz auf ${n}, wenn auf der Seite einer steht, sonst lass ihn weg. Lass Lautschrift und Seitenzahlen weg. Mehrere deutsche Bedeutungen trennst du mit Komma. Wenn die Seite eine Überschrift wie „Unit 2“ hat, schreib sie in die erste Zeile mit # davor. Gib nur die Liste als Codeblock aus, ohne weiteren Text.`;
+  return `Im Anhang ist eine Vokabelliste aus einem ${n}-Schulbuch (Foto, PDF oder Datei). Schreib alle Vokabeln als Liste, eine Vokabel pro Zeile, in diesem Format:
+${n.toLowerCase()} ; deutsch ; Beispielsatz ; #tag #tag
+
+Regeln:
+- Übernimm den Beispielsatz auf ${n}, wenn einer dasteht. Sonst lass das Feld leer, aber behalte das Semikolon: ${n.toLowerCase()} ; deutsch ; ; #tag
+- Lass Lautschrift und Seitenzahlen weg. Mehrere deutsche Bedeutungen trennst du mit Komma.
+- Wenn die Vorlage eine Überschrift wie „Unit 2“ hat, schreib sie in die erste Zeile mit # und Leerzeichen davor: # Unit 2
+- Tags: Gib jeder Vokabel 1 bis 3 Tags. Ein Tag ist ein kleingeschriebenes deutsches Wort mit # davor, ohne Leerzeichen, z. B. #tiere oder #verb.
+- Wenn in der Vorlage schon Tags, Kategorien oder Themen stehen, übernimm sie als Tags.
+- Sonst wähle die Tags selbst. Nimm zuerst Tags aus dieser Liste: ${tagListForPrompt().map(t => "#" + t).join(" ")}
+- Erfinde nur dann einen neuen Tag, wenn keiner aus der Liste passt. Neue Tags sind allgemein (Thema oder Wortart), nicht das Wort selbst.
+Gib nur die Liste als Codeblock aus, ohne weiteren Text.`;
 }
 
 const BOTS = {
@@ -217,7 +235,9 @@ async function packCode(obj) {
   }
   return "j" + b64u(bytes);
 }
-function packRows(cards) { return cards.map(c => { const r = [c.en, c.de]; if (c.ex || c.mn || c.dx) r.push(c.ex || ""); if (c.mn || c.dx) r.push(c.mn || 0); if (c.dx) r.push(c.dx); return r; }); }
+function packRows(cards) {
+  return cards.map(c => { const r = [c.en, c.de, c.ex || "", c.mn || 0, c.dx || 0, c.tags && c.tags.length ? c.tags : 0]; while (r.length > 2 && !r[r.length - 1]) r.pop(); return r; });
+}
 // Fallen: falsche, aber leicht verwechselbare Antworten für die Auswahl, {en: [...], de: [...]}.
 function dxList(d) {
   if (!d || typeof d !== "object") return undefined;
@@ -260,7 +280,7 @@ async function decodePack(code) {
   let bytes = unb64u(code.slice(1));
   if (code[0] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]) }));
+  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined }));
   const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
     .filter(u => u.rows.length);
   return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, paused: (obj.p || []).map(String) };
@@ -456,6 +476,10 @@ function renderHomeView() {
       }).join("") : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
       <p class="muted small">Pausierte Units liefern keine neuen Wörter. Schalte sie frei, wenn das Thema in der Schule drankommt.</p>
     </section>
+    ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3).sort((a, b) => n[b] - n[a]).slice(0, 24);
+      return ts.length ? `<details class="panel"><summary><b>Nach Thema üben</b></summary>
+      <div class="chips">${ts.map(t => `<button class="chip" data-tag="${esc(t)}">#${esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>
+      <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Die Fächer bleiben dabei unverändert.</p></details>` : ""; })()}
     <details class="panel">
       <summary><b>So wirst du abgefragt</b></summary>
       <h3>Richtung</h3>
@@ -477,6 +501,7 @@ function renderHomeView() {
   $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); keepScroll(renderHome); });
   $$("[data-input]").forEach(b => b.onclick = () => { S.input = b.dataset.input; save(); keepScroll(renderHome); });
   $$("[data-test]").forEach(b => b.onclick = () => startRound(b.dataset.test));
+  $$("[data-tag]").forEach(b => b.onclick = () => startRound(TAG + b.dataset.tag));
   $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   $$("[data-share]").forEach(b => b.onclick = () => renderShare(b.dataset.share));
   $$("[data-pause]").forEach(b => b.onclick = () => { lang.paused = [...paused, b.dataset.pause]; save(); keepScroll(renderHome); });
@@ -494,12 +519,16 @@ function keepScroll(f) { const y = scrollY; keepScroll.on = true; try { f(); } f
 
 // ---------- Runde ----------
 let R = null;
-const FREE = "\u0000free";
+const FREE = "\u0000free", TAG = "\u0000tag:";
 function startRound(unit) {
   let pick;
   if (unit === FREE) {
     const all = cardsL().filter(c => c.level || !isPaused(c));
     pick = shuffle([...all]).sort((a, b) => a.level - b.level).slice(0, Math.max(ROUND_SIZE, Math.ceil(all.length / 3)));
+    pick = shuffle(pick).slice(0, ROUND_SIZE);
+  } else if (unit && unit.startsWith(TAG)) {
+    const t = unit.slice(TAG.length);
+    pick = shuffle(cardsL().filter(c => (c.tags || []).includes(t) && (c.level || !isPaused(c)))).sort((a, b) => a.level - b.level).slice(0, 20);
     pick = shuffle(pick).slice(0, ROUND_SIZE);
   } else if (unit) {
     pick = shuffle(cardsL().filter(c => c.unit === unit)).slice(0, 20);
@@ -542,7 +571,7 @@ function renderCard() {
   const fresh = !R.done.has(card.id) && !(card.id in R.first);
   const useChoice = card.level <= 1 && fresh && pool.length >= 3 && !R.practice;
   const mode = useChoice ? "choice" : S.input === "keyboard" ? "keyboard" : dir === "de-en" ? "tiles" : "speak";
-  const label = R.unit === FREE ? " · Freies Üben" : R.practice ? " · Testtraining" : "";
+  const label = R.unit === FREE ? " · Freies Üben" : R.unit && R.unit.startsWith(TAG) ? " · #" + esc(R.unit.slice(TAG.length)) : R.practice ? " · Testtraining" : "";
   app.replaceChildren(h(`${roundHead()}
     <div class="icard" id="icard">
       <div class="spread"><span class="eyebrow">${dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
@@ -844,7 +873,7 @@ function renderSummary() {
   const gl = Object.entries(R.gram).map(([id, ok]) => gMove(id, ok)).filter(Boolean);
   checkBadges(); save();
   const n = R.total, g = R.good, lv = levelOf(S.xp);
-  const what = R.unit === FREE ? "Übungsrunde geschafft" : R.practice ? "Testtraining geschafft" : "Runde geschafft";
+  const what = R.unit === FREE || (R.unit && R.unit.startsWith(TAG)) ? "Übungsrunde geschafft" : R.practice ? "Testtraining geschafft" : "Runde geschafft";
   app.replaceChildren(h(`<div class="done">
     <p class="eyebrow">${what}</p>
     <div class="score">${g}/${n}</div>
@@ -1040,7 +1069,13 @@ function parseList(text) {
     line = line.replace(/^(?:[-*•]|\d+[.)])\s+/, "");
     let parts = line.split(/\s*;\s*/);
     if (parts.length < 2) parts = line.split(/\s*(?:\t|\s=\s|\s[–—-]\s|\|)\s*/);
-    if (parts.length >= 2 && parts[0] && parts[1]) out.push({ en: parts[0].trim(), de: parts[1].trim(), ex: (parts[2] || "").trim() });
+    if (parts.length < 2 || !parts[0] || !parts[1]) continue;
+    // #tags dürfen in jedem Feld ab dem zweiten stehen, meist im letzten
+    const tags = [];
+    const rest = parts.slice(1).map(f => f.replace(/(^|\s)#([\p{L}\d_-]+)/gu, (m, a, t) => { const k = normTag(t); if (k && !tags.includes(k)) tags.push(k); return a; }).trim());
+    const r = { en: parts[0].trim(), de: rest[0], ex: rest.slice(1).filter(Boolean).join("; ") };
+    if (tags.length) r.tags = tags.slice(0, 5);
+    if (r.de) out.push(r);
   }
   return { name, rows: out };
 }
@@ -1054,16 +1089,18 @@ function renderImport(prefill) {
     <label class="f">Name der Unit<input class="input" id="unitName" placeholder="z. B. Unit 2" value="${esc(importName)}"></label>
     ${prefill ? "" : `
     <section class="panel">
-      <h3>1. Foto der Vokabelseite an deinen KI-Chat</h3>
-      <p class="muted small">Die App schickt nichts selbst weg. Du entscheidest, an welchen Chat das Foto geht.</p>
+      <h3>1. Foto oder Datei an deinen KI-Chat</h3>
+      <p class="muted small">Die App schickt nichts selbst weg. Du entscheidest, an welchen Chat das Foto oder die Datei geht. Der Auftrag bittet den Chat auch um Tags wie #tiere oder #verb.</p>
       <label class="btn wide" for="photo">${ICON.camera}<span id="photoLabel">Foto aufnehmen oder wählen</span></label>
       <input type="file" id="photo" accept="image/*" capture="environment" hidden>
-      <button class="btn ghost wide" id="sharePhoto" hidden>${ICON.share}Foto und Auftrag an KI-Chat senden</button>
+      <label class="btn ghost wide" for="srcFile"><span id="fileLabel">Datei wählen (PDF, Word, Excel …)</span></label>
+      <input type="file" id="srcFile" accept="image/*,application/pdf,.pdf,.doc,.docx,.odt,.xls,.xlsx,.ods,.csv,.txt" hidden>
+      <button class="btn ghost wide" id="sharePhoto" hidden>${ICON.share}Datei und Auftrag an KI-Chat senden</button>
       <p class="muted small" id="shareHint" hidden>Im Teilen-Menü wählst du ChatGPT, Claude oder Gemini. Der Auftrag liegt außerdem in der Zwischenablage, falls die Chat-App nur das Bild übernimmt.</p>
       <details>
         <summary class="small" style="cursor:pointer">Ohne Teilen-Menü: Chat selbst öffnen</summary>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
-          <p class="muted small">Öffne den Chat mit dem Auftrag und häng dort das Foto an.</p>
+          <p class="muted small">Öffne den Chat mit dem Auftrag und häng dort das Foto oder die Datei an.</p>
           <div class="row">${Object.entries(BOTS).map(([k, b]) => `<a class="btn ghost small" data-bot="${k}" href="${esc(b.url(photoPrompt()))}" target="_blank" rel="noopener">${b.name}</a>`).join("")}</div>
           <div class="prompt" id="promptText">${esc(photoPrompt())}</div>
           <button class="btn ghost small" id="copy">Auftrag kopieren</button>
@@ -1072,10 +1109,12 @@ function renderImport(prefill) {
     </section>
     <section class="panel">
       <h3>2. Antwort hier einfügen</h3>
-      <p class="muted small">Kopiere die Liste aus dem Chat. Du kannst auch selbst tippen: eine Vokabel pro Zeile, <b>${esc(L().name.toLowerCase())} ; deutsch</b>.</p>
+      <p class="muted small">Kopiere die Liste aus dem Chat oder lade die Datei, die der Chat dir gibt. Du kannst auch selbst tippen: eine Vokabel pro Zeile, <b>${esc(L().name.toLowerCase())} ; deutsch ; Beispielsatz ; #tag</b>.</p>
       <textarea id="paste" placeholder="${isEn() ? "mother ; Mutter&#10;brother ; Bruder ; I have got a brother." : "Wort ; deutsche Bedeutung"}"></textarea>
       <div class="row">
         ${navigator.clipboard && navigator.clipboard.readText ? '<button class="btn ghost small" id="fromClip">Aus Zwischenablage einfügen</button>' : ""}
+        <label class="btn ghost small" for="answerFile">Antwort-Datei laden</label>
+        <input type="file" id="answerFile" accept=".txt,.csv,.tsv,.md,text/*" hidden>
         <button class="btn small" id="parse">Liste prüfen</button>
       </div>
     </section>`}
@@ -1088,13 +1127,14 @@ function renderImport(prefill) {
   $("#back").onclick = () => { rows = []; photo = null; importName = ""; renderHome(); };
   $("#unitName").oninput = e => importName = e.target.value;
   if (!prefill) {
-    $("#photo").onchange = e => {
+    $("#photo").onchange = $("#srcFile").onchange = e => {
       photo = e.target.files[0] || null; e.target.value = "";
       if (!photo) return;
       $("#photoLabel").textContent = "Anderes Foto wählen";
+      $("#fileLabel").textContent = photo.type.startsWith("image/") ? "Datei wählen (PDF, Word, Excel …)" : "Gewählt: " + photo.name;
       const can = shareFiles && navigator.canShare({ files: [photo] });
       $("#sharePhoto").hidden = !can; $("#shareHint").hidden = !can;
-      if (!can) { $("details").open = true; toast("Teilen geht hier nicht. Öffne den Chat und häng das Foto an."); }
+      if (!can) { $("details").open = true; toast("Teilen geht hier nicht. Öffne den Chat und häng die Datei an."); }
     };
     $("#sharePhoto").onclick = async () => {
       if (!photo) return;
@@ -1112,6 +1152,7 @@ function renderImport(prefill) {
       catch (e) { toast("Kein Zugriff auf die Zwischenablage. Füge den Text mit langem Tippen ein."); }
     };
     $("#parse").onclick = () => addParsed($("#paste").value);
+    $("#answerFile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const t = await f.text(); $("#paste").value = t; addParsed(t); };
   }
   $("#save").onclick = () => {
     const unit = $("#unitName").value.trim() || "Neue Unit";
@@ -1130,11 +1171,12 @@ function addCards(unit, list) {
   let added = 0;
   list.forEach(r => {
     const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
-    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); } return; }
+    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; } return; }
     existing.set(k, null);
     const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
     if (r.mn) c.mn = r.mn;
     if (r.dx) c.dx = r.dx;
+    if (r.tags && r.tags.length) c.tags = r.tags;
     S.cards.push(c); added++;
   });
   dayLog().added += added;
@@ -1185,8 +1227,12 @@ function renderReview() {
   box.replaceChildren(h(`<div class="rrow small muted"><span>${esc(L().name)}</span><span>Deutsch</span><span></span></div>` +
     rows.map((r, i) => `<div class="rrow"><input class="input" data-k="en" data-i="${i}" value="${esc(r.en)}" aria-label="${esc(L().name)}">
       <input class="input" data-k="de" data-i="${i}" value="${esc(r.de)}" aria-label="Deutsch">
-      <button data-rm="${i}" aria-label="Zeile entfernen">×</button></div>`).join("")));
-  $$("input", box).forEach(inp => inp.oninput = () => { rows[+inp.dataset.i][inp.dataset.k] = inp.value; });
+      <button data-rm="${i}" aria-label="Zeile entfernen">×</button>
+      <input class="input rtags" data-k="tags" data-i="${i}" value="${esc((r.tags || []).map(t => "#" + t).join(" "))}" placeholder="#tags" aria-label="Tags"></div>`).join("")));
+  $$("input", box).forEach(inp => inp.oninput = () => {
+    const r = rows[+inp.dataset.i];
+    if (inp.dataset.k === "tags") r.tags = inp.value.split(/[\s,]+/).map(normTag).filter(Boolean).slice(0, 5); else r[inp.dataset.k] = inp.value;
+  });
   $$("[data-rm]", box).forEach(b => b.onclick = () => { rows.splice(+b.dataset.rm, 1); renderReview(); });
 }
 
