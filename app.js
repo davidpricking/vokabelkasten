@@ -47,7 +47,7 @@ const BOTS = {
 function today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
 function defaults() {
   return {
-    name: "", onboarded: false, langs: [], cur: null, cards: [], log: {},
+    name: "", onboarded: false, langs: [], cur: null, cards: [], log: {}, gram: {},
     streak: 0, lastDay: 0, newPerDay: 10, aiHelp: false, bot: "chatgpt", speechMode: "say"
   };
 }
@@ -129,13 +129,13 @@ function grade(card, result) {
 
 // ---------- Übungstagebuch: pro Tag Übungszeit, Antworten und neue Wörter ----------
 function dayKey(t = Date.now()) { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
-function dayLog(k = dayKey()) { return S.log[k] || (S.log[k] = { sec: 0, ans: 0, right: 0, learned: 0, added: 0 }); }
-function practiced(k) { const d = S.log[k]; return !!d && (d.ans > 0 || d.sec >= 30); }
-// Zählt aktive Zeit in einer Runde; Pausen über 60 Sekunden zählen nicht mit.
+function dayLog(k = dayKey()) { return S.log[k] || (S.log[k] = { sec: 0, ans: 0, right: 0, learned: 0, added: 0, gram: 0 }); }
+function practiced(k) { const d = S.log[k]; return !!d && (d.ans > 0 || d.gram > 0 || d.sec >= 30); }
+// Zählt aktive Zeit in einer Runde (Vokabeln oder Grammatik); Pausen über 60 Sekunden zählen nicht mit.
 function tick() {
-  const now = Date.now();
-  if (R && R.last) dayLog().sec += Math.min(now - R.last, 60000) / 1000;
-  if (R) R.last = now;
+  const run = R || G, now = Date.now();
+  if (run && run.last) dayLog().sec += Math.min(now - run.last, 60000) / 1000;
+  if (run) run.last = now;
 }
 function shiftDay(k, n) { const [y, m, d] = k.split("-").map(Number); return dayKey(new Date(y, m - 1, d + n).getTime()); }
 function liveStreak() {
@@ -317,6 +317,7 @@ function renderHomeView() {
       <button class="btn ghost wide" id="free" ${all.length ? "" : "disabled"}>Freies Üben</button>
       <p class="muted small">${due + nl ? `Eine Runde hat bis zu ${ROUND_SIZE} Wörter und dauert etwa 2 Minuten. ` : ""}Freies Üben geht jederzeit, vor allem mit den Wörtern aus den unteren Fächern. Es wirft dich nie zurück.</p>
     </section>
+    ${grammarCard()}
     <section>
       <div class="spread"><h2>Dein Kasten</h2><span class="muted small">${all.length} Wörter</span></div>
       <div class="box" aria-label="Karten pro Fach">
@@ -356,6 +357,7 @@ function renderHomeView() {
   $("#settings").onclick = () => renderSettings();
   $("#cal").onclick = () => { renderCalendar(); scrollTo(0, 0); };
   $("#addLang").onclick = () => renderAddLang(false);
+  if ($("#gram")) $("#gram").onclick = () => renderGrammar();
   $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
   $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); renderHome(); });
   $$("[data-test]").forEach(b => b.onclick = () => startRound(b.dataset.test));
@@ -681,6 +683,186 @@ async function renderShare(unit) {
   $("#copyLink").onclick = async () => toast(await copyText(link) ? "Link kopiert" : "Kopieren ging nicht");
 }
 
+// ---------- Grammatik: erst erklären, dann üben ----------
+const GRAM = window.GRAMMAR || {};
+let G = null;
+function gData() { return GRAM[L().name]; }
+function gReady(t) { return !!(t.explain && t.tasks); }
+function gStore() { return S.gram[S.cur] || (S.gram[S.cur] = {}); }
+// **fett** in den Texten wird markiert; alles andere wird als Text ausgegeben.
+function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>"); }
+function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
+function grammarCard() {
+  const d = gData(); if (!d) return "";
+  const ready = d.topics.filter(gReady), st = gStore();
+  const done = ready.filter(t => st[t.id]).length;
+  return `<section class="panel gcard">
+      <div class="spread"><div><h2>Grammatik</h2><p class="muted small">${done} von ${ready.length} Themen geübt</p></div>
+        <button class="btn small" id="gram">Öffnen</button></div>
+      <p class="muted small">Jedes Thema wird erst erklärt, mit Beispielen. Danach kommen 8 kurze Aufgaben.</p>
+    </section>`;
+}
+function renderGrammar() {
+  const d = gData(), st = gStore();
+  let group = null;
+  const bands = d.bands.map(b => {
+    const ts = d.topics.filter(t => t.band === b.id);
+    const rev = (b.review || []).map(id => d.topics.find(t => t.id === id)).filter(t => t && gReady(t));
+    if (!ts.length && !rev.length) return "";
+    const head = b.group && b.group !== group ? `<h2 class="ggroup">${esc(b.group)}</h2>` : "";
+    group = b.group || null;
+    const H = b.group ? "h3" : "h2";
+    const ready = ts.filter(gReady);
+    if (!ts.length) return `${head}<section><h3>${esc(b.label)}</h3>${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}
+      <div class="gtopics">${rev.map(t => `<button class="gtopic" data-topic="${t.id}"><span><b>${esc(t.t)}</b><span class="muted small">Wiederholung · ${esc(t.de)}</span></span>
+        <span class="gstars">${st[t.id] ? gStars(st[t.id]) : "neu"}</span></button>`).join("")}</div></section>`;
+    const item = t => gReady(t)
+      ? `<button class="gtopic" data-topic="${t.id}"><span><b>${esc(t.t)}</b><span class="muted small">${esc(t.de)}${t.rez ? " · erkennen" : ""}</span></span>
+          <span class="gstars" aria-label="${st[t.id] ? `beste Runde ${Math.round(st[t.id].best * 100)} Prozent` : "noch nicht geübt"}">${st[t.id] ? gStars(st[t.id]) : "neu"}</span></button>`
+      : `<li>${esc(t.t)} <span class="muted">· ${esc(t.de)}${t.rez ? " · erkennen" : ""}${t.g8 ? " · nur G8" : ""}</span></li>`;
+    return ready.length
+      ? `${head}<section><div class="spread"><${H}>${esc(b.label)}</${H}><span class="muted small">${ready.filter(t => st[t.id]).length}/${ready.length}</span></div>
+          ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}
+          <div class="gtopics">${ready.map(item).join("")}</div></section>`
+      : `${head}<details class="panel gsoon"><summary><b>${esc(b.label)}</b> <span class="muted small">· ${ts.length} ${ts.length === 1 ? "Thema" : "Themen"}, Übungen folgen</span></summary>
+          ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}<ul>${ts.map(item).join("")}</ul></details>`;
+  }).join("");
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Grammatik ${esc(L().name)}</h2></div>
+    ${bands}
+    <p class="muted small">Grundlage: ${esc(d.source)}.</p>`));
+  $("#back").onclick = renderHome;
+  $$("[data-topic]").forEach(b => b.onclick = () => renderTopic(b.dataset.topic));
+  window.scrollTo(0, 0);
+}
+function explainHtml(t) {
+  return `<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>
+    ${t.ex && t.ex.length ? `<div class="gexamples"><p class="eyebrow">Beispiele</p>${t.ex.map(([f, de]) =>
+      `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${esc(de)}</span></span>
+        ${canHear() ? `<button class="iconbtn gsay" data-say="${esc(f.replace(/\*\*/g, ""))}" aria-label="Vorlesen">${ICON.speaker}</button>` : ""}</div>`).join("")}</div>` : ""}`;
+}
+function bindSay(root = document) { $$("[data-say]", root).forEach(b => b.onclick = () => say(b.dataset.say)); }
+function renderTopic(id) {
+  const d = gData(), t = d.topics.find(x => x.id === id), band = d.bands.find(b => b.id === t.band);
+  const r = gStore()[t.id];
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><span class="eyebrow">${esc(band.label)} · Grammatik</span></div>
+    <header><h1>${esc(t.t)}</h1><p class="muted">${esc(t.de)}</p></header>
+    <section class="panel">${explainHtml(t)}</section>
+    ${t.rez ? `<p class="muted small">Dieses Thema sollst du laut Bildungsplan vor allem erkennen. Die Aufgaben sind deshalb zum Auswählen.</p>` : ""}
+    <button class="btn wide" id="go">Üben: ${t.tasks.length} Aufgaben</button>
+    ${r ? `<p class="muted small" style="text-align:center">Beste Runde: ${Math.round(r.best * 100)} % ${gStars(r)}</p>` : ""}`));
+  $("#back").onclick = renderGrammar;
+  $("#go").onclick = () => startGrammar(t);
+  bindSay();
+  window.scrollTo(0, 0);
+}
+function startGrammar(t) {
+  G = { t, queue: shuffle(t.tasks.map((_, i) => i)), total: t.tasks.length, done: new Set(), first: {}, good: 0, last: Date.now() };
+  renderTask();
+}
+// Vergleich ohne Groß-/Kleinschreibung, Satzzeichen am Ende und mit einheitlichen Apostrophen.
+function gnorm(s) { return norm(s).replace(/[,!?.]/g, "").replace(/\s+/g, " ").trim(); }
+function renderTask() {
+  tick();
+  if (!G.queue.length) return renderGSummary();
+  const t = G.t, i = G.queue[0], task = t.tasks[i], [type, q] = task;
+  const pct = Math.round(G.done.size / G.total * 100);
+  const lang = L().code;
+  const question = type === "order" ? "Bring die Wörter in die richtige Reihenfolge."
+    : esc(q).replace(/___/g, '<span class="gapline" aria-label="Lücke">&nbsp;</span>');
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="quit" aria-label="Übung beenden">${ICON.x}</button>
+      <div class="bar"><i style="width:${pct}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${G.done.size}/${G.total}</span></div>
+    <div class="icard pop">
+      <span class="eyebrow">${esc(t.t)}</span>
+      <div class="gq">${question}</div>
+      <div id="answerArea"></div>
+      <div id="fb"></div>
+    </div>
+    <details class="panel gagain"><summary><b>Erklärung ansehen</b></summary>${explainHtml(t)}</details>`));
+  $("#quit").onclick = () => { tick(); save(); G = null; renderGrammar(); };
+  bindSay();
+  const area = $("#answerArea");
+  if (type === "pick") {
+    const right = task[2][0], opts = shuffle([...task[2]]);
+    area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}">${esc(o)}</button>`).join("")}</div>`));
+    $$(".choice", area).forEach(b => b.onclick = () => {
+      const ok = opts[+b.dataset.k] === right;
+      $$(".choice", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
+      if (!ok) b.classList.add("wrong");
+      gAnswered(ok, q.includes("___") ? q.replace("___", right) : right, task[3]);
+    });
+  } else if (type === "gap") {
+    const sols = task[2].split("|");
+    area.replaceChildren(h(`<form id="f" autocomplete="off">
+      <input class="answer" id="ans" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Lücke ausfüllen …" aria-label="Deine Antwort">
+      <button class="btn wide" type="submit" style="margin-top:12px">Prüfen</button></form>`));
+    const inp = $("#ans"); setTimeout(() => inp.focus({ preventScroll: true }), 50);
+    $("#f").onsubmit = e => {
+      e.preventDefault(); if (!inp.value.trim()) return;
+      inp.disabled = true; $("button", e.target).hidden = true;
+      const ok = sols.some(s => gnorm(s) === gnorm(inp.value));
+      gAnswered(ok, q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", sols[0]), task[3]);
+    };
+  } else {
+    const sols = q.split("|"), words = sols[0].replace(/[.!?]$/, "").split(" ");
+    if (words[0] !== "I") words[0] = words[0].charAt(0).toLowerCase() + words[0].slice(1);
+    let pool = shuffle(words.map((w, k) => ({ w, k })));
+    if (pool.map(x => x.w).join(" ") === words.join(" ")) pool.reverse();   // nie schon fertig gemischt
+    const picked = [];
+    const draw = () => {
+      area.replaceChildren(h(`<div class="oline" aria-label="Dein Satz">${picked.map((x, k) => `<button class="tile" data-back="${k}">${esc(x.w)}</button>`).join("") || '<span class="muted small">Tipp die Wörter unten an.</span>'}</div>
+        <div class="opool">${pool.map((x, k) => `<button class="tile" data-take="${k}">${esc(x.w)}</button>`).join("")}</div>
+        <button class="btn wide" id="chk" ${pool.length ? "disabled" : ""}>Prüfen</button>`));
+      $$("[data-take]", area).forEach(b => b.onclick = () => { picked.push(pool.splice(+b.dataset.take, 1)[0]); draw(); });
+      $$("[data-back]", area).forEach(b => b.onclick = () => { pool.push(picked.splice(+b.dataset.back, 1)[0]); draw(); });
+      $("#chk").onclick = () => {
+        $$(".tile, #chk", area).forEach(x => x.disabled = true);
+        const ok = sols.some(s => gnorm(s) === gnorm(picked.map(x => x.w).join(" ")));
+        gAnswered(ok, sols[0], task[2]);
+      };
+    };
+    draw();
+  }
+}
+function gAnswered(ok, full, why) {
+  tick();
+  const i = G.queue.shift(), firstTime = !(i in G.first);
+  dayLog().gram++;
+  if (firstTime) { G.first[i] = ok; if (ok) G.good++; }
+  if (ok) G.done.add(i); else G.queue.splice(Math.min(G.queue.length, 3), 0, i);
+  const say1 = canHear() ? `<button class="speak" id="say2">${ICON.speaker}Anhören</button>` : "";
+  $("#fb").replaceChildren(h(ok
+    ? `<div class="feedback good"><strong>${pick(["Richtig!", "Super!", "Genau!", "Stark!"])}</strong><span class="sol">${esc(full)}</span><div class="row">${say1}</div></div>`
+    : `<div class="feedback bad"><strong>Noch nicht.</strong><span class="fbtext">Richtig ist: <span class="sol">${esc(full)}</span>
+        ${why ? `<span class="small">${esc(why)}</span>` : ""}<span class="small">Die Aufgabe kommt gleich noch einmal.</span></span><div class="row">${say1}</div></div>`));
+  $("#fb").append(h(`<button class="btn wide" id="next" style="margin-top:12px">Weiter</button>`));
+  if ($("#say2")) $("#say2").onclick = () => say(full);
+  save();
+  const nx = $("#next"); nx.focus({ preventScroll: true }); nx.onclick = renderTask;
+}
+function renderGSummary() {
+  tick();
+  const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id];
+  st[t.id] = { best: Math.max(old ? old.best : 0, g / n), last: dayKey(), n: (old ? old.n : 0) + 1 };
+  save();
+  const d = gData(), ready = d.topics.filter(gReady), next = ready[ready.indexOf(t) + 1];
+  app.replaceChildren(h(`<div class="done">
+    <p class="eyebrow">${esc(t.t)} geschafft</p>
+    <div class="score">${g}/${n}</div>
+    <p>${g === n ? (S.name ? `Stark, ${esc(S.name)}! Alles beim ersten Versuch richtig.` : "Alles beim ersten Versuch richtig.") : "beim ersten Versuch richtig. Die anderen hast du am Ende auch geschafft."}</p>
+    <p class="gstars big" aria-label="Sterne">${gStars(st[t.id])}</p>
+    <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
+    <div class="row" style="justify-content:center"><button class="btn" id="again">Nochmal</button>
+      ${next ? `<button class="btn ghost" id="next">Nächstes Thema</button>` : ""}<button class="btn ghost" id="list">Übersicht</button></div>
+  </div>`));
+  $("#again").onclick = () => startGrammar(t);
+  if (next) $("#next").onclick = () => { G = null; renderTopic(next.id); };
+  $("#list").onclick = () => { G = null; renderGrammar(); };
+  $("#toCal").onclick = () => { G = null; renderCalendar(); scrollTo(0, 0); };
+}
+
 // ---------- Übungskalender ----------
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 let calMonth = null, calSel = null;
@@ -703,7 +885,7 @@ function renderCalendar() {
   }
   const ws = weekStart(tk), weekSec = sumDays(ws, 7, "sec");
   const weekDays = [...Array(7)].filter((_, i) => practiced(shiftDay(ws, i))).length;
-  const sel = S.log[calSel] || { sec: 0, ans: 0, right: 0, learned: 0, added: 0 };
+  const sel = S.log[calSel] || { sec: 0, ans: 0, right: 0, learned: 0, added: 0, gram: 0 };
   const [sy, sm, sd] = calSel.split("-").map(Number);
   const selDate = new Date(sy, sm - 1, sd).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
   const weeks = [...Array(6)].map((_, i) => { const st = shiftDay(ws, -7 * i); return { st, sec: sumDays(st, 7, "sec"), added: sumDays(st, 7, "added") }; });
@@ -727,12 +909,13 @@ function renderCalendar() {
     </section>
     <section class="panel">
       <h3>${selDate}</h3>
-      ${sel.ans || sel.sec || sel.added ? `<dl class="facts">
+      ${sel.ans || sel.sec || sel.added || sel.gram ? `<dl class="facts">
         <div><dt>Geübt</dt><dd>${fmtMin(sel.sec)}</dd></div>
-        <div><dt>Abgefragt</dt><dd>${sel.ans} ${sel.ans === 1 ? "Wort" : "Wörter"}</dd></div>
-        <div><dt>Richtig</dt><dd>${sel.ans ? Math.round(sel.right / sel.ans * 100) : 0} %</dd></div>
+        ${sel.ans || !sel.gram ? `<div><dt>Abgefragt</dt><dd>${sel.ans} ${sel.ans === 1 ? "Wort" : "Wörter"}</dd></div>
+        <div><dt>Richtig</dt><dd>${sel.ans ? Math.round(sel.right / sel.ans * 100) : 0} %</dd></div>` : ""}
         <div><dt>Zum ersten Mal geübt</dt><dd>${sel.learned}</dd></div>
         <div><dt>Neu hinzugefügt</dt><dd>${sel.added}</dd></div>
+        ${sel.gram ? `<div><dt>Grammatik</dt><dd>${sel.gram} ${sel.gram === 1 ? "Aufgabe" : "Aufgaben"}</dd></div>` : ""}
       </dl>` : `<p class="muted small">An diesem Tag wurde nicht geübt.</p>`}
     </section>
     <section class="panel">
@@ -811,7 +994,7 @@ function renderSettings(msg) {
   $$("[data-ldel]").forEach(b => b.onclick = () => { confirmLangDelete = b.dataset.ldel; renderSettings(); });
   $$("[data-ldel-no]").forEach(b => b.onclick = () => { confirmLangDelete = null; renderSettings(); });
   $$("[data-ldel-yes]").forEach(b => b.onclick = () => {
-    const id = b.dataset.ldelYes; S.langs = S.langs.filter(l => l.id !== id); S.cards = S.cards.filter(c => c.lang !== id);
+    const id = b.dataset.ldelYes; S.langs = S.langs.filter(l => l.id !== id); S.cards = S.cards.filter(c => c.lang !== id); delete S.gram[id];
     if (S.cur === id) S.cur = S.langs[0] ? S.langs[0].id : null;
     confirmLangDelete = null; save(); renderSettings("Sprache gelöscht.");
   });
