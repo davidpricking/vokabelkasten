@@ -970,7 +970,7 @@ function confetti() {
   const c = document.createElement("canvas"), dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight;
   c.className = "confetti"; c.width = W * dpr; c.height = H * dpr; c.setAttribute("aria-hidden", "true"); document.body.append(c);
   const x = c.getContext("2d"); x.scale(dpr, dpr);
-  const cols = ["#0E7C5F", "#FFD43B", "#F08A24", "#E8574A", "#3C8DDE", "#9B5DE5"];
+  const cols = ["#1F4E5F", "#FFD43B", "#F08A24", "#E8574A", "#3C8DDE", "#9B5DE5"];
   const ps = [...Array(150)].map(() => ({ x: W / 2 + (Math.random() - .5) * 80, y: H * .35, vx: (Math.random() - .5) * 15, vy: -Math.random() * 13 - 4,
     r: Math.random() * 6, vr: (Math.random() - .5) * .4, w: 6 + Math.random() * 6, h: 4 + Math.random() * 4, c: pick(cols) }));
   let f = 0;
