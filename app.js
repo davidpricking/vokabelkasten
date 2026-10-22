@@ -237,9 +237,16 @@ function lookAlike(a, b) {
 function choiceOpts(card, sol, dir, pool) {
   const side = dir === "de-en" ? "en" : "de", taken = new Set([norm(sol)]), out = [];
   const add = t => { const k = norm(t); if (t && !taken.has(k)) { taken.add(k); out.push(t); } };
-  shuffle([...(card.dx && card.dx[side] || [])]).forEach(add);
-  const near = pool.map(c => c[side]).filter(t => !taken.has(norm(t))).map(t => [t, lookAlike(t, sol) + Math.random() * 1.5]).sort((a, b) => b[1] - a[1]);
-  near.slice(0, 8).forEach(([t]) => out.length < 3 && add(t));
+  // Jedes Mal anders gemischt: ein bis drei eigene Fallen, der Rest zufällig aus den ähnlichsten Wörtern im Kasten.
+  const own = shuffle([...(card.dx && card.dx[side] || [])]), mine = own.length ? 1 + Math.floor(Math.random() * Math.min(3, own.length)) : 0;
+  own.slice(0, mine).forEach(add);
+  // Wörter aus dem Kasten, die dasselbe bedeuten oder gleich geschrieben sind, wären auch richtig: die fallen weg.
+  const bare = t => t.toLowerCase().replace(/[^a-zäöüß]/g, ""), qs = side === "en" ? "de" : "en";
+  const parts = t => new Set(t.split(/[,/;]/).map(bare).filter(Boolean)), mean = parts(card[qs]), sb = bare(sol);
+  const same = c => { const b = bare(c[side]); return [...parts(c[qs])].some(x => mean.has(x)) || (b.length > 2 && (b.includes(sb) || sb.includes(b))); };
+  const near = shuffle(pool.filter(c => !same(c)).map(c => c[side]).filter(t => !taken.has(norm(t))).map(t => [t, lookAlike(t, sol)]).sort((a, b) => b[1] - a[1]).slice(0, 12));
+  near.forEach(([t]) => out.length < 3 && add(t));
+  own.slice(mine).forEach(t => out.length < 3 && add(t));
   return shuffle([sol, ...out.slice(0, 3)]);
 }
 // Eselsbrücken: [art, bild, text, verwechselt mit]; art ist "s" (Schreibweise), "b" (Bedeutung) oder "v" (Verwechslung).
