@@ -439,7 +439,7 @@ function renderHomeView() {
     <section class="hero">
       <div class="herotop">${ringHtml(goalCount(), S.goal)}
         <div><b class="herotitle">${todo ? "Heute dran" : all.length ? "Heute alles geschafft!" : "Los geht's!"}</b>
-          <span class="muted small">${todo ? parts.join(" · ") : all.length ? "Freies Üben geht immer und wirft dich nie zurück." : "Hol dir zuerst Vokabeln in deinen Kasten."}</span></div></div>
+          <span class="muted small">${todo ? parts.join(" · ") : all.length ? "Freies Üben geht immer. Was du dabei kannst, wartet wieder von vorn." : "Hol dir zuerst Vokabeln in deinen Kasten."}</span></div></div>
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
       ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
