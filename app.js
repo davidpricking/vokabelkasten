@@ -73,7 +73,8 @@ function defaults() {
   return {
     name: "", onboarded: false, langs: [], cur: null, cards: [], log: {}, gram: {},
     streak: 0, lastDay: 0, newPerDay: 10, aiHelp: false, bot: "chatgpt", speechMode: "say",
-    goal: 20, sound: true, input: "tiles", xp: 0, badges: {}
+    goal: 20, sound: true, input: "tiles", xp: 0, badges: {},
+    stickers: {}, packQ: [], marks: 0, packDay: ""
   };
 }
 // Ältere Stände ohne Sprachen werden zu einem Kasten "Englisch".
@@ -453,6 +454,7 @@ function renderHomeView() {
       <p class="muted small">Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück. Unter jedem Fach steht, wann ein Wort daraus wieder drankommt.</p>
     </section>` : ""}
     ${grammarCard()}
+    ${albumCard()}
     <section>
       <div class="spread"><h2>Abzeichen</h2><button class="link" id="badges">Alle ${BADGES.length} ansehen</button></div>
       <div class="badgerow">${earned.length ? earned.slice(-6).map(b => `<span class="bdg" title="${esc(b[2])}">${b[1]}</span>`).join("")
@@ -502,6 +504,8 @@ function renderHomeView() {
   $("#cal").onclick = () => { renderCalendar(); scrollTo(0, 0); };
   $("#addLang").onclick = () => renderAddLang(false);
   $("#lv").onclick = $("#badges").onclick = () => renderBadges();
+  if ($("#album")) $("#album").onclick = () => renderAlbum();
+  if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
   $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
   $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); keepScroll(renderHome); });
@@ -547,7 +551,7 @@ function startRound(unit) {
   if (!unit) items.push(...grammarItems());
   if (!items.length) { toast("Noch keine Vokabeln vorhanden"); return; }
   R = { practice: !!unit, unit, queue: items, total: items.length, done: new Set(), first: {}, good: 0, last: Date.now(),
-        combo: 0, best: 0, xp: 0, up: 0, down: 0, gram: {}, timer: 0, newBadges: [] };
+        combo: 0, best: 0, xp: 0, up: 0, down: 0, sat: 0, gram: {}, timer: 0, newBadges: [] };
   renderCard();
 }
 function dirFor() { const d = L().dir; return d === "mix" ? (Math.random() < .5 ? "de-en" : "en-de") : d; }
@@ -816,6 +820,7 @@ function answered(card, result, sol, dir, typed) {
   else R.done.add(card.id);
   if (result === "bad") { R.combo = 0; card.miss = (card.miss || 0) + 1; }
   else if (firstTime) { R.combo++; R.best = Math.max(R.best, R.combo); }
+  if (moved && from < 3 && to >= 3) R.sat++;
   if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
   sound(result === "bad" ? "bad" : "good");
   const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : rested ? `Bleibt in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : !moved ? "" : from === 0 ? "Ab in Fach 1, kommt morgen wieder."
@@ -878,8 +883,9 @@ function renderSummary() {
   tick();
   R.finished = true;
   const gl = Object.entries(R.gram).map(([id, ok]) => gMove(id, ok)).filter(Boolean);
-  checkBadges(); save();
   const n = R.total, g = R.good, lv = levelOf(S.xp);
+  const earned = R.total >= 5 && !R.packed; if (earned) { R.packed = true; S.packQ.push(makePack(R)); }
+  checkBadges(); save();
   const what = R.unit === FREE || (R.unit && R.unit.startsWith(TAG)) ? "Übungsrunde geschafft" : R.practice ? "Testtraining geschafft" : "Runde geschafft";
   app.replaceChildren(h(`<div class="done">
     <p class="eyebrow">${what}</p>
@@ -889,6 +895,7 @@ function renderSummary() {
       : `<div class="moves">${R.up ? `<span class="up">${R.up} ${R.up === 1 ? "Karte" : "Karten"} nach hinten</span>` : ""}${R.down ? `<span class="down">${R.down} zurück</span>` : ""}</div>
          ${kastenHtml(levelCounts())}`}
     ${gl.map(x => `<p class="small">${x}</p>`).join("")}
+    ${earned ? `<button class="packbtn" id="openPack" type="button"><span class="pack mini" aria-hidden="true"><i></i></span><span><b>Neues Sticker-Päckchen!</b><span class="small">Antippen und aufreißen</span></span></button>` : ""}
     <div class="xpline"><b>+${R.xp} Punkte</b><span class="lvchip static"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></span></div>
     ${R.newBadges.length ? `<div class="newbadges">${R.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
@@ -898,6 +905,7 @@ function renderSummary() {
   const unit = R.practice ? R.unit : null;
   $("#again").onclick = () => startRound(unit === null && !dueCards().length && !Math.min(newLeft(), newCards().length) && !gDue().length ? FREE : unit);
   $("#home").onclick = () => { R = null; renderHome(); };
+  if ($("#openPack")) $("#openPack").onclick = () => { R = null; openPack(); };
   $("#toCal").onclick = () => { R = null; renderCalendar(); scrollTo(0, 0); };
   window.scrollTo(0, 0);
 }
@@ -1029,6 +1037,146 @@ function renderBadges() {
     <div class="badgegrid">${BADGES.map(([id, icon, name, how]) => `<div class="badge${S.badges[id] ? " got" : ""}">
       <span aria-hidden="true">${icon}</span><b>${esc(name)}</b><span class="muted small">${esc(how)}</span></div>`).join("")}</div>`));
   $("#back").onclick = renderHome;
+  window.scrollTo(0, 0);
+}
+
+// ---------- Sticker-Album: Nach jeder Runde ein Überraschungs-Päckchen ----------
+// [id, englisch, deutsch, Bild, Seltenheit: 0 normal, 1 selten, 2 legendär]
+const ALBUM = [
+  { name: "London", bg: "#E8574A,#B3261E", st: [
+    ["bus", "double-decker bus", "Doppeldeckerbus", "🚌", 0], ["cab", "black cab", "Londoner Taxi", "🚕", 0], ["phone", "phone box", "Telefonzelle", "☎️", 0],
+    ["tube", "the Tube", "die Londoner U-Bahn", "🚇", 0], ["brolly", "umbrella", "Regenschirm", "☂️", 0], ["post", "postbox", "Briefkasten", "📮", 0],
+    ["ben", "Big Ben", "Big Ben", "🕰️", 1], ["bridge", "Tower Bridge", "Tower Bridge", "🌉", 1], ["eye", "London Eye", "Riesenrad London Eye", "🎡", 1],
+    ["crown", "the Crown Jewels", "die Kronjuwelen", "👑", 2]] },
+  { name: "Camden", bg: "#9B5DE5,#5B2A86", st: [
+    ["market", "market stall", "Marktstand", "🛍️", 0], ["guitar", "guitar", "Gitarre", "🎸", 0], ["record", "record", "Schallplatte", "💿", 0],
+    ["boat", "canal boat", "Kanalboot", "🛶", 0], ["art", "street art", "Straßenkunst", "🎨", 0], ["shades", "sunglasses", "Sonnenbrille", "🕶️", 0],
+    ["punk", "punk", "Punk", "🧑‍🎤", 1], ["skate", "skateboard", "Skateboard", "🛹", 1], ["drum", "drum", "Trommel", "🥁", 1],
+    ["mic", "golden microphone", "goldenes Mikrofon", "🎤", 2]] },
+  { name: "Food", bg: "#F08A24,#B85A0E", st: [
+    ["chips", "fish and chips", "Fisch mit Pommes", "🍟", 0], ["tea", "a cup of tea", "eine Tasse Tee", "🫖", 0], ["toast", "toast", "Toast", "🍞", 0],
+    ["beans", "baked beans", "weiße Bohnen in Tomatensoße", "🫘", 0], ["biscuit", "biscuit", "Keks", "🍪", 0], ["cupcake", "cupcake", "kleiner Kuchen", "🧁", 0],
+    ["breakfast", "full English breakfast", "englisches Frühstück", "🍳", 1], ["pudding", "pudding", "Pudding, Nachtisch", "🍮", 1], ["straw", "strawberries and cream", "Erdbeeren mit Sahne", "🍓", 1],
+    ["cake", "wedding cake", "Hochzeitstorte", "🎂", 2]] },
+  { name: "Animals", bg: "#3FA34D,#1E6B2B", st: [
+    ["fox", "fox", "Fuchs", "🦊", 0], ["squirrel", "squirrel", "Eichhörnchen", "🐿️", 0], ["pigeon", "pigeon", "Taube", "🐦", 0],
+    ["hedgehog", "hedgehog", "Igel", "🦔", 0], ["duck", "duck", "Ente", "🦆", 0], ["swan", "swan", "Schwan", "🦢", 0],
+    ["corgi", "corgi", "Corgi", "🐕", 1], ["owl", "owl", "Eule", "🦉", 1], ["badger", "badger", "Dachs", "🦡", 1],
+    ["unicorn", "unicorn", "Einhorn (Schottlands Wappentier)", "🦄", 2]] },
+  { name: "School", bg: "#3C8DDE,#1F4E8F", st: [
+    ["bag", "school bag", "Schultasche", "🎒", 0], ["pencil", "pencil", "Bleistift", "✏️", 0], ["book", "exercise book", "Schulheft", "📓", 0],
+    ["lunch", "lunchbox", "Brotdose", "🍱", 0], ["bell", "school bell", "Schulglocke", "🔔", 0], ["ruler", "ruler", "Lineal", "📏", 0],
+    ["trophy", "trophy", "Pokal", "🏆", 1], ["micro", "microscope", "Mikroskop", "🔬", 1], ["globe", "globe", "Globus", "🌍", 1],
+    ["cap", "graduation cap", "Doktorhut", "🎓", 2]] },
+  { name: "Adventures", bg: "#1F4E5F,#0E2A33", st: [
+    ["ball", "football", "Fußball", "⚽", 0], ["cricket", "cricket bat", "Kricketschläger", "🏏", 0], ["kite", "kite", "Drachen (Spielzeug)", "🪁", 0],
+    ["tennis", "tennis ball", "Tennisball", "🎾", 0], ["bike", "bike", "Fahrrad", "🚲", 0], ["tent", "tent", "Zelt", "⛺", 0],
+    ["guard", "Queen's Guard", "königlicher Wachsoldat", "💂", 1], ["castle", "castle", "Burg, Schloss", "🏰", 1], ["dragon", "dragon", "Drache (Wappentier von Wales)", "🐉", 1],
+    ["nessie", "Loch Ness Monster", "Ungeheuer von Loch Ness", "🦕", 2]] }
+];
+const STICKERS = ALBUM.flatMap((pg, pi) => pg.st.map(([id, en, de, e, r], k) => ({ id, en, de, e, r, pg: pi, no: pi * 10 + k + 1 })));
+const RAR = ["Normal", "Selten", "Legendär"];
+const MARKS_FOR_PICK = 5;
+// Wer mehr Wörter in dieser Runde nach hinten gebracht hat, bekommt eher seltene Sticker.
+// Legendäre gibt es nur, wenn ein Wort jetzt sitzt (ab Fach 3) oder das Tagesziel geschafft ist.
+function makePack(run) {
+  const up = run ? run.up : 0, sat = run ? run.sat : 0, firstToday = S.packDay !== dayKey();
+  const pLeg = sat || (run && dayLog().goalHit) ? Math.min(.3, .06 + .05 * sat) : 0, pRare = Math.min(.55, .2 + .04 * up);
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    let r = Math.random() < pLeg ? 2 : Math.random() < pRare ? 1 : 0;
+    if (i === 2 && firstToday && r === 0) r = 1;   // erstes Päckchen des Tages: mindestens ein seltener
+    const pool = STICKERS.filter(x => x.r === r), missing = pool.filter(x => !S.stickers[x.id] && !out.includes(x.id));
+    const pickFrom = missing.length && Math.random() < .7 ? missing : pool;
+    out.push(pick(pickFrom).id);
+  }
+  return out;
+}
+function albumCount() { return STICKERS.filter(x => S.stickers[x.id]).length; }
+function stickerHtml(x, opts = {}) {
+  const have = opts.show || S.stickers[x.id], pg = ALBUM[x.pg];
+  return `<span class="stk r${x.r}${have ? "" : " missing"}${opts.cls ? " " + opts.cls : ""}" style="--pg:linear-gradient(135deg,${pg.bg})" aria-label="${have ? esc(x.en) : "Sticker " + x.no + " fehlt noch"}">
+    <span class="em" aria-hidden="true">${x.e}</span>${have ? "" : `<b class="no">${x.no}</b>`}${x.r && have ? `<i class="rar" aria-hidden="true">${x.r === 2 ? "★★" : "★"}</i>` : ""}</span>`;
+}
+function albumCard() {
+  const n = albumCount(), N = STICKERS.length;
+  return `<section class="panel albumcard">
+    <div class="spread"><h2>Sticker-Album</h2><span class="muted small">${n} von ${N}</span></div>
+    <div class="bar"><i style="width:${Math.round(n / N * 100)}%"></i></div>
+    <div class="albumpeek">${STICKERS.filter(x => S.stickers[x.id]).slice(-5).map(x => stickerHtml(x, { cls: "sm" })).join("") || `<span class="muted small">Nach jeder Runde gibt es ein Päckchen mit 3 Stickern. Seltene gibt es öfter, wenn Wörter nach hinten wandern.</span>`}</div>
+    <div class="row">${S.packQ.length ? `<button class="btn" id="homePack">${S.packQ.length === 1 ? "Päckchen öffnen" : S.packQ.length + " Päckchen öffnen"}</button>` : ""}<button class="btn ghost" id="album">Album ansehen</button></div>
+  </section>`;
+}
+function openPack() {
+  const ids = S.packQ[0]; if (!ids) return renderHome();
+  app.replaceChildren(h(`<div class="packstage">
+    <p class="eyebrow">Sticker-Päckchen</p>
+    <button class="pack big" id="pk" type="button" aria-label="Päckchen aufreißen"><span class="top"></span><span class="body"><b>LONDON</b><small>3 Sticker</small></span></button>
+    <p class="muted small" id="pkHint">Tipp aufs Päckchen, um es aufzureißen.</p>
+    <div class="pcards" id="pcards" hidden></div>
+    <div class="row" id="pkDone" hidden style="justify-content:center"><button class="btn" id="toAlbum">Ins Album kleben</button><button class="btn ghost" id="pkHome">Fertig</button></div>
+  </div>`));
+  sound("tap");
+  const pk = $("#pk"); let open = false;
+  pk.onclick = () => {
+    if (open) return; open = true; pk.classList.add("tear"); sound("flip");
+    // Beim Aufreißen gehören die Sticker schon ihr, auch wenn sie nicht alle umdreht
+    const seen = new Set(Object.keys(S.stickers).filter(k => S.stickers[k]));
+    const isNew = ids.map(id => { const n = !seen.has(id); seen.add(id); return n; });
+    ids.forEach((id, i) => { S.stickers[id] = (S.stickers[id] || 0) + 1; if (!isNew[i]) S.marks++; });
+    S.packQ.shift(); S.packDay = dayKey(); save();
+    setTimeout(() => {
+      pk.hidden = true; $("#pkHint").textContent = "Dreh die Sticker um!";
+      const box = $("#pcards"); box.hidden = false;
+      box.replaceChildren(h(ids.map((id, i) => { const x = STICKERS.find(s => s.id === id);
+        return `<button class="pcard" type="button" data-i="${i}" style="animation-delay:${i * .12}s"><span class="back" aria-hidden="true">?</span>
+          <span class="front">${stickerHtml(x, { show: true })}<b>${esc(x.en)}</b><span class="small">${esc(x.de)}</span><span class="rtag r${x.r}">${RAR[x.r]}</span><span class="newtag2" hidden>Neu!</span><span class="duptag" hidden>Doppelt</span></span></button>`; }).join("")));
+      let turned = 0;
+      $$(".pcard", box).forEach(b => b.onclick = () => {
+        if (b.classList.contains("on")) return; b.classList.add("on");
+        const x = STICKERS.find(s => s.id === ids[+b.dataset.i]);
+        $(isNew[+b.dataset.i] ? ".newtag2" : ".duptag", b).hidden = false;
+        if (x.r === 2) { confetti(); sound("up"); } else sound(x.r ? "up" : "good");
+        if (++turned === ids.length) {
+          $("#pkHint").textContent = S.marks >= MARKS_FOR_PICK ? `Du hast ${S.marks} Tauschmarken: Im Album darfst du dir einen fehlenden Sticker aussuchen!` : `Doppelte werden zu Tauschmarken (${S.marks} von ${MARKS_FOR_PICK}). Für ${MARKS_FOR_PICK} darfst du dir einen fehlenden Sticker aussuchen.`;
+          $("#pkDone").hidden = false;
+          if (S.packQ.length) $("#pkHome").textContent = "Nächstes Päckchen";
+        }
+      });
+    }, 650);
+  };
+  $("#toAlbum").onclick = () => renderAlbum(ids, STICKERS.find(x => x.id === ids[0]).pg);
+  $("#pkHome").onclick = () => S.packQ.length ? openPack() : renderHome();
+  window.scrollTo(0, 0);
+}
+function renderAlbum(fresh = [], page = 0) {
+  const n = albumCount(), canPick = S.marks >= MARKS_FOR_PICK;
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Sticker-Album</h2></div>
+    <section class="hero">
+      <div class="spread"><b class="herotitle">${n} von ${STICKERS.length} Stickern</b><span class="muted small">${S.marks} Tauschmarken</span></div>
+      <div class="bar"><i style="width:${Math.round(n / STICKERS.length * 100)}%"></i></div>
+      <p class="muted small">${canPick ? `<b>Du darfst dir einen fehlenden Sticker aussuchen!</b> Tipp auf ein leeres Feld.` : `Nach jeder Runde gibt es ein Päckchen. Je mehr Wörter nach hinten wandern, desto eher sind seltene Sticker drin. Legendäre gibt es nur, wenn ein Wort richtig sitzt.`}</p>
+    </section>
+    <div class="chips">${ALBUM.map((pg, i) => `<button class="chip" data-page="${i}" aria-pressed="${i === page}">${esc(pg.name)} <span class="muted small">${pg.st.filter(x => S.stickers[x[0]]).length}/10</span></button>`).join("")}</div>
+    <section class="albumpage" style="--pg:linear-gradient(135deg,${ALBUM[page].bg})">
+      <h3>${esc(ALBUM[page].name)}</h3>
+      <div class="albumgrid">${STICKERS.filter(x => x.pg === page).map(x => `<button class="slot" type="button" data-st="${x.id}">${stickerHtml(x, { cls: fresh.includes(x.id) ? "pop" : "" })}
+        <span class="small">${S.stickers[x.id] ? esc(x.en) : "?"}</span></button>`).join("")}</div>
+    </section>
+    <div id="stInfo"></div>`));
+  $("#back").onclick = renderHome;
+  $$("[data-page]").forEach(b => b.onclick = () => renderAlbum(fresh, +b.dataset.page));
+  $$("[data-st]").forEach(b => b.onclick = () => {
+    const x = STICKERS.find(s => s.id === b.dataset.st);
+    if (!S.stickers[x.id]) {
+      if (!canPick) { toast(`Sticker ${x.no} fehlt noch. Vielleicht im nächsten Päckchen!`); return; }
+      S.marks -= MARKS_FOR_PICK; S.stickers[x.id] = 1; save(); sound("up"); confetti(); renderAlbum([x.id], page); return;
+    }
+    say(x.en);
+    $("#stInfo").replaceChildren(h(`<div class="panel stinfo">${stickerHtml(x, { cls: "lg" })}<div><b>${esc(x.en)}</b><p class="muted small">${esc(x.de)} · ${RAR[x.r]}${S.stickers[x.id] > 1 ? ` · ${S.stickers[x.id]}× gesammelt` : ""}</p></div></div>`));
+    $("#stInfo").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
   window.scrollTo(0, 0);
 }
 function confetti() {
