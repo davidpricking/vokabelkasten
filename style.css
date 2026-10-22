@@ -412,3 +412,16 @@ button.streak{color:var(--ink);cursor:pointer}
 .gagain summary{cursor:pointer}
 .gagain[open] summary{margin-bottom:10px}
 .ggroup{margin-bottom:-8px}
+
+/* Camden-Welt: Karte auf der Startseite; die 3D-Ansicht bringt ihr eigenes CSS mit (welt/welt.js). */
+.weltcard{background:linear-gradient(180deg,#CFE7F7,#F7EBDD);color:#1D2A36}
+.weltcard .muted{color:#4A5866}
+.weltpeek{position:relative;height:72px;display:flex;align-items:flex-end;justify-content:center}
+.weltpeek svg{height:64px;width:auto;filter:drop-shadow(0 3px 0 rgba(0,0,0,.12))}
+.weltbadge{position:absolute;right:8px;top:0;background:#F59F00;color:#fff;font-family:var(--display);font-weight:800;border-radius:99px;padding:3px 10px;animation:weltpulse 1.4s ease-in-out infinite}
+@keyframes weltpulse{50%{transform:scale(1.12)}}
+.packbtn.welt{background:linear-gradient(90deg,#CFE7F7,#F7EBDD);color:#1D2A36}
+.weltmini svg{height:40px;width:auto;display:block}
+body.weltopen{overflow:hidden}
+@media (prefers-reduced-motion: reduce){.weltbadge{animation:none}}
+body.weltopen .confetti{z-index:60}

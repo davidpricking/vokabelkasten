@@ -74,7 +74,7 @@ function defaults() {
     name: "", onboarded: false, langs: [], cur: null, cards: [], log: {}, gram: {},
     streak: 0, lastDay: 0, newPerDay: 10, aiHelp: false, bot: "chatgpt", speechMode: "say",
     goal: 20, sound: true, input: "tiles", xp: 0, badges: {},
-    stickers: {}, packQ: [], marks: 0, packDay: ""
+    stickers: {}, packQ: [], marks: 0, packDay: "", welt: {}
   };
 }
 // Ältere Stände ohne Sprachen werden zu einem Kasten "Englisch".
@@ -456,6 +456,7 @@ function renderHomeView() {
     </section>` : ""}
     ${grammarCard()}
     ${questCard()}
+    ${weltCard()}
     ${albumCard()}
     <section>
       <div class="spread"><h2>Abzeichen</h2><button class="link" id="badges">Alle ${BADGES.length} ansehen</button></div>
@@ -507,6 +508,7 @@ function renderHomeView() {
   $("#addLang").onclick = () => renderAddLang(false);
   $("#lv").onclick = $("#badges").onclick = () => renderBadges();
   if ($("#album")) $("#album").onclick = () => renderAlbum();
+  $("#welt").onclick = () => renderWelt();
   if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
   $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
@@ -903,6 +905,7 @@ function renderSummary() {
          ${kastenHtml(levelCounts())}`}
     ${gl.map(x => `<p class="small">${x}</p>`).join("")}
     ${doneQ.map(q => `<p class="questdone">✓ Tagesaufgabe geschafft: ${esc(q)}</p>`).join("")}
+    ${weltNew() ? `<button class="packbtn welt" id="toWelt" type="button"><span class="weltmini" aria-hidden="true">${SKYLINE}</span><span><b>${weltNew() === 1 ? "Ein neues Haus in Camden!" : weltNew() + " neue Häuser in Camden!"}</b><span class="small">Antippen und zuschauen, wie es wächst</span></span></button>` : ""}
     ${earned ? `<button class="packbtn" id="openPack" type="button"><span class="pack mini" aria-hidden="true"><i></i></span><span><b>${S.packQ.length > 1 ? S.packQ.length + " Sticker-Päckchen!" : "Neues Sticker-Päckchen!"}</b><span class="small">Antippen und aufreißen</span></span></button>` : ""}
     <div class="xpline"><b>+${R.xp} Punkte</b><span class="lvchip static"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></span></div>
     ${R.newBadges.length ? `<div class="newbadges">${R.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
@@ -914,6 +917,7 @@ function renderSummary() {
   $("#again").onclick = () => startRound(unit === null && !dueCards().length && !Math.min(newLeft(), newCards().length) && !gDue().length ? FREE : unit);
   $("#home").onclick = () => { R = null; renderHome(); };
   if ($("#openPack")) $("#openPack").onclick = () => { R = null; openPack(); };
+  if ($("#toWelt")) $("#toWelt").onclick = () => { R = null; renderWelt(); };
   $("#toCal").onclick = () => { R = null; renderCalendar(); scrollTo(0, 0); };
   window.scrollTo(0, 0);
 }
@@ -1152,6 +1156,31 @@ function stickerHtml(x, opts = {}) {
   return `<span class="stk r${x.r}${have ? "" : " missing"}${opts.cls ? " " + opts.cls : ""}" style="--pg:linear-gradient(135deg,${pg.bg})" aria-label="${have ? esc(x.en) : "Sticker " + x.no + " fehlt noch"}">
     <span class="em" aria-hidden="true">${x.e}</span>${have ? "" : `<b class="no">${x.no}</b>`}${x.r && have ? `<i class="rar" aria-hidden="true">${x.r === 2 ? "★★" : "★"}</i>` : ""}</span>`;
 }
+// ---------- Camden-Welt: jedes Wort ab Fach 3 baut ein echtes Haus in Camden Town (3D, lädt erst beim Öffnen) ----------
+const SKYLINE = `<svg viewBox="0 0 120 56"><rect x="4" y="22" width="20" height="34" rx="2" fill="#E8B796"/><rect x="26" y="10" width="18" height="46" rx="2" fill="#FF6B6B"/><rect x="46" y="26" width="16" height="30" rx="2" fill="#FFD166"/><rect x="64" y="4" width="22" height="52" rx="2" fill="#4CC9F0"/><rect x="88" y="18" width="14" height="38" rx="2" fill="#06D6A0"/><rect x="104" y="28" width="14" height="28" rx="2" fill="#C77DFF"/><g fill="#fff" opacity=".75"><rect x="8" y="28" width="4" height="5"/><rect x="16" y="28" width="4" height="5"/><rect x="30" y="16" width="4" height="5"/><rect x="37" y="16" width="4" height="5"/><rect x="30" y="26" width="4" height="5"/><rect x="68" y="10" width="5" height="6"/><rect x="77" y="10" width="5" height="6"/><rect x="68" y="22" width="5" height="6"/><rect x="77" y="22" width="5" height="6"/><rect x="50" y="32" width="4" height="5"/><rect x="92" y="24" width="4" height="5"/></g></svg>`;
+function weltNew() {
+  const W = S.welt || {}, built = W.built || [], have = new Set(built.map(b => b.id));
+  return S.cards.filter(c => c.level >= 3 && !have.has(c.id)).length + Math.max(0, built.length - (W.seen || 0));
+}
+function weltCard() {
+  const n = (S.welt.built || []).length, fresh = weltNew();
+  return `<section class="panel weltcard">
+    <div class="spread"><h2>Deine Camden-Welt</h2><span class="muted small">${n} ${n === 1 ? "Haus" : "Häuser"}</span></div>
+    <div class="weltpeek" aria-hidden="true">${SKYLINE}${fresh ? `<span class="weltbadge">+${fresh}</span>` : ""}</div>
+    <p class="muted small">Jedes Wort, das sitzt (ab Fach 3), baut ein echtes Haus in Camden Town. Tipp ein Haus an, dann siehst du sein Wort.</p>
+    <button class="btn${fresh ? "" : " ghost"}" id="welt">${fresh ? (fresh === 1 ? "1 neues Haus bauen" : fresh + " neue Häuser bauen") : "Welt ansehen"}</button>
+  </section>`;
+}
+function renderWelt() {
+  document.body.classList.add("weltopen");
+  import("./welt/welt.js").then(m => m.open(document.body, {
+    cards: () => S.cards, state: S.welt, save,
+    say: canSpeak ? t => say(t, "en-GB") : null,
+    sound: k => sound(k), confetti,
+    onClose: () => { document.body.classList.remove("weltopen"); renderHome(); }
+  })).catch(() => { document.body.classList.remove("weltopen"); toast("Die Welt braucht einmal Internet zum Laden."); });
+}
+
 function albumCard() {
   const n = albumCount(), N = STICKERS.length;
   return `<section class="panel albumcard">

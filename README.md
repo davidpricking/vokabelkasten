@@ -46,5 +46,10 @@ Reines HTML, CSS und JavaScript ohne Build-Schritt:
 - `sw.js`, `manifest.webmanifest`, `icons/`: Offline-Betrieb und Installation
 - `fonts/`: Bricolage Grotesque, Kalam und Atkinson Hyperlegible (SIL Open Font License), lokal eingebunden
 - `vendor/qrcode.js`: QR-Code-Generator von Kazuhiko Arase (MIT-Lizenz)
+- `welt/welt.js`, `welt/camden.json`: die Camden-Welt in 3D. Jedes Wort, das sitzt (ab Fach 3), baut ein echtes Haus in Camden Town. three.js wird erst beim Öffnen geladen.
+- `vendor/three.module.min.js`, `vendor/OrbitControls.js`, `vendor/MapControls.js`: three.js 0.170 (MIT-Lizenz, `vendor/LICENSE-three.txt`)
+- `tools/osm-welt.mjs`, `tools/camden.overpassql`: bauen `welt/camden.json` aus einer Overpass-Abfrage (`node tools/osm-welt.mjs osm-camden.json`)
+
+Kartendaten der Camden-Welt: © [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende, verfügbar unter der Open Database License (ODbL 1.0). `welt/camden.json` ist eine aus diesen Daten abgeleitete Datenbank und steht ebenfalls unter der ODbL.
 
 Zum lokalen Testen reicht ein einfacher Webserver, zum Beispiel `python3 -m http.server` im Projektordner.

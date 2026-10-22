@@ -1,10 +1,11 @@
 // Offline-Cache: Die App lädt beim ersten Besuch alle Dateien und läuft danach ohne Internet.
 // Bei jeder Änderung an einer Datei VERSION erhöhen, damit Geräte die neue Fassung holen.
-const VERSION = "v9";
+const VERSION = "v10";
 const FILES = [
   "./", "index.html", "style.css", "grammar.js", "app.js", "manifest.webmanifest", "vendor/qrcode.js",
   "fonts/bricolage.woff2", "fonts/kalam-400.woff2", "fonts/kalam-700.woff2", "fonts/atkinson-400.woff2", "fonts/atkinson-700.woff2",
-  "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"
+  "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
+  "welt/welt.js", "welt/camden.json", "vendor/three.module.min.js", "vendor/OrbitControls.js", "vendor/MapControls.js"
 ];
 
 self.addEventListener("install", e => {
