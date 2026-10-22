@@ -217,7 +217,31 @@ async function packCode(obj) {
   }
   return "j" + b64u(bytes);
 }
-function packRows(cards) { return cards.map(c => { const r = [c.en, c.de]; if (c.ex || c.mn) r.push(c.ex || ""); if (c.mn) r.push(c.mn); return r; }); }
+function packRows(cards) { return cards.map(c => { const r = [c.en, c.de]; if (c.ex || c.mn || c.dx) r.push(c.ex || ""); if (c.mn || c.dx) r.push(c.mn || 0); if (c.dx) r.push(c.dx); return r; }); }
+// Fallen: falsche, aber leicht verwechselbare Antworten für die Auswahl, {en: [...], de: [...]}.
+function dxList(d) {
+  if (!d || typeof d !== "object") return undefined;
+  const l = a => (Array.isArray(a) ? a.map(String).filter(Boolean).slice(0, 6) : []);
+  const out = { en: l(d.en), de: l(d.de) };
+  return out.en.length || out.de.length ? out : undefined;
+}
+// Wie leicht lässt sich eine Antwort mit der richtigen verwechseln? Ähnliche Schreibweise, gemeinsame Wörter, gleiche Form.
+function lookAlike(a, b) {
+  const x = a.toLowerCase(), y = b.toLowerCase(), words = t => t.split(/[^a-zäöüß]+/).filter(w => w.length > 2 && !["the", "and", "...", "sth", "etw"].includes(w));
+  const wb = new Set(words(y)); let sc = words(x).filter(w => wb.has(w)).length * 3;
+  sc += 4 * (1 - lev(x, y) / Math.max(x.length, y.length, 1));
+  if (x.slice(0, 2) === y.slice(0, 2)) sc += 1;
+  for (const f of [t => t.startsWith("to "), t => t.includes("..."), t => /[?!]$/.test(t), t => t.includes(" ")]) if (f(x) === f(y)) sc += .7;
+  return sc - Math.abs(x.length - y.length) / Math.max(x.length, y.length, 1);
+}
+function choiceOpts(card, sol, dir, pool) {
+  const side = dir === "de-en" ? "en" : "de", taken = new Set([norm(sol)]), out = [];
+  const add = t => { const k = norm(t); if (t && !taken.has(k)) { taken.add(k); out.push(t); } };
+  shuffle([...(card.dx && card.dx[side] || [])]).forEach(add);
+  const near = pool.map(c => c[side]).filter(t => !taken.has(norm(t))).map(t => [t, lookAlike(t, sol) + Math.random() * 1.5]).sort((a, b) => b[1] - a[1]);
+  near.slice(0, 8).forEach(([t]) => out.length < 3 && add(t));
+  return shuffle([sol, ...out.slice(0, 3)]);
+}
 // Eselsbrücken: [art, bild, text, verwechselt mit]; art ist "s" (Schreibweise), "b" (Bedeutung) oder "v" (Verwechslung).
 function mnList(m) {
   if (!Array.isArray(m)) return undefined;
@@ -229,7 +253,7 @@ async function decodePack(code) {
   let bytes = unb64u(code.slice(1));
   if (code[0] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]) }));
+  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]) }));
   const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
     .filter(u => u.rows.length);
   return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, paused: (obj.p || []).map(String) };
@@ -529,8 +553,7 @@ function renderCard() {
   const area = $("#answerArea");
   const done = (result, typed) => answered(card, result, sol, dir, typed);
   if (mode === "choice") {
-    const others = shuffle(pool.map(c => dir === "de-en" ? c.en : c.de).filter(x => norm(x) !== norm(sol))).slice(0, 3);
-    const opts = shuffle([sol, ...others]);
+    const opts = choiceOpts(card, sol, dir, pool);
     area.replaceChildren(h(`<div class="choices">${opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div>`));
     $$(".choice", area).forEach(b => b.onclick = () => {
       const ok = opts[+b.dataset.i] === sol;
@@ -1100,10 +1123,11 @@ function addCards(unit, list) {
   let added = 0;
   list.forEach(r => {
     const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
-    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.ex && !old.ex) old.ex = r.ex.trim(); } return; }
+    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); } return; }
     existing.set(k, null);
     const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
     if (r.mn) c.mn = r.mn;
+    if (r.dx) c.dx = r.dx;
     S.cards.push(c); added++;
   });
   dayLog().added += added;
