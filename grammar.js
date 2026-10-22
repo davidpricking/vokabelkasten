@@ -693,3 +693,73 @@ window.GRAMMAR = {
     ]
   }
 };
+
+// Bewegte Eselsbrücken zur Grammatik: Satz a verwandelt sich vor den Augen in Satz b.
+(() => {
+  const A = {
+    plural: [{ a: "one cat", b: "two cats", hint: "Mehr als eins? Dann hängt ein **-s** dran." }],
+    articles: [{ a: "a banana", b: "an apple", hint: "Vor a, e, i, o, u (gesprochen) wird **a** zu **an**." }],
+    tobe: [{ a: "I am happy.", b: "She is happy.", hint: "**I am**, **you are**, **he/she/it is**." }],
+    bequestions: [{ a: "You are twelve.", b: "Are you twelve?", hint: "Für die Frage tauschen **are** und **you** die Plätze." }],
+    thereis: [{ a: "There is a cat.", b: "There are two cats.", hint: "Eins: **there is**. Mehrere: **there are**." }],
+    commands: [{ a: "You open the door.", b: "Open the door!", hint: "Beim Befehl fällt **you** einfach weg." }],
+    can: [{ a: "She plays the guitar.", b: "She can play the guitar.", hint: "Nach **can** steht das Verb ohne -s." }],
+    havegot: [{ a: "I have got a dog.", b: "She has got a dog.", hint: "Bei he/she/it heißt es **has got**." }],
+    genitive: [{ a: "the bike of Tom", b: "Tom's bike", hint: "Wem gehört es? **Tom's** bike, mit Apostroph-s." }],
+    simplepresent: [{ a: "I play football.", b: "He plays football.", hint: "**He, she, it – das s muss mit!**" }],
+    negations: [{ a: "He plays football.", b: "He doesn't play football.", hint: "**doesn't** schnappt sich das s, das Verb bleibt nackt." }],
+    adverbsfreq: [{ a: "She plays tennis.", b: "She often plays tennis.", hint: "Häufigkeitswörter stehen **vor** dem Verb." }],
+    questions: [{ a: "He plays football.", b: "Does he play football?", hint: "**Does** holt sich das s vom Verb." }],
+    presentprog: [{ a: "I read a book.", b: "I am reading a book now.", hint: "Gerade jetzt: **am/is/are** + Verb mit **-ing**." }],
+    someany: [{ a: "I have some apples.", b: "I don't have any apples.", hint: "Bei Verneinung wird **some** zu **any**." }],
+    objectpronouns: [{ a: "I like Tom.", b: "I like him.", hint: "Nach dem Verb: **me, you, him, her, it, us, them**." }],
+    wordorder: [{ a: "On Saturday I play football.", b: "I play football on Saturday.", hint: "**S – V – O**: Subjekt, Verb, Objekt. Ort und Zeit kommen ans Ende." }],
+    simplepast: [{ a: "I play football.", b: "Yesterday I played football.", hint: "Vorbei? Dann kommt **-ed** dran." }],
+    presentperfect: [{ a: "I see that film.", b: "I have seen that film.", hint: "**have/has** + 3. Form." }],
+    goingto: [{ a: "I visit Grandma.", b: "I am going to visit Grandma.", hint: "Geplant: **am/is/are going to** + Verb." }],
+    will: [{ a: "It rains.", b: "It will rain tomorrow.", hint: "Vorhersage: **will** + Verb ohne -s." }],
+    comparison: [{ a: "Tom is tall.", b: "Tom is taller than Ben.", hint: "Vergleich: **-er** + **than**." }],
+    if12: [
+      { a: "If it rains, I will stay home.", b: "If it rained, I would stay home.", hint: "Typ 1 wird zu Typ 2: **eine Zeit zurück**, aus will wird **would**." },
+      { a: "If I am rich,", b: "If I were rich,", hint: "Unwirklich? Dann **If I were**, auch bei I und he/she/it." }
+    ],
+    if3: [{ a: "If it rained, I would stay home.", b: "If it had rained, I would have stayed home.", hint: "Typ 3 geht noch eine Zeit zurück: **had** + 3. Form, **would have** + 3. Form." }]
+  };
+  const topics = window.GRAMMAR.Englisch.topics;
+  topics.forEach(t => { if (A[t.id]) t.anim = A[t.id]; });
+  const put = (id, extra) => Object.assign(topics.find(t => t.id === id), extra);
+  put("if12", {
+    explain: [
+      "**Typ 1 – wirklich möglich:** If + simple present, dann **will** + Verb. If it rains, I will stay home.",
+      "**Typ 2 – unwahrscheinlich oder ausgedacht:** If + simple past, dann **would** + Verb. If I had a million euros, I would buy an island.",
+      "Merksatz: **Im if-Teil steht nie will oder would.**",
+      "Bei Typ 2 sagt man oft **If I were** statt If I was, besonders in „If I were you, …“ (An deiner Stelle …)."
+    ],
+    ex: [["If you **hurry**, you **will catch** the bus.", "Wenn du dich beeilst, erwischst du den Bus."], ["If I **were** you, I **would call** her.", "An deiner Stelle würde ich sie anrufen."], ["If we **lived** by the sea, we **would go** swimming every day.", "Wenn wir am Meer wohnten, gingen wir jeden Tag schwimmen."]],
+    tasks: [
+      ["gap", "If it ___ tomorrow, we will cancel the trip. (rain)", "rains", "Typ 1: Im if-Teil steht simple present, nicht will."],
+      ["pick", "If I ___ you, I would apologise.", ["were", "am", "would be"], "Typ 2 mit be: If I were you."],
+      ["gap", "If she had more time, she ___ a novel. (write)", "would write", "Typ 2: had (simple past) im if-Teil, would + Verb im Hauptsatz."],
+      ["pick", "We'll miss the train unless we ___.", ["hurry", "will hurry", "hurried"], "unless = if not, auch hier kein will."],
+      ["pick", "If you heat ice, it ___.", ["melts", "would melt", "will have melted"], "Naturgesetz: if + present, present (Typ 0)."],
+      ["gap", "If he ___ harder, he would pass. (study)", "studied", "Typ 2: simple past im if-Teil."],
+      ["order", "I would travel the world if I won the lottery.", "Der if-Teil darf auch hinten stehen, dann ohne Komma."],
+      ["pick", "If I ___ the answer, I'd tell you – but I don't.", ["knew", "know", "would know"], "Unwirklich in der Gegenwart: Typ 2, also knew."]
+    ]
+  });
+  put("if3", {
+    explain: [
+      "**Typ 3 – vorbei, nicht mehr zu ändern:** If + **had** + 3. Form, dann **would have** + 3. Form.",
+      "If I had known, I would have come. (Hätte ich es gewusst, wäre ich gekommen.)",
+      "Gemischt: Vergangenheit wirkt bis heute. If I had slept more, I **would be** less tired now."
+    ],
+    ex: [["If we **had left** earlier, we **would have caught** the train.", "Wären wir früher losgefahren, hätten wir den Zug erwischt."], ["If she **hadn't helped** me, I **would have failed**.", "Hätte sie mir nicht geholfen, wäre ich durchgefallen."]],
+    tasks: [
+      ["gap", "If I ___ about the party, I would have come. (know)", "had known", "Typ 3: had + 3. Form im if-Teil."],
+      ["pick", "If they had trained more, they ___ the match.", ["would have won", "would win", "had won"], "Typ 3 im Hauptsatz: would have + 3. Form."],
+      ["pick", "If I had gone to bed earlier, I ___ so tired now.", ["wouldn't be", "wouldn't have been", "won't be"], "Gemischt: früher (Typ 3) mit Folge jetzt (now), also would be."],
+      ["gap", "She would have called if she ___ your number. (have)", "had had", "had + 3. Form von have = had had."],
+      ["order", "If you had asked me I would have helped you.", "Typ 3: had asked, would have helped."]
+    ]
+  });
+})();

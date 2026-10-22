@@ -44,7 +44,7 @@ Reines HTML, CSS und JavaScript ohne Build-Schritt:
 - `index.html`, `style.css`, `app.js`: die App
 - `grammar.js`: Grammatik-Themen mit Erklärungen und Aufgaben, aufgeteilt nach Klassenstufen
 - `sw.js`, `manifest.webmanifest`, `icons/`: Offline-Betrieb und Installation
-- `fonts/`: Fredoka und Atkinson Hyperlegible (SIL Open Font License), lokal eingebunden
+- `fonts/`: Bricolage Grotesque, Kalam und Atkinson Hyperlegible (SIL Open Font License), lokal eingebunden
 - `vendor/qrcode.js`: QR-Code-Generator von Kazuhiko Arase (MIT-Lizenz)
 
 Zum lokalen Testen reicht ein einfacher Webserver, zum Beispiel `python3 -m http.server` im Projektordner.
