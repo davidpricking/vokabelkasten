@@ -490,3 +490,18 @@ body.weltopen .confetti{z-index:60}
 .weltnews{background:rgba(255,255,255,.7);border-radius:12px;padding:6px 10px;font-weight:700;font-size:.92rem}
 .weltgift{position:absolute;left:10px;top:0;font-size:1.6rem;animation:weltpulse 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){.mon .mb,.mon .pu,.mile-rays,.weltgift{animation:none}}
+.duelvs{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.duelvs .dv{font-family:var(--display);font-weight:800;font-size:1.3rem;padding:8px 14px;border-radius:14px;background:var(--memo);color:var(--memo-ink);text-align:center}
+.duelvs input.dv{border:2px dashed #E3C53B;width:8.5rem;font:inherit;font-family:var(--display);font-weight:800;font-size:1.3rem}
+.duelvs>b{color:var(--muted)}
+.duelbig{font-size:4rem;animation:wcbump 1s ease-in-out infinite}
+.duelpods{display:flex;gap:18px;justify-content:center;align-items:flex-end;margin:10px 0}
+.pod{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:7rem}
+.pod .crown{font-size:2rem;height:2.4rem;animation:wcbump 1.2s ease-in-out infinite}
+.podbar{display:flex;align-items:flex-start;justify-content:center;width:100%;height:var(--h);background:var(--line);border-radius:12px 12px 4px 4px;padding-top:6px;animation:podup .9s cubic-bezier(.2,1.4,.4,1)}
+.pod.win .podbar{background:linear-gradient(180deg,#FFD43B,#F59F00)}
+.podn{font-family:var(--display);font-weight:800;font-size:1.4rem}
+@keyframes podup{from{height:0}}
+.duelwords{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left}
+.dw{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-size:.92rem}
+@media (prefers-reduced-motion: reduce){.duelbig,.pod .crown,.podbar{animation:none}}

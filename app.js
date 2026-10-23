@@ -524,7 +524,7 @@ function renderHomeView() {
   $("#lv").onclick = $("#badges").onclick = () => renderBadges();
   if ($("#album")) $("#album").onclick = () => renderAlbum();
   $("#welt").onclick = () => renderWelt();
-  if ($("#duelShare")) $("#duelShare").onclick = shareDuel;
+  if ($("#duelGo")) $("#duelGo").onclick = renderDuelSetup;
   save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
   if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
@@ -2087,40 +2087,104 @@ function monsterSummary() {
   }).join("")}</div>`;
 }
 
-// ---------- Wochen-Duell: Wer bringt diese Woche mehr Wörter ein Fach weiter? Stand per Link austauschen ----------
-function weekScore(ws = weekStart(dayKey())) { let n = 0; for (let i = 0; i < 7; i++) { const d = S.log[shiftDay(ws, i)]; if (d) n += d.up || 0; } return n; }
-function myPid() { return S.pid || (S.pid = uid() + uid()); }
-async function shareDuel() {
-  const p = { i: myPid(), n: S.name || "Jemand", w: weekStart(dayKey()), s: weekScore() };
-  const url = appUrl() + "#duell=" + b64u(new TextEncoder().encode(JSON.stringify(p)));
-  const text = `Wochen-Duell im Vokabelkasten: Ich habe diese Woche ${p.s} ${p.s === 1 ? "Wort" : "Wörter"} ein Fach weiter gebracht. Schaffst du mehr?`;
-  try { if (navigator.share) { await navigator.share({ title: "Wochen-Duell", text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
-  await copyText(text + " " + url); toast("Link kopiert. Schick ihn per Nachricht.");
-}
-function takeDuel(code) {
-  try {
-    const p = JSON.parse(new TextDecoder().decode(unb64u(code)));
-    if (!p || !p.i || typeof p.s !== "number") throw 0;
-    if (p.i === myPid()) { toast("Das ist dein eigener Stand."); return; }
-    S.rivals = S.rivals || {}; S.rivals[p.i] = { n: String(p.n).slice(0, 24), s: Math.max(0, Math.min(9999, p.s | 0)), w: p.w, t: Date.now() };
-    save(); toast(`${p.n} fordert dich heraus: ${p.s} Wörter diese Woche!`);
-  } catch (e) { toast("Dieser Duell-Link ist nicht lesbar."); }
+// ---------- Wochen-Duell: Kind und Elternteil lösen am selben Handy nacheinander dieselben 10 Wörter (Auswahl aus vier) ----------
+// Gewertet wird: mehr richtig gewinnt, bei Gleichstand die schnellere Zeit. Die Fächer ändern sich dabei nicht.
+const DUEL_N = 10;
+let D = null;
+function duelsWeek(ws = weekStart(dayKey())) { return (S.duels || []).filter(d => d.w === ws); }
+function duelWinner(d) { const [a, b] = d.p; return a.s !== b.s ? (a.s > b.s ? 0 : 1) : a.t !== b.t ? (a.t < b.t ? 0 : 1) : -1; }
+function duelTally(list) {
+  const t = {}; list.forEach(d => { const w = duelWinner(d); d.p.forEach((p, i) => { t[p.n] = t[p.n] || 0; if (w === i) t[p.n]++; }); });
+  return Object.entries(t).sort((a, b) => b[1] - a[1]);
 }
 function duelCard() {
-  if (!cardsL().length) return "";
-  const ws = weekStart(dayKey()), last = shiftDay(ws, -7), me = weekScore(), rv = Object.values(S.rivals || {});
-  const now = rv.filter(r => r.w === ws), prev = rv.filter(r => r.w === last);
-  const rows = [{ n: "Du", s: me, me: 1 }, ...now].sort((a, b) => b.s - a.s), max = Math.max(5, ...rows.map(r => r.s));
-  const [y, m, d] = ws.split("-").map(Number), left = 7 - Math.round((today() - new Date(y, m - 1, d).getTime()) / DAY);
-  const mePrev = weekScore(last), won = prev.length && prev.every(r => mePrev > r.s);
+  if (cardsL().length < DUEL_N) return "";
+  const ws = weekStart(dayKey()), week = duelsWeek(ws), tally = duelTally(week), last = (S.duels || []).slice(-1)[0];
+  const prev = duelTally(duelsWeek(shiftDay(ws, -7)));
+  const max = Math.max(1, ...tally.map(t => t[1]));
   return `<section class="panel duel">
-    <div class="spread"><h2>Wochen-Duell</h2><span class="muted small">noch ${left} ${left === 1 ? "Tag" : "Tage"}</span></div>
-    ${rows.map((r, i) => `<div class="duelrow${r.me ? " me" : ""}"><span class="duelname">${i === 0 && r.s > 0 && rows.length > 1 ? "👑 " : ""}${esc(r.n)}</span>
-      <span class="bar"><i style="width:${Math.round(r.s / max * 100)}%"></i></span><b>${r.s}</b></div>`).join("")}
-    ${prev.length ? `<p class="small">${won ? "🏆 Letzte Woche hast du gewonnen!" : "Letzte Woche:"} Du ${mePrev}, ${prev.map(r => `${esc(r.n)} ${r.s}`).join(", ")}.</p>` : ""}
-    <p class="muted small">${now.length ? "Gezählt wird jedes Wort, das ein Fach weiterkommt. Die anderen sehen deinen Stand, wenn du ihn schickst." : "Fordere Papa, Mama oder deine Geschwister heraus: Wer bringt diese Woche mehr Wörter ein Fach weiter? Schick deinen Stand, die anderen schicken ihren zurück."}</p>
-    <button class="btn ghost" id="duelShare">Meinen Stand schicken</button>
+    <div class="spread"><h2>Wochen-Duell</h2><span class="muted small">${week.length} ${week.length === 1 ? "Duell" : "Duelle"} diese Woche</span></div>
+    ${tally.length ? tally.map(([n, w], i) => `<div class="duelrow${n === (S.name || "Ich") ? " me" : ""}"><span class="duelname">${i === 0 && w > 0 && w > (tally[1] || [0, 0])[1] ? "👑 " : ""}${esc(n)}</span>
+      <span class="bar"><i style="width:${Math.round(w / max * 100)}%"></i></span><b>${w}</b></div>`).join("")
+      : `<p class="muted small">Gib das Handy einem Elternteil: Ihr löst nacheinander dieselben ${DUEL_N} Wörter. Wer mehr richtig hat, gewinnt. Bei Gleichstand gewinnt, wer schneller war.</p>`}
+    ${prev.length && prev[0][1] > (prev[1] || [0, 0])[1] ? `<p class="small">🏆 Letzte Woche hat ${esc(prev[0][0])} gewonnen (${prev.map(([n, w]) => `${esc(n)} ${w}`).join(" : ")}).</p>` : ""}
+    ${last && last.w === ws ? `<p class="muted small">Letztes Duell: ${last.p.map(p => `${esc(p.n)} ${p.s}/${DUEL_N}`).join(" gegen ")}</p>` : ""}
+    <button class="btn" id="duelGo">Duell starten</button>
   </section>`;
+}
+function renderDuelSetup() {
+  const me = S.name || "Ich", other = S.duelOther || "Papa";
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Wochen-Duell</h2></div>
+    <section class="hero duelhero">
+      <div class="duelvs"><span class="dv a">${esc(me)}</span><b>gegen</b><input class="dv b" id="duelOther" value="${esc(other)}" maxlength="16" aria-label="Name des Gegners"></div>
+      <p class="muted small">Beide bekommen dieselben ${DUEL_N} Wörter aus deinem Kasten und tippen jeweils die richtige von vier Antworten an. Erst spielst du, dann gibst du das Handy weiter. Nicht spicken!</p>
+      <button class="btn big wide" id="duelStart">Los geht's</button>
+    </section>`));
+  $("#back").onclick = renderHome;
+  $("#duelStart").onclick = () => {
+    const o = $("#duelOther").value.trim() || "Papa"; S.duelOther = o; save();
+    const all = cardsL().filter(c => c.en && c.de), seen = shuffle(all.filter(c => c.level > 0));
+    const pick = [...seen, ...shuffle(all.filter(c => !c.level))].slice(0, DUEL_N);
+    D = { p: [{ n: me, s: 0, t: 0, a: [] }, { n: o === me ? o + " 2" : o, s: 0, t: 0, a: [] }], cur: 0, i: 0,
+      q: pick.map(c => {
+        const opts = choiceOpts(c, c.en, "de-en", all.filter(x => x.id !== c.id));
+        // sehr ähnliche Kästen liefern manchmal zu wenig Fallen: dann mit zufälligen Wörtern auffüllen
+        for (const x of shuffle(all.filter(x => x.id !== c.id))) { if (opts.length >= 4) break; if (!opts.some(o => norm(o) === norm(x.en))) opts.splice(Math.floor(Math.random() * (opts.length + 1)), 0, x.en); }
+        return { id: c.id, de: c.de, sol: c.en, opts };
+      }) };
+    duelHandover();
+  };
+  window.scrollTo(0, 0);
+}
+function duelHandover() {
+  const p = D.p[D.cur];
+  app.replaceChildren(h(`<div class="done duelhand">
+    <p class="eyebrow">${D.cur ? "Handy weitergeben" : "Spieler 1"}</p>
+    <div class="duelbig" aria-hidden="true">${D.cur ? "🤝" : "🎯"}</div>
+    <h1>${esc(p.n)} ist dran!</h1>
+    <p class="muted">${D.cur ? `${esc(D.p[0].n)} ist fertig. Das Ergebnis bleibt geheim, bis ${esc(p.n)} auch gespielt hat.` : `${DUEL_N} Wörter, so schnell und richtig wie möglich.`}</p>
+    <button class="btn big" id="dReady">Bereit</button></div>`));
+  sound("tap");
+  $("#dReady").onclick = () => { D.i = 0; duelQuestion(); };
+  window.scrollTo(0, 0);
+}
+function duelQuestion() {
+  const p = D.p[D.cur], q = D.q[D.i];
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="dQuit" aria-label="Duell abbrechen">✕</button>
+      <div class="bar" style="flex:1"><i style="width:${Math.round(D.i / DUEL_N * 100)}%"></i></div><b class="small">${esc(p.n)} · ${D.i + 1}/${DUEL_N}</b></div>
+    <div class="icard"><span class="eyebrow">Deutsch → ${esc(L().name)}</span><div class="q">${esc(q.de)}</div>
+      <div class="choices">${q.opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div></div>`));
+  $("#dQuit").onclick = () => { D = null; renderHome(); };
+  const t0 = performance.now();
+  $$(".choice").forEach(b => b.onclick = () => {
+    const ok = q.opts[+b.dataset.i] === q.sol;
+    p.t += performance.now() - t0; p.a.push(ok); if (ok) p.s++;
+    $$(".choice").forEach(x => { x.disabled = true; if (q.opts[+x.dataset.i] === q.sol) x.classList.add("right"); });
+    if (!ok) b.classList.add("wrong");
+    sound(ok ? "good" : "bad");
+    setTimeout(() => { if (++D.i < DUEL_N) duelQuestion(); else if (D.cur === 0) { D.cur = 1; duelHandover(); } else duelResult(); }, ok ? 450 : 1100);
+  });
+  window.scrollTo(0, 0);
+}
+function duelResult() {
+  const rec = { w: weekStart(dayKey()), day: dayKey(), p: D.p.map(({ n, s, t }) => ({ n, s, t: Math.round(t) })) };
+  S.duels = [...(S.duels || []), rec].slice(-200); save();
+  const win = duelWinner(rec), sec = t => (t / 1000).toFixed(1).replace(".", ",") + " s";
+  app.replaceChildren(h(`<div class="done duelres">
+    <p class="eyebrow">Wochen-Duell</p>
+    <h1>${win < 0 ? "Unentschieden!" : `${esc(D.p[win].n)} gewinnt!`}</h1>
+    <div class="duelpods">${D.p.map((p, i) => `<div class="pod${i === win ? " win" : ""}" style="--h:${30 + p.s * 7}px"><span class="crown" aria-hidden="true">${i === win ? "👑" : ""}</span>
+      <b>${esc(p.n)}</b><span class="podbar"><span class="podn">${p.s}/${DUEL_N}</span></span><span class="small muted">${sec(p.t)}</span></div>`).join("")}</div>
+    ${win >= 0 && D.p[0].s === D.p[1].s ? `<p class="muted small">Gleich viele richtig, ${esc(D.p[win].n)} war schneller.</p>` : ""}
+    <div class="duelwords">${D.q.map((q, k) => `<div class="dw"><span>${esc(q.de)} = <b>${esc(q.sol)}</b></span><span>${D.p.map(p => p.a[k] ? "✅" : "❌").join(" ")}</span></div>`).join("")}</div>
+    <p class="muted small">Diese Woche: ${duelTally(duelsWeek()).map(([n, w]) => `${esc(n)} ${w} ${w === 1 ? "Sieg" : "Siege"}`).join(", ")}</p>
+    <div class="row" style="justify-content:center"><button class="btn" id="dAgain">Revanche</button><button class="btn ghost" id="dHome">Fertig</button></div></div>`));
+  if (win >= 0) { confetti(); sound("up"); }
+  $("#dAgain").onclick = () => { D = null; renderDuelSetup(); };
+  $("#dHome").onclick = () => { D = null; renderHome(); };
+  window.scrollTo(0, 0);
 }
 
 // ---------- Camden-Welt: Viertel und Schatz (die 3D-Seite liegt in welt/welt.js) ----------
@@ -2133,8 +2197,6 @@ function weltDistrictNew() { const have = new Set(S.welt.dist || []); return (S.
 function treasureReady() { return !!S.cards.length && goalCount() >= Math.min(S.goal, ROUND_SIZE) && !dayLog().treasure && (S.welt.built || []).length >= 3; }
 
 async function boot() {
-  const du = location.hash.match(/^#duell=([A-Za-z0-9_-]+)$/);
-  if (du) { history.replaceState(null, "", location.pathname); takeDuel(du[1]); }
   const m = location.hash.match(/^#pack=([zj][A-Za-z0-9_-]+)$/);
   if (m) {
     history.replaceState(null, "", location.pathname);
