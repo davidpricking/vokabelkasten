@@ -336,6 +336,14 @@ const CSS = `
 .welt .w-sheet{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));background:#FDFDFB;border-radius:22px;padding:16px 18px 18px;box-shadow:0 12px 40px rgba(20,40,60,.35);
   transform:translateY(130%);transition:transform .45s cubic-bezier(.2,1.3,.4,1);z-index:3}
 .welt .w-sheet.on{transform:none}
+.welt .w-foto{position:relative;margin:4px 0 8px;border-radius:14px;overflow:hidden;background:#dfe6ec}
+.welt .w-foto img{display:block;width:100%;max-height:34vh;object-fit:cover;animation:wfoto .6s ease-out both}
+.welt .w-foto.teaser img{filter:blur(10px) grayscale(.6);transform:scale(1.08);animation:none}
+.welt .w-sheet{max-height:78vh;overflow-y:auto}
+.welt .w-fotolock{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:800;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.welt .w-foto figcaption{font-size:.7rem;color:#5D6B78;padding:4px 8px;background:#FDFDFB}
+.welt .w-foto figcaption a{color:inherit}
+@keyframes wfoto{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:none}}
 .welt .w-sheet .w-en{font-family:var(--hand,cursive);font-weight:700;font-size:2rem;line-height:1.1;color:#1D2A36}
 .welt .w-sheet .w-de{font-size:1.1rem;color:#5D6B78;margin-top:2px}
 .welt .w-sheet .w-meta{font-size:.85rem;color:#5D6B78;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
@@ -377,6 +385,13 @@ export async function open(root, api) {
   el.innerHTML = `<div class="w-load">Camden wird gebaut …</div>`;
   root.append(el);
   let data;
+  // Echte Fotos der Wahrzeichen (Wikimedia Commons, freie Lizenzen), mit Fotograf und Lizenz in fotos/credits.json
+  let fotos = {};
+  fetch(new URL("fotos/credits.json", import.meta.url)).then(r => r.ok ? r.json() : {}).then(j => { fotos = j || {}; }).catch(() => {});
+  const fotoHtml = (name, teaser) => { const f = fotos[name]; if (!f) return "";
+    return `<figure class="w-foto${teaser ? " teaser" : ""}"><img src="${new URL("fotos/" + f.file, import.meta.url)}" alt="${esc(name)}" loading="lazy">
+      ${teaser ? `<span class="w-fotolock">🔒 So sieht es in echt aus</span>` : ""}
+      <figcaption>Foto: ${esc(f.author)}, <a href="${esc(f.licenseUrl || f.source)}" target="_blank" rel="noopener">${esc(f.license)}</a>, <a href="${esc(f.source)}" target="_blank" rel="noopener">Wikimedia Commons</a></figcaption></figure>`; };
   try { data = await (await fetch(new URL("camden.json", import.meta.url))).json(); }
   catch (e) { el.querySelector(".w-load").textContent = "Die Welt konnte nicht geladen werden."; addClose(); return; }
   function addClose() { const b = document.createElement("button"); b.className = "w-btn"; b.style.cssText = "position:absolute;left:14px;top:14px"; b.textContent = "✕"; b.onclick = () => { el.remove(); api.onClose(); }; el.append(b); }
@@ -705,6 +720,7 @@ export async function open(root, api) {
       : t === 2 ? `Die Fenster leuchten! Noch ${7 - fach} ${7 - fach === 1 ? "Fach" : "Fächer"} bis zum goldenen Dach.` : "Goldenes Dach! Dieses Wort sitzt richtig fest.";
     $("#w-sheet").innerHTML = `<button class="w-x" aria-label="Schließen">✕</button>
       ${m.mark ? `<div class="w-pill gold" style="display:inline-block;margin-bottom:6px">★ ${esc(m.name)}</div>` : m.name ? `<div class="w-pill" style="display:inline-block;margin-bottom:6px">${esc(m.name)}</div>` : ""}
+      ${m.mark ? fotoHtml(m.name) : ""}
       <div class="w-en">${esc(w.en)}</div><div class="w-de">${esc(w.de)}</div>
       <div class="w-meta"><span class="w-pill">Haus Nr. ${owner[i] + 1}</span>${fach ? `<span class="w-pill${t === 3 ? " gold" : ""}">Fach ${fach}</span>` : ""}<span class="w-pill">${esc(DISTRICTS[m.d][0])}</span><span class="w-pill">gebaut am ${new Date(w.t).toLocaleDateString("de-DE")}</span></div>
       ${how ? `<div class="w-how">${how}</div>` : ""}
@@ -719,7 +735,8 @@ export async function open(root, api) {
     $("#w-sheet").innerHTML = `<button class="w-x" aria-label="Schließen">✕</button>
       <div class="w-en" style="font-size:1.5rem">${m.d > shownD ? "Im Nebel" : "Bauplatz"}${m.mark ? ": " + esc(m.name) : ""}</div>
       <div class="w-de">${m.d > shownD ? `Das Viertel ${esc(DISTRICTS[m.d][0])} liegt noch im Nebel. Jede Unit, die du schaffst (8 von 10 Wörtern ab Fach ${SIT}), öffnet ein neues Viertel.`
-        : `Hier wird gebaut, wenn noch ${left} ${left === 1 ? "Wort" : "Wörter"} sitzen (ab Fach ${SIT}).`}</div>`;
+        : `Hier wird gebaut, wenn noch ${left} ${left === 1 ? "Wort" : "Wörter"} sitzen (ab Fach ${SIT}).`}</div>
+      ${m.mark ? fotoHtml(m.name, true) : ""}`;
     $("#w-sheet").classList.add("on"); $("#w-bottom").style.visibility = "hidden";
     $("#w-sheet .w-x").onclick = hideSheet;
   }
