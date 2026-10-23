@@ -38,6 +38,7 @@ function flagOf(l) {
 
 // Tags: kleine Stichwörter wie #tiere oder #verb, nach denen man gezielt üben kann.
 // Jedes Wort bekommt genau ein Thema und höchstens eine Wortart.
+const WB = "wordbank-";                                 // Tags der Wordbanks aus dem Buch (Camden Town 6)
 const THEME_TAGS = ["familie", "schule", "zuhause", "essen", "kleidung", "körper", "gesundheit", "gefühle", "freizeit", "sport", "tiere", "natur", "wetter", "stadt", "fortbewegung", "reisen", "einkaufen", "beruf", "zeit", "zahlen", "farben", "feste", "redemittel", "allgemein"];
 const GRAM_TAGS = ["nomen", "verb", "unregelmäßiges-verb", "adjektiv", "adverb", "präposition", "pronomen", "fragewort", "redewendung"];
 const BASE_TAGS = [...THEME_TAGS, ...GRAM_TAGS];
@@ -550,10 +551,10 @@ function renderHomeView() {
       <p class="muted small">Pausierte Units liefern keine neuen Wörter. Schalte sie frei, wenn das Thema in der Schule drankommt.</p>
     </section>
     ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3 && t !== "allgemein").sort((a, b) => n[b] - n[a]);
-      const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">#${esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
-      const th = ts.filter(t => !GRAM_TAGS.includes(t)), gr = ts.filter(t => GRAM_TAGS.includes(t));
+      const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">${t.startsWith(WB) ? esc(t.slice(WB.length).replace(/-/g, " ")) : "#" + esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
+      const wb = ts.filter(t => t.startsWith(WB)), th = ts.filter(t => !GRAM_TAGS.includes(t) && !t.startsWith(WB)), gr = ts.filter(t => GRAM_TAGS.includes(t));
       return ts.length ? `<details class="panel"><summary><b>Nach Thema üben</b></summary>
-      ${th.length ? chips(th) : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
+      ${th.length ? chips(th) : ""}${wb.length ? `<h3>Wordbanks aus dem Buch</h3>${chips(wb)}` : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
       <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Richtig: Das Wort bleibt im Fach, seine Wartezeit beginnt neu. Falsch: zwei Fächer zurück.</p></details>` : ""; })()}
     <details class="panel">
       <summary><b>So wirst du abgefragt</b></summary>
@@ -653,7 +654,7 @@ function renderCard() {
   const fresh = !R.done.has(card.id) && !(card.id in R.first);
   const useChoice = card.level <= 1 && fresh && pool.length >= 3 && !R.practice;
   const mode = useChoice ? "choice" : S.input === "keyboard" ? "keyboard" : dir === "de-en" ? "tiles" : "speak";
-  const label = R.unit === FREE ? " · Freies Üben" : R.unit && R.unit.startsWith(TAG) ? " · #" + esc(R.unit.slice(TAG.length)) : R.practice ? " · Testtraining" : "";
+  const label = R.unit === FREE ? " · Freies Üben" : R.unit && R.unit.startsWith(TAG) ? (R.unit.startsWith(TAG + WB) ? " · Wordbank " + esc(R.unit.slice((TAG + WB).length).replace(/-/g, " ")) : " · #" + esc(R.unit.slice(TAG.length))) : R.practice ? " · Testtraining" : "";
   app.replaceChildren(h(`${roundHead()}
     <div class="icard" id="icard">
       <div class="spread"><span class="eyebrow">${dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
