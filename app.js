@@ -302,7 +302,7 @@ async function packCode(obj) {
   return "j" + b64u(bytes);
 }
 function packRows(cards) {
-  return cards.map(c => { const r = [c.en, c.de, c.ex || "", c.mn || 0, c.dx || 0, c.tags && c.tags.length ? c.tags : 0, c.part || 0]; while (r.length > 2 && !r[r.length - 1]) r.pop(); return r; });
+  return cards.map(c => { const r = [c.en, c.de, c.ex || "", c.mn || 0, c.dx || 0, c.tags && c.tags.length ? c.tags : 0, c.part || 0, c.nf ? 1 : 0]; while (r.length > 2 && !r[r.length - 1]) r.pop(); return r; });
 }
 // Fallen: falsche, aber leicht verwechselbare Antworten für die Auswahl, {en: [...], de: [...]}.
 function dxList(d) {
@@ -346,7 +346,7 @@ async function decodePack(code) {
   let bytes = unb64u(code.slice(1));
   if (code[0] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined, part: r[6] ? String(r[6]).slice(0, 8) : undefined }));
+  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined, part: r[6] ? String(r[6]).slice(0, 8) : undefined, nf: r[7] ? 1 : undefined }));
   const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
     .filter(u => u.rows.length);
   return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, isBook: Array.isArray(obj.u), paused: (obj.p || []).map(String) };
@@ -1635,6 +1635,7 @@ function addCards(unit, list, book) {
     if (r.dx) c.dx = r.dx;
     if (r.tags && r.tags.length) c.tags = r.tags;
     if (r.part) c.part = r.part;
+    if (r.nf) c.nf = 1;
     if (book) c.book = book;
     S.cards.push(c); added++;
   });
@@ -1651,15 +1652,27 @@ function renderBook(p) {
       <span class="muted small">${esc(p.lang)} · ${p.units.length === 1 ? esc(p.units[0].name) : p.units.length + " Units"} · ${total} Wörter</span>
     </section>
     <section class="panel">
-      ${p.units.map(u => `<p><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></p>`).join("")}
+      ${p.units.map((u, i) => {
+        const bold = u.rows.filter(r => !r.nf).length;
+        return `<p><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></p>` +
+          (bold < u.rows.length ? `<div class="chips" role="group" aria-label="Welche Wörter aus ${esc(u.name)}?">
+            <button class="chip" data-u="${i}" data-all="0" aria-pressed="true">Nur fett gedruckte (${bold})</button>
+            <button class="chip" data-u="${i}" data-all="1" aria-pressed="false">Alle (${u.rows.length})</button></div>` : "");
+      }).join("")}
       <p class="muted small">Gleich danach tippst du an, wie weit ihr in der Schule seid. Nur das wird abgefragt.</p>
     </section>
     <button class="btn wide" id="save">Übernehmen</button>`));
+  // Fett gedruckt ist im Buch der Lernwortschatz; „Alle“ holt auch die übrigen Wörter. Später nochmal „Alle“ ergänzt nur den Rest.
+  const all = p.units.map(() => false);
+  $$("[data-u]").forEach(b => b.onclick = () => {
+    all[+b.dataset.u] = b.dataset.all === "1";
+    $$(`[data-u="${b.dataset.u}"]`).forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  });
   $("#back").onclick = () => renderHome();
   $("#save").onclick = () => {
     const lang = L(); let added = 0;
     lang.paused = lang.paused || [];
-    p.units.forEach(u => { added += addCards(u.name, u.rows, p.title); if (!have.has(u.name)) lang.paused.push(u.name); });
+    p.units.forEach((u, i) => { added += addCards(u.name, all[i] ? u.rows : u.rows.filter(r => !r.nf), p.title); if (!have.has(u.name)) lang.paused.push(u.name); });
     save();
     toast(added ? `${added} Vokabeln übernommen` : "Diese Vokabeln sind schon in deinem Kasten");
     renderPos(p.units[0].name);
