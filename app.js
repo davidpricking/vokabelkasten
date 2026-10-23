@@ -2107,22 +2107,15 @@ function duelTally(list) {
   return Object.entries(t).sort((a, b) => b[1] - a[1]);
 }
 const secTxt = t => (t / 1000).toFixed(1).replace(".", ",") + " s";
-function medal(t, n) { const per = t / n / 1000; return per <= 2 ? "🥇" : per <= 3.5 ? "🥈" : per <= 5 ? "🥉" : ""; }
-// Teile einer Unit in Buchreihenfolge: eigene Abschnitte aus dem Buch-Link (card.part), sonst Päckchen zu 15 Wörtern.
-// Jeder Teil umfasst alle Wörter bis einschließlich dieses Teils.
-function unitParts(u) {
-  const cs = cardsL().filter(c => c.unit === u && c.en && c.de), out = [];
-  if (cs.some(c => c.part)) {
-    let last = null;
-    cs.forEach(c => { const p = c.part || last || "1"; last = p; let g = out.find(x => x.name === p); if (!g) out.push(g = { name: p, n: 0 }); g.n++; });
-    let sum = 0; out.forEach(g => { sum += g.n; g.upto = sum; });
-    const pool = i => { const names = out.slice(0, i + 1).map(g => g.name); let l2 = null; return cs.filter(c => { const p = c.part || l2 || "1"; l2 = p; return names.includes(p); }); };
-    return out.map((g, i) => ({ key: `${S.cur}|${u}|bis ${g.name}`, name: g.name, count: g.upto, cards: () => pool(i) })).filter(p => p.count >= 5);
-  }
-  for (let i = 0; i < cs.length; i += SPRINT_N) out.push(i);
-  if (out.length > 1 && cs.length - out[out.length - 1] < 8) out.pop();
-  return out.map((s, i) => { const end = i === out.length - 1 ? cs.length : out[i + 1];
-    return { key: `${S.cur}|${u}|bis ${i + 1}`, name: String(i + 1), count: end, cards: () => cs.slice(0, end) }; }).filter(p => p.count >= 5);
+function medal(t, n, s = n) { if (s < n * 0.8) return ""; const per = t / n / 1000; return per <= 2 ? "🥇" : per <= 3.5 ? "🥈" : per <= 5 ? "🥉" : ""; }
+// Zeit-Training (Davids Wunsch): erst die Unit wählen, dann die Teile aus dem Buch (blaue Marker 1, 2, A1 …) anhaken.
+// Die Häkchen bleiben gespeichert. Es zählen nur freigeschaltete Wörter, und gestartet wird erst ab SPRINT_N Wörtern.
+function unitPartList(u) {
+  const cs = cardsL().filter(c => c.unit === u && c.en && c.de && !isPaused(c)), groups = [], seen = new Set();
+  let last = cs.some(c => c.part) ? "1" : "alle";
+  // Wörter, die im Buch zweimal vorkommen, tragen ihren ersten Teil: sie zählen zum aktuellen Abschnitt
+  cs.forEach(c => { if (c.part && !seen.has(c.part)) { last = c.part; seen.add(last); } let g = groups.find(x => x.p === last); if (!g) groups.push(g = { p: last, l: [] }); g.l.push(c); });
+  return groups;
 }
 function makeQuestions(cards) {
   const all = cardsL().filter(c => c.en && c.de);
@@ -2148,21 +2141,41 @@ function duelCard() {
   </section>`;
 }
 function renderSprint() {
-  const units = [...new Set(cardsL().map(c => c.unit))], R2 = S.records || {};
+  const units = [...new Set(cardsL().map(c => c.unit))].filter(u => unitPartList(u).length), R2 = S.records || {};
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Auf Zeit üben</h2></div>
-    <p class="muted small">Wähl, bis zu welchem Teil ihr seid. Du bekommst ${SPRINT_N} Wörter daraus und tippst so schnell wie möglich die richtige Antwort an. Jeder Fehler kostet ${PENALTY / 1000} Strafsekunden.</p>
-    ${units.map(u => { const parts = unitParts(u); if (!parts.length) return "";
-      return `<section class="panel"><h3 style="overflow-wrap:anywhere">${esc(u)}</h3><p class="muted small">bis Teil …</p><div class="sprintparts">${parts.map((p, i) => { const r = R2[p.key];
-        return `<button class="sprintpart${r ? " done" : ""}" data-u="${esc(u)}" data-p="${i}"><b>${esc(p.name)}</b><span class="small muted">${p.count} Wörter</span>
-          <span class="rec">${r ? `${medal(r.t, r.n)} ${secTxt(r.t)}` : "–"}</span></button>`; }).join("")}</div></section>`; }).join("")}`));
+    <p class="muted small">Wähl eine Unit und hak die Teile an, die du üben willst. Du bekommst ${SPRINT_N} Wörter daraus und tippst so schnell wie möglich die richtige Antwort an. Jeder Fehler kostet ${PENALTY / 1000} Strafsekunden.</p>
+    <div class="sprintparts">${units.map((u, i) => { const n = Object.keys(R2).filter(k => k.startsWith(`${S.cur}|${u}|`)).length;
+      return `<button class="sprintpart${n ? " done" : ""}" data-i="${i}"><b style="overflow-wrap:anywhere">${esc(u)}</b><span class="rec">${n ? `${n} ${n === 1 ? "Rekord" : "Rekorde"}` : "–"}</span></button>`; }).join("")
+      || `<p class="muted">Noch keine freigeschalteten Wörter.</p>`}</div>`));
   $("#back").onclick = renderHome;
-  $$("[data-u]").forEach(b => b.onclick = () => {
-    const part = unitParts(b.dataset.u)[+b.dataset.p];
-    D = { m: "sprint", key: part.key, label: `${b.dataset.u} · bis Teil ${part.name}`, p: [newPlayer(S.name || "Ich")], cur: 0, i: 0, q: makeQuestions(shuffle(part.cards()).slice(0, SPRINT_N)) };
-    duelHandover();
-  });
+  $$(".sprintpart").forEach(b => b.onclick = () => renderSprintUnit(units[+b.dataset.i]));
   window.scrollTo(0, 0);
+}
+function renderSprintUnit(u) {
+  const groups = unitPartList(u), selAll = S.sprintSel = S.sprintSel || {}, k0 = S.cur + "|" + u;
+  if (!selAll[k0]) selAll[k0] = groups.map(g => g.p);
+  const draw = () => {
+    const sel = selAll[k0].filter(p => groups.some(g => g.p === p)), pick = groups.filter(g => sel.includes(g.p)), n = pick.reduce((a, g) => a + g.l.length, 0);
+    const key = `${k0}|${pick.map(g => g.p).join(",")}`, r = (S.records || {})[key];
+    app.replaceChildren(h(`
+      <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2 style="overflow-wrap:anywhere">${esc(u)}</h2></div>
+      ${groups.length > 1 ? `<div class="row"><button class="btn ghost small" id="pAll">Alle</button><button class="btn ghost small" id="pNone">Keine</button></div>
+      <div class="partchecks">${groups.map(g => `<label class="partcheck${sel.includes(g.p) ? " on" : ""}"><input type="checkbox" data-p="${esc(g.p)}"${sel.includes(g.p) ? " checked" : ""}><b>${esc(g.p)}</b><span class="small muted">${g.l.length}</span></label>`).join("")}</div>` : ""}
+      <section class="panel"><div class="spread"><b>${n} Wörter ausgewählt</b><span class="rec">${r ? `Rekord ${medal(r.t, r.n, r.s)} ${secTxt(r.t)}` : ""}</span></div>
+        ${n < SPRINT_N ? `<p class="muted small">Hak noch mehr Teile an: Für ein Zeit-Training brauchst du mindestens ${SPRINT_N} Wörter.</p>` : ""}
+        <button class="btn big wide" id="spGo"${n < SPRINT_N ? " disabled" : ""}>⏱️ Los</button></section>`));
+    $("#back").onclick = renderSprint;
+    const set = l => { selAll[k0] = l; save(); keepScroll(draw); };
+    if ($("#pAll")) { $("#pAll").onclick = () => set(groups.map(g => g.p)); $("#pNone").onclick = () => set([]); }
+    $$(".partcheck input").forEach(c => c.onchange = () => set(c.checked ? [...sel, c.dataset.p] : sel.filter(p => p !== c.dataset.p)));
+    $("#spGo").onclick = () => startSprint(u, { key, name: groups.length > 1 && pick.length < groups.length ? `Teil ${pick.map(g => g.p).join(", ")}` : "ganze Unit", cards: pick.flatMap(g => g.l) });
+  };
+  draw(); window.scrollTo(0, 0);
+}
+function startSprint(u, p, name = S.name || "Ich") {
+  D = { m: "sprint", unit: u, pool: p, key: p.key, label: `${u} · ${p.name}`, p: [newPlayer(name)], cur: 0, i: 0, q: makeQuestions(shuffle([...p.cards]).slice(0, SPRINT_N)) };
+  duelHandover();
 }
 function renderDuelSetup() {
   const me = S.name || "Ich", other = S.duelOther || "Papa";
@@ -2246,15 +2259,14 @@ function sprintResult(fresh) {
     <p class="eyebrow">${esc(D.label)}</p>
     ${best ? `<div class="newrec">${old ? "Neuer Rekord!" : "Erster Rekord!"}</div>` : ""}
     <div class="score">${secTxt(t)}</div>
-    <p>${p.s} von ${n} richtig${n - p.s ? ` · ${n - p.s} × ${PENALTY / 1000} Strafsekunden` : ", ohne Strafsekunden"} ${medal(t, n)}</p>
+    <p>${p.s} von ${n} richtig${n - p.s ? ` · ${n - p.s} × ${PENALTY / 1000} Strafsekunden` : ", ohne Strafsekunden"} ${medal(t, n, p.s)}</p>
     ${old ? `<p class="muted small">${best ? `Alter Rekord: ${secTxt(old.t)}. Du warst ${secTxt(old.t - t)} schneller!` : `Dein Rekord: ${secTxt(old.t)}. Noch ${secTxt(t - old.t)} schneller, dann knackst du ihn.`}</p>` : ""}
     <div class="duelwords">${D.q.map((q, k) => `<div class="dw"><span>${esc(q.de)} = <b>${esc(q.sol)}</b></span><span>${p.a[k] ? "✅" : "❌"}</span></div>`).join("")}</div>
     <div class="row" style="justify-content:center"><button class="btn${best ? "" : " ghost"}" id="chal">🤺 Jemanden herausfordern</button><button class="btn${best ? " ghost" : ""}" id="sAgain">Nochmal</button><button class="btn ghost" id="sHome">Fertig</button></div></div>`));
   if (fresh && best) { confetti(); sound("up"); }
   $("#chal").onclick = renderChallenge;
-  $("#sAgain").onclick = () => { const part = (S.cards.find(c => c.id === D.q[0].id) || {}).unit, pp = unitParts(part).find(x => x.key === D.key);
-    D = { m: "sprint", key: D.key, label: D.label, p: [newPlayer(p.n)], cur: 0, i: 0, q: makeQuestions(shuffle(pp ? pp.cards() : D.q.map(q => S.cards.find(c => c.id === q.id)).filter(Boolean)).slice(0, SPRINT_N)) }; duelHandover(); };
-  $("#sHome").onclick = () => { D = null; renderSprint(); };
+  $("#sAgain").onclick = () => { startSprint(D.unit, D.pool, p.n); };
+  $("#sHome").onclick = () => { const u = D.unit; D = null; renderSprintUnit(u); };
   window.scrollTo(0, 0);
 }
 function duelResult() {

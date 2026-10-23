@@ -506,7 +506,7 @@ body.weltopen .confetti{z-index:60}
 .dw{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-size:.92rem}
 @media (prefers-reduced-motion: reduce){.duelbig,.pod .crown,.podbar{animation:none}}
 /* Zeit-Training */
-.sprintparts{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.sprintparts{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .sprintpart{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:14px;border:2px solid var(--line,#ddd);background:var(--card,#fff);color:inherit;font:inherit;cursor:pointer;transition:transform .15s}
 .sprintpart:active{transform:scale(.95)}
 .sprintpart b{font-size:1.25rem}
@@ -519,3 +519,12 @@ body.weltopen .confetti{z-index:60}
 @keyframes recpop{from{transform:scale(.3) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
 .sprintres .score{font-size:3rem;font-weight:900;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){.newrec,.dclock.pen{animation:none}}
+.sprintpart.whole{grid-column:1/-1}
+.partchecks{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin:12px 0}
+.partcheck{position:relative;display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:12px;border:2px solid var(--line);background:var(--card);cursor:pointer;user-select:none;transition:transform .12s}
+.partcheck:active{transform:scale(.94)}
+.partcheck input{position:absolute;opacity:0;pointer-events:none}
+.partcheck.on{border-color:var(--accent);background:var(--good-bg)}
+.partcheck.on b::before{content:"✓ ";color:var(--good)}
+.partcheck:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.btn.small{padding:6px 14px;font-size:.9rem}
