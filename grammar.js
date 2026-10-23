@@ -53,7 +53,7 @@ window.GRAMMAR = {
       "catch": "fangen", "sugar": "Zucker", "advice": "Rat, Ratschlag", "furniture": "Möbel", "snow": "schneien, Schnee", "anyone": "irgendjemand",
       "mountain": "Berg", "high": "hoch", "driver": "Fahrer", "slow": "langsam", "fast": "schnell", "happily": "fröhlich",
       "beautifully": "wunderschön", "quietly": "leise", "carefully": "vorsichtig", "hard": "hart, fleißig", "hardly": "kaum", "cancel": "absagen",
-      "apologise": "sich entschuldigen", "novel": "Roman", "heat": "erhitzen, Hitze", "melt": "schmelzen", "pass": "bestehen", "study": "lernen",
+      "apologise": "sich entschuldigen", "novel": "Roman", "heat": "erhitzen, Hitze", "melt": "schmelzen", "pass": "bestehen", "study": "lernen", "tall": "groß (Körper)",
       "travel": "reisen", "lottery": "Lotterie", "earlier": "früher", "hurt": "weh tun", "match": "Spiel", "parent": "Elternteil",
       "brother": "Bruder"
     },
@@ -371,7 +371,7 @@ window.GRAMMAR = {
         ],
         ex: [["Look! It **is snowing**.", "Schau! Es schneit."], ["I **am doing** my homework at the moment.", "Ich mache gerade meine Hausaufgaben."]],
         tasks: [
-          ["gap", "Look! The dog ___ in the garden. (dig)", "is digging|'s digging", "is + dig + g + ing.", ["digs", "is diging"]],
+          ["gap", "Look! The dog ___ in the garden. (run)", "is running|'s running", "is + run + n + ing.", ["runs", "is runing"]],
           ["gap", "I ___ a book at the moment. (read)", "am reading|'m reading", "", ["read", "reading"]],
           ["gap", "Listen! They ___ a song. (sing)", "are singing|'re singing", "", ["sing", "is singing"]],
           ["gap", "We ___ in the lake right now. (swim)", "are swimming|'re swimming", "swim → swimming mit Doppel-m.", ["are swiming", "swim"]],
@@ -610,9 +610,9 @@ window.GRAMMAR = {
           ["gap", "Maths is ___ than art. (difficult)", "more difficult", "Lange Adjektive: more.", ["difficulter", "most difficult"]],
           ["gap", "My cake is ___ than yours. (good)", "better", "good – better – best.", ["gooder", "best"]],
           ["gap", "This is the ___ film I know. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
-          ["pick", "Lisa is taller ___ her mum.", ["than", "as", "then"], "als = than."],
+          ["pick", "Lisa is older ___ her mum.", ["than", "as", "then"], "als = than."],
           ["pick", "My bike is as fast ___ yours.", ["as", "than"], "as … as."],
-          ["gap", "Mount Everest is the ___ mountain in the world. (high)", "highest", "", ["higher", "most high"]]
+          ["gap", "This is the ___ tower in London. (high)", "highest", "", ["higher", "most high"]]
         ] },
       { id: "adverbsmanner", band: "6", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
         explain: [
