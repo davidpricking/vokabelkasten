@@ -9,13 +9,54 @@
 //   g8: true = steht nur im Bildungsplan G8 (V2, gilt noch für die älteren Jahrgänge),
 //   explain: Absätze der Erklärung (**fett** wird markiert), ex: Beispiele [Fremdsprache, Deutsch],
 //   tasks: Aufgaben
-//     ["gap", "Satz mit ___ (Hinweis)", "Lösung|andere Lösung", "Erklärung bei Fehlern"]
+//     ["gap", "Satz mit ___ (Hinweis)", "Lösung|andere Lösung", "Erklärung bei Fehlern", ["Falle", "Falle"]]  (mit Fallen: Auswahl statt Tippen)
 //     ["pick", "Satz mit ___", ["richtig", "falsch", "falsch"], "Erklärung bei Fehlern"]
 //     ["order", "Richtig geordneter Satz.", "Erklärung bei Fehlern"]
 // Themen ohne explain stehen in der Übersicht als "kommt noch".
 window.GRAMMAR = {
   Englisch: {
     source: "Bildungsplan BW, Gymnasium (G9), Englisch als erste Fremdsprache, V3.0 (2026)",
+    // Grundwörter zum Antippen in Grammatik-Aufgaben, falls sie nicht in den eigenen Wortkarten stehen.
+    gloss: {
+      "i": "ich", "me": "mich, mir", "my": "mein", "you": "du, ihr, Sie", "your": "dein, euer", "he": "er",
+      "him": "ihn, ihm", "his": "sein", "she": "sie", "her": "sie, ihr", "it": "es", "its": "sein (von Dingen)",
+      "we": "wir", "us": "uns", "our": "unser", "they": "sie (Mehrzahl)", "them": "sie, ihnen", "their": "ihr (Mehrzahl)",
+      "am": "bin", "is": "ist", "are": "sind, bist", "was": "war", "were": "waren, warst", "be": "sein",
+      "been": "gewesen", "isn't": "ist nicht", "aren't": "sind nicht", "wasn't": "war nicht", "weren't": "waren nicht", "i'm": "ich bin",
+      "you're": "du bist", "he's": "er ist", "she's": "sie ist", "it's": "es ist", "we're": "wir sind", "they're": "sie sind",
+      "have": "haben", "has": "hat", "had": "hatte, hatten", "haven't": "haben nicht", "hasn't": "hat nicht", "i've": "ich habe",
+      "do": "tun, machen", "does": "tut, macht", "did": "tat (Vergangenheit von do)", "don't": "nicht (mit I, you, we, they)", "doesn't": "nicht (mit he, she, it)", "didn't": "nicht (Vergangenheit)",
+      "can": "können", "can't": "nicht können", "cannot": "nicht können", "will": "werden (Zukunft)", "won't": "wird nicht", "would": "würde",
+      "must": "müssen", "mustn't": "nicht dürfen", "should": "sollte", "shouldn't": "sollte nicht", "going": "gehend; going to = werden (Plan)", "the": "der, die, das",
+      "a": "ein, eine", "an": "ein, eine (vor Vokal)", "this": "dies, dieser hier", "that": "das, jener dort; dass", "these": "diese hier", "those": "die dort",
+      "some": "einige, etwas", "any": "irgendein, kein", "much": "viel", "many": "viele", "few": "wenige", "little": "wenig, klein",
+      "lots": "viele", "lot": "viel", "more": "mehr", "most": "am meisten", "and": "und", "but": "aber",
+      "or": "oder", "because": "weil", "so": "also, deshalb", "if": "wenn, falls", "unless": "außer wenn", "when": "wann; wenn, als",
+      "than": "als (beim Vergleich)", "in": "in", "on": "auf", "at": "an, bei, um", "under": "unter", "behind": "hinter",
+      "between": "zwischen", "next": "nächste; next to = neben", "to": "zu, nach", "from": "aus, von", "with": "mit", "for": "für",
+      "of": "von", "by": "mit (Verkehrsmittel), von", "into": "in … hinein", "about": "über, ungefähr", "not": "nicht", "no": "nein, kein",
+      "yes": "ja", "never": "nie", "always": "immer", "often": "oft", "sometimes": "manchmal", "usually": "normalerweise",
+      "already": "schon", "just": "gerade eben", "ever": "jemals", "yet": "schon; noch nicht (bei Verneinung)", "now": "jetzt", "today": "heute",
+      "tomorrow": "morgen", "yesterday": "gestern", "ago": "vor (zeitlich)", "last": "letzte", "every": "jeder", "what": "was",
+      "where": "wo", "who": "wer", "why": "warum", "how": "wie", "which": "welche", "whose": "wessen",
+      "there": "dort; there is = es gibt", "here": "hier", "one": "eins", "two": "zwei", "three": "drei", "four": "vier",
+      "five": "fünf", "six": "sechs", "seven": "sieben", "eight": "acht", "nine": "neun", "ten": "zehn",
+      "went": "ging (go)", "gone": "gegangen (go)", "saw": "sah (see)", "seen": "gesehen (see)", "ate": "aß (eat)", "eaten": "gegessen (eat)",
+      "bought": "kaufte, gekauft (buy)", "caught": "fing, gefangen (catch)", "rode": "ritt, fuhr (ride)", "ridden": "geritten, gefahren (ride)", "wrote": "schrieb (write)", "won": "gewann, gewonnen (win)",
+      "knew": "wusste (know)", "known": "gewusst (know)", "lost": "verlor, verloren (lose)", "better": "besser", "best": "am besten", "worse": "schlechter",
+      "worst": "am schlechtesten", "children": "Kinder", "child": "Kind", "women": "Frauen", "feet": "Füße", "baby": "Baby",
+      "elephant": "Elefant", "germany": "Deutschland", "team": "Mannschaft", "ball": "Ball", "colour": "Farbe", "touch": "berühren",
+      "toilet": "Toilette", "basketball": "Basketball", "ill": "krank", "dishes": "Geschirr", "spider": "Spinne", "milk": "Milch",
+      "meat": "Fleisch", "breakfast": "Frühstück", "film": "Film", "bark": "bellen", "song": "Lied", "cookie": "Keks",
+      "fridge": "Kühlschrank", "egg": "Ei", "bread": "Brot", "pizza": "Pizza", "tea": "Tee", "vet": "Tierarzt, Tierärztin",
+      "rabbit": "Kaninchen", "pair": "Paar", "feed": "füttern", "cinema": "Kino", "key": "Schlüssel", "fox": "Fuchs",
+      "catch": "fangen", "sugar": "Zucker", "advice": "Rat, Ratschlag", "furniture": "Möbel", "snow": "schneien, Schnee", "anyone": "irgendjemand",
+      "mountain": "Berg", "high": "hoch", "driver": "Fahrer", "slow": "langsam", "fast": "schnell", "happily": "fröhlich",
+      "beautifully": "wunderschön", "quietly": "leise", "carefully": "vorsichtig", "hard": "hart, fleißig", "hardly": "kaum", "cancel": "absagen",
+      "apologise": "sich entschuldigen", "novel": "Roman", "heat": "erhitzen, Hitze", "melt": "schmelzen", "pass": "bestehen", "study": "lernen",
+      "travel": "reisen", "lottery": "Lotterie", "earlier": "früher", "hurt": "weh tun", "match": "Spiel", "parent": "Elternteil",
+      "brother": "Bruder"
+    },
     bands: [
       { id: "ct-1", group: "Klasse 5 · Camden Town", label: "Theme 1 · New in Camden" },
       { id: "ct-2", group: "Klasse 5 · Camden Town", label: "Theme 2 · At school" },
@@ -41,12 +82,12 @@ window.GRAMMAR = {
         ],
         ex: [["two **books**", "zwei Bücher"], ["three **boxes**", "drei Schachteln"], ["many **children**", "viele Kinder"]],
         tasks: [
-          ["gap", "one cat, two ___ (cat)", "cats"],
-          ["gap", "one bus, three ___ (bus)", "buses", "Nach s kommt -es."],
-          ["gap", "one baby, two ___ (baby)", "babies", "Konsonant + y wird zu -ies."],
-          ["gap", "one boy, two ___ (boy)", "boys", "Vor dem y steht ein Vokal (o), also nur -s."],
-          ["gap", "one child, five ___ (child)", "children", "child ist unregelmäßig: children."],
-          ["gap", "one box, four ___ (box)", "boxes", "Nach x kommt -es."],
+          ["gap", "one cat, two ___ (cat)", "cats", "", ["cat", "cates"]],
+          ["gap", "one bus, three ___ (bus)", "buses", "Nach s kommt -es.", ["buss", "bus"]],
+          ["gap", "one baby, two ___ (baby)", "babies", "Konsonant + y wird zu -ies.", ["babys", "babyes"]],
+          ["gap", "one boy, two ___ (boy)", "boys", "Vor dem y steht ein Vokal (o), also nur -s.", ["boies", "boyes"]],
+          ["gap", "one child, five ___ (child)", "children", "child ist unregelmäßig: children.", ["childs", "childrens"]],
+          ["gap", "one box, four ___ (box)", "boxes", "Nach x kommt -es.", ["boxs", "box"]],
           ["pick", "There are two ___ at the door.", ["women", "womans", "womens"], "woman → women ist unregelmäßig."],
           ["pick", "My ___ hurt after the long walk.", ["feet", "foots", "feets"], "foot → feet ist unregelmäßig."]
         ] },
@@ -77,12 +118,12 @@ window.GRAMMAR = {
         ],
         ex: [["I**'m** eleven.", "Ich bin elf."], ["My sister **is** at school.", "Meine Schwester ist in der Schule."], ["We **aren't** hungry.", "Wir haben keinen Hunger."]],
         tasks: [
-          ["gap", "I ___ from Germany. (be)", "am|'m", "Zu I gehört am."],
-          ["gap", "My brother ___ twelve. (be)", "is|'s", "my brother = he, also is."],
-          ["gap", "Tom and Lucy ___ my friends. (be)", "are|'re", "Tom and Lucy = they, also are."],
+          ["gap", "I ___ from Germany. (be)", "am|'m", "Zu I gehört am.", ["is", "are"]],
+          ["gap", "My brother ___ twelve. (be)", "is|'s", "my brother = he, also is.", ["are", "am"]],
+          ["gap", "Tom and Lucy ___ my friends. (be)", "are|'re", "Tom and Lucy = they, also are.", ["is", "am"]],
           ["pick", "Where is my bag? – ___ is under the desk.", ["It", "He", "She"], "Für Dinge nimmst du it."],
           ["pick", "Emma is new. ___ is from Leeds.", ["She", "He", "It"], "Emma ist ein Mädchen: she."],
-          ["gap", "We ___ late. (nicht sein)", "aren't|are not|'re not"],
+          ["gap", "We ___ late. (nicht sein)", "aren't|are not|'re not", "", ["isn't", "not are"]],
           ["pick", "___ am in class 5b.", ["I", "Me", "My"]],
           ["pick", "You and Ben ___ in my team.", ["are", "is", "am"], "You and Ben = ihr, also are."]
         ] },
@@ -100,7 +141,7 @@ window.GRAMMAR = {
           ["pick", "Are you from London? – No, ___.", ["I'm not", "I amn't", "I not"], "Verneint: I'm not."],
           ["pick", "___ old are you? – I'm eleven.", ["How", "What", "Who"], "Wie alt = How old."],
           ["pick", "___ is your teacher? – Mr Brown.", ["Who", "Where", "How"], "Die Antwort ist eine Person: who."],
-          ["gap", "___ is my pencil? – It's on the desk.", "Where", "Die Antwort ist ein Ort: where."],
+          ["gap", "___ is my pencil? – It's on the desk.", "Where", "Die Antwort ist ein Ort: where.", ["What", "Who"]],
           ["order", "Where is your school bag?"],
           ["pick", "Are your parents at work? – Yes, they ___.", ["are", "is", "am"]]
         ] },
@@ -115,8 +156,8 @@ window.GRAMMAR = {
         tasks: [
           ["pick", "___ a cat in the garden.", ["There is", "There are"], "a cat ist Einzahl."],
           ["pick", "___ three books on the shelf.", ["There are", "There is"], "three books ist Mehrzahl."],
-          ["gap", "There ___ a big tree in our park.", "is|'s"],
-          ["gap", "There ___ lots of shops in Camden.", "are"],
+          ["gap", "There ___ a big tree in our park.", "is|'s", "", ["are", "be"]],
+          ["gap", "There ___ lots of shops in Camden.", "are", "", ["is", "be"]],
           ["pick", "___ there a bathroom upstairs?", ["Is", "Are"], "a bathroom ist Einzahl."],
           ["pick", "There ___ any chairs in the room.", ["aren't", "isn't"], "chairs ist Mehrzahl."],
           ["order", "There are two beds in my room."],
@@ -134,8 +175,8 @@ window.GRAMMAR = {
           ["pick", "The ball is ___ the bed. (unter)", ["under", "behind", "on"]],
           ["pick", "My bag is ___ the chair. (neben)", ["next to", "between", "in front of"]],
           ["pick", "The dog is ___ the door. (hinter)", ["behind", "in front of", "under"]],
-          ["gap", "The pens are ___ the pencil case. (in)", "in"],
-          ["gap", "Emma is sitting ___ Tom and Ben. (zwischen)", "between"],
+          ["gap", "The pens are ___ the pencil case. (in)", "in", "", ["on", "at"]],
+          ["gap", "Emma is sitting ___ Tom and Ben. (zwischen)", "between", "", ["next", "behind"]],
           ["pick", "The bus stop is ___ the school. (vor)", ["in front of", "before", "behind"], "vor einem Ort = in front of."],
           ["pick", "There's a poster ___ the wall. (an)", ["on", "at", "in"], "an der Wand = on the wall."]
         ] },
@@ -150,11 +191,11 @@ window.GRAMMAR = {
         tasks: [
           ["pick", "Lisa has got a cat. ___ cat is black.", ["Her", "His", "Their"], "Lisa ist ein Mädchen: her."],
           ["pick", "Tom is in class 5a. ___ teacher is Mrs Lee.", ["His", "Her", "Its"], "Tom ist ein Junge: his."],
-          ["gap", "We live in Camden. ___ house is green. (wir)", "Our"],
-          ["gap", "I love ___ dog. (ich)", "my"],
+          ["gap", "We live in Camden. ___ house is green. (wir)", "Our", "", ["We", "Us"]],
+          ["gap", "I love ___ dog. (ich)", "my", "", ["me", "I"]],
           ["pick", "My parents are nice. ___ car is old.", ["Their", "There", "They're"], "their = ihr (Mehrzahl). there = dort."],
           ["pick", "The bird is in ___ cage.", ["its", "it's", "his"], "its ohne Apostroph."],
-          ["gap", "Is this ___ pen? (du)", "your"],
+          ["gap", "Is this ___ pen? (du)", "your", "", ["you", "yours"]],
           ["pick", "Max and I are friends. ___ favourite colour is blue.", ["Our", "Their", "My"], "Max and I = wir, also our."]
         ] },
       // ---------- Klasse 5, Theme 2 ----------
@@ -169,10 +210,10 @@ window.GRAMMAR = {
         tasks: [
           ["pick", "___ the window, please.", ["Open", "Opens", "You open"], "Aufforderungen beginnen mit der Grundform."],
           ["pick", "___ talk in the library!", ["Don't", "Not", "No"], "Verneint: Don't + Verb."],
-          ["gap", "___ late! (nicht + sein)", "Don't be|Do not be"],
+          ["gap", "___ late! (nicht + sein)", "Don't be|Do not be", "", ["Not be", "Don't"]],
           ["order", "Please close the door."],
           ["pick", "___ play a game!", ["Let's", "Lets us", "Let"], "Vorschläge mit Let's."],
-          ["gap", "___ quiet, please! (sein)", "Be", "Grundform von sein: be."],
+          ["gap", "___ quiet, please! (sein)", "Be", "Grundform von sein: be.", ["Are", "Is"]],
           ["order", "Don't touch the cake."],
           ["pick", "Sit down, ___.", ["please", "thanks", "sorry"], "Bitten mit please."]
         ] },
@@ -187,10 +228,10 @@ window.GRAMMAR = {
         tasks: [
           ["pick", "My sister ___ swim very well.", ["can", "cans", "can to"], "can bleibt immer gleich."],
           ["pick", "Can you ___ the guitar?", ["play", "plays", "to play"], "Nach can steht die Grundform."],
-          ["gap", "Fish ___ walk. (nicht können)", "can't|cannot"],
+          ["gap", "Fish ___ walk. (nicht können)", "can't|cannot", "", ["don't can", "can"]],
           ["pick", "___ I go to the toilet, please?", ["Can", "Do", "Am"], "Darf ich … ? = Can I … ?"],
-          ["gap", "Can your dad cook? – Yes, he ___.", "can"],
-          ["gap", "Can Emma ride a horse? – No, she ___.", "can't|cannot"],
+          ["gap", "Can your dad cook? – Yes, he ___.", "can", "", ["does", "is"]],
+          ["gap", "Can Emma ride a horse? – No, she ___.", "can't|cannot", "", ["doesn't", "isn't"]],
           ["order", "Can you play basketball?"],
           ["pick", "Tom ___ come to the party. He's ill.", ["can't", "doesn't can", "not can"], "Verneint: can't, ohne do."]
         ] },
@@ -203,10 +244,10 @@ window.GRAMMAR = {
         ],
         ex: [["I **have got** two brothers.", "Ich habe zwei Brüder."], ["Julia **hasn't got** history today.", "Julia hat heute keinen Geschichtsunterricht."], ["**Has** Tom **got** a pet?", "Hat Tom ein Haustier?"]],
         tasks: [
-          ["gap", "I ___ got a sister. (have)", "have|'ve"],
-          ["gap", "Ben ___ got a new phone. (have)", "has|'s", "Ben = he, also has."],
+          ["gap", "I ___ got a sister. (have)", "have|'ve", "", ["has", "am"]],
+          ["gap", "Ben ___ got a new phone. (have)", "has|'s", "Ben = he, also has.", ["have", "is"]],
           ["pick", "We ___ got maths on Monday.", ["have", "has"]],
-          ["gap", "My parents ___ got a car. (nicht haben)", "haven't|have not"],
+          ["gap", "My parents ___ got a car. (nicht haben)", "haven't|have not", "", ["hasn't", "don't"]],
           ["pick", "___ you got a pet?", ["Have", "Has", "Do"]],
           ["pick", "Has Lucy got a dog? – No, she ___.", ["hasn't", "haven't", "isn't"]],
           ["order", "Have you got a pencil?"],
@@ -221,11 +262,11 @@ window.GRAMMAR = {
         ],
         ex: [["This is **Emma's** pen.", "Das ist Emmas Stift."], ["My **grandparents'** house is big.", "Das Haus meiner Großeltern ist groß."], ["the end **of** the story", "das Ende der Geschichte"]],
         tasks: [
-          ["gap", "This is the bike of Tom. → This is ___ bike.", "Tom's"],
-          ["gap", "the dog of my sister → my ___ dog", "sister's"],
+          ["gap", "This is the bike of Tom. → This is ___ bike.", "Tom's", "", ["Toms", "Tom"]],
+          ["gap", "the dog of my sister → my ___ dog", "sister's", "", ["sisters", "sister"]],
           ["pick", "the car of my parents → my ___ car", ["parents'", "parent's", "parents's"], "Mehrzahl auf -s: nur Apostroph."],
           ["pick", "the room of the children → the ___ room", ["children's", "childrens'", "childrens"], "children hat kein -s, also 's."],
-          ["gap", "the house of Mr Smith → ___ house", "Mr Smith's"],
+          ["gap", "the house of Mr Smith → ___ house", "Mr Smith's", "", ["Mr Smiths", "Mr Smith"]],
           ["pick", "the end ___ the story", ["of", "'s", "from"], "Bei Dingen meist of."],
           ["pick", "Is this ___ pen?", ["Emma's", "Emmas", "Emma"], "Besitz: Emma's."],
           ["pick", "That's my ___ room. (Ich habe zwei Brüder.)", ["brothers'", "brother's", "brothers's"], "Zwei Brüder: Mehrzahl auf -s, nur Apostroph."]
@@ -240,11 +281,11 @@ window.GRAMMAR = {
         ],
         ex: [["I **play** football every Friday.", "Ich spiele jeden Freitag Fußball."], ["My sister **watches** TV after school.", "Meine Schwester sieht nach der Schule fern."], ["Tom **has** a dog.", "Tom hat einen Hund."]],
         tasks: [
-          ["gap", "She ___ to school by bus. (go)", "goes", "she → -s, und nach o kommt -es."],
-          ["gap", "My dad ___ the dishes every evening. (wash)", "washes", "Nach sh kommt -es."],
-          ["gap", "We ___ English on Mondays. (have)", "have", "Bei we bleibt das Verb ohne -s."],
-          ["gap", "Emma ___ a cat. (have)", "has", "Emma = she, und have wird zu has."],
-          ["gap", "The baby ___ a lot. (cry)", "cries", "Konsonant + y wird zu -ies."],
+          ["gap", "She ___ to school by bus. (go)", "goes", "she → -s, und nach o kommt -es.", ["go", "gos"]],
+          ["gap", "My dad ___ the dishes every evening. (wash)", "washes", "Nach sh kommt -es.", ["washs", "wash"]],
+          ["gap", "We ___ English on Mondays. (have)", "have", "Bei we bleibt das Verb ohne -s.", ["has", "haves"]],
+          ["gap", "Emma ___ a cat. (have)", "has", "Emma = she, und have wird zu has.", ["have", "haves"]],
+          ["gap", "The baby ___ a lot. (cry)", "cries", "Konsonant + y wird zu -ies.", ["crys", "cry"]],
           ["pick", "Ben and Lisa ___ in Leeds.", ["live", "lives"], "Ben and Lisa = they, also ohne -s."],
           ["pick", "It ___ a lot in Wales.", ["rains", "rain"], "it → das s muss mit."],
           ["order", "She always reads in bed.", "always steht vor dem Verb."]
@@ -257,12 +298,12 @@ window.GRAMMAR = {
         ],
         ex: [["I **don't** like spiders.", "Ich mag keine Spinnen."], ["Max **doesn't** eat meat.", "Max isst kein Fleisch."], ["We **aren't** at home.", "Wir sind nicht zu Hause."]],
         tasks: [
-          ["gap", "I ___ like spiders. (nicht)", "don't|do not"],
-          ["gap", "Max ___ like spiders. (nicht)", "doesn't|does not", "Max = he, also doesn't."],
+          ["gap", "I ___ like spiders. (nicht)", "don't|do not", "", ["doesn't", "not"]],
+          ["gap", "Max ___ like spiders. (nicht)", "doesn't|does not", "Max = he, also doesn't.", ["don't", "isn't"]],
           ["pick", "She doesn't ___ milk.", ["drink", "drinks"], "Nach doesn't steht das Verb ohne -s."],
           ["pick", "We ___ at home today.", ["aren't", "don't", "isn't"], "Mit be: we are → we aren't."],
           ["pick", "My dog ___ swim.", ["can't", "doesn't can", "don't"], "can wird zu can't, ohne do."],
-          ["gap", "It ___ cold today. (nicht sein)", "isn't|is not"],
+          ["gap", "It ___ cold today. (nicht sein)", "isn't|is not", "", ["don't", "aren't"]],
           ["order", "My brother doesn't eat meat."],
           ["pick", "They ___ live in London.", ["don't", "doesn't", "aren't"], "Bei they nimmst du don't."]
         ] },
@@ -280,7 +321,7 @@ window.GRAMMAR = {
           ["pick", "Tom ___ his homework.", ["often forgets", "forgets often"], "Vor dem Vollverb."],
           ["pick", "We ___ tired on Fridays.", ["are usually", "usually are"], "Nach are steht es dahinter."],
           ["order", "My parents sometimes watch films."],
-          ["gap", "I ___ eat fish. I hate it! (nie)", "never"],
+          ["gap", "I ___ eat fish. I hate it! (nie)", "never", "", ["always", "sometimes"]],
           ["pick", "They play football ___.", ["there every day", "every day there"], "Ort vor Zeit."],
           ["order", "He is usually at home."]
         ] },
@@ -293,14 +334,14 @@ window.GRAMMAR = {
         ],
         ex: [["Can you swim? – Yes, I **can**.", "Kannst du schwimmen? – Ja."], ["Does Tom like pizza? – No, he **doesn't**.", "Mag Tom Pizza? – Nein."]],
         tasks: [
-          ["gap", "Do you like cats? – Yes, I ___.", "do"],
-          ["gap", "Does Tom play football? – No, he ___.", "doesn't|does not", "In der Frage steht does, also doesn't."],
+          ["gap", "Do you like cats? – Yes, I ___.", "do", "", ["am", "does"]],
+          ["gap", "Does Tom play football? – No, he ___.", "doesn't|does not", "In der Frage steht does, also doesn't.", ["don't", "isn't"]],
           ["pick", "Are you tired? – Yes, I ___.", ["am", "are", "do"], "Zu you passt in der Antwort I am."],
           ["pick", "Is it raining? – No, it ___.", ["isn't", "doesn't", "aren't"], "In der Frage steht is, also isn't."],
-          ["gap", "Can your sister swim? – Yes, she ___.", "can"],
+          ["gap", "Can your sister swim? – Yes, she ___.", "can", "", ["does", "is"]],
           ["pick", "Are your parents at home? – No, they ___.", ["aren't", "don't", "isn't"], "Zu they passt are, also aren't."],
           ["pick", "Have you got a pet? – Yes, I ___.", ["have", "got", "do"], "Have you got … ? – Yes, I have."],
-          ["gap", "Does your dog bark a lot? – Yes, it ___.", "does"]
+          ["gap", "Does your dog bark a lot? – Yes, it ___.", "does", "", ["is", "do"]]
         ] },
       { id: "questions", band: "ct-3", t: "Questions", de: "Fragen stellen",
         explain: [
@@ -314,8 +355,8 @@ window.GRAMMAR = {
           ["pick", "___ you like football?", ["Do", "Does", "Are"], "Bei you nimmst du do."],
           ["pick", "___ your brother play the guitar?", ["Does", "Do", "Is"], "your brother = he, also does."],
           ["pick", "___ she at home?", ["Is", "Does", "Do"], "Mit be (is) brauchst du kein do."],
-          ["gap", "Where ___ you live?", "do", "Bei you nimmst du do."],
-          ["gap", "What time ___ the film start?", "does", "the film = it, also does."],
+          ["gap", "Where ___ you live?", "do", "Bei you nimmst du do.", ["does", "are"]],
+          ["gap", "What time ___ the film start?", "does", "the film = it, also does.", ["do", "is"]],
           ["pick", "Does he ___ chips?", ["like", "likes"], "Nach does steht das Verb ohne -s."],
           ["pick", "___ is your birthday? – In May.", ["When", "Who", "Where"], "Die Antwort ist eine Zeit, also when."],
           ["order", "Where does your aunt live?", "Fragewort, dann does, dann Person, dann Verb."]
@@ -330,13 +371,13 @@ window.GRAMMAR = {
         ],
         ex: [["Look! It **is snowing**.", "Schau! Es schneit."], ["I **am doing** my homework at the moment.", "Ich mache gerade meine Hausaufgaben."]],
         tasks: [
-          ["gap", "Look! The dog ___ in the garden. (dig)", "is digging|'s digging", "is + dig + g + ing."],
-          ["gap", "I ___ a book at the moment. (read)", "am reading|'m reading"],
-          ["gap", "Listen! They ___ a song. (sing)", "are singing|'re singing"],
-          ["gap", "We ___ in the lake right now. (swim)", "are swimming|'re swimming", "swim → swimming mit Doppel-m."],
+          ["gap", "Look! The dog ___ in the garden. (dig)", "is digging|'s digging", "is + dig + g + ing.", ["digs", "is diging"]],
+          ["gap", "I ___ a book at the moment. (read)", "am reading|'m reading", "", ["read", "reading"]],
+          ["gap", "Listen! They ___ a song. (sing)", "are singing|'re singing", "", ["sing", "is singing"]],
+          ["gap", "We ___ in the lake right now. (swim)", "are swimming|'re swimming", "swim → swimming mit Doppel-m.", ["are swiming", "swim"]],
           ["pick", "Be quiet! The baby ___.", ["is sleeping", "sleeps"], "Es passiert gerade jetzt."],
           ["pick", "My dad ___ to work every day.", ["goes", "is going"], "every day = Gewohnheit, also simple present."],
-          ["gap", "What ___ you doing?", "are"],
+          ["gap", "What ___ you doing?", "are", "", ["do", "is"]],
           ["pick", "Mum ___ dinner right now.", ["is making", "is makeing", "makes"], "make → making, das e fällt weg."]
         ] },
       { id: "someany", band: "ct-4", t: "some/any", de: "etwas, einige, keine",
@@ -371,7 +412,7 @@ window.GRAMMAR = {
           ["pick", "Tom is sad ___ his cat is ill.", ["because", "so", "or"], "Der Grund: because."],
           ["pick", "Do you want tea ___ juice?", ["or", "and", "but"]],
           ["pick", "Emma likes maths, ___ she doesn't like art.", ["but", "so", "or"]],
-          ["gap", "We stay at home ___ it's raining. (weil)", "because"],
+          ["gap", "We stay at home ___ it's raining. (weil)", "because", "", ["but", "so"]],
           ["order", "I'm happy because it's my birthday."],
           ["pick", "She is happy because ___.", ["she has got a new bike", "has she got a new bike", "she a new bike has got"], "Nach because: Subjekt – Verb – Objekt."]
         ] },
@@ -387,12 +428,12 @@ window.GRAMMAR = {
         tasks: [
           ["pick", "Where is Tom? I can't see ___.", ["him", "he", "his"]],
           ["pick", "Lisa is nice. I like ___.", ["her", "she", "hers"]],
-          ["gap", "Can you help ___? (ich)", "me"],
+          ["gap", "Can you help ___? (ich)", "me", "", ["I", "my"]],
           ["pick", "My grandparents live in York. We often visit ___.", ["them", "they", "their"]],
-          ["gap", "Come with ___! (wir)", "us"],
+          ["gap", "Come with ___! (wir)", "us", "", ["we", "our"]],
           ["pick", "This is my new bike. Do you like ___?", ["it", "its", "them"]],
           ["pick", "The dog is hungry. Give ___ some food.", ["it", "its", "it's"]],
-          ["gap", "This present is for ___. (sie, Mehrzahl)", "them"]
+          ["gap", "This present is for ___. (sie, Mehrzahl)", "them", "", ["they", "their"]]
         ] },
       { id: "modals", band: "ct-5", t: "Modal verbs", de: "must, mustn't, should, shouldn't",
         explain: [
@@ -407,9 +448,9 @@ window.GRAMMAR = {
           ["pick", "She ___ go to the vet with her dog. (muss)", ["must", "musts", "must to"], "must bleibt immer gleich."],
           ["pick", "You're tired. You ___ go to bed. (solltest)", ["should", "shouldn't", "mustn't"]],
           ["pick", "„Du darfst hier nicht rennen.“ heißt:", ["You mustn't run here.", "You don't must run here.", "You must not to run here."], "darf nicht = mustn't, ohne do und ohne to."],
-          ["gap", "Rabbits ___ live alone. They're happier in pairs. (sollten nicht)", "shouldn't|should not"],
+          ["gap", "Rabbits ___ live alone. They're happier in pairs. (sollten nicht)", "shouldn't|should not", "", ["mustn't", "don't should"]],
           ["pick", "He must ___ his room.", ["tidy", "tidies", "to tidy"], "Nach must steht die Grundform."],
-          ["gap", "You ___ feed your pet every day. (musst)", "must"],
+          ["gap", "You ___ feed your pet every day. (musst)", "must", "", ["mustn't", "should not"]],
           ["order", "You shouldn't take your pet to school."]
         ] },
       { id: "wordorder", band: "ct-5", t: "Word order (SPO)", de: "Satzstellung",
@@ -442,8 +483,8 @@ window.GRAMMAR = {
           ["pick", "Look at ___ birds over there!", ["those", "these", "that"], "Mehrzahl, weit weg: those."],
           ["pick", "___ shoes here are too small.", ["These", "This", "Those"], "Mehrzahl, nah: these."],
           ["pick", "Who is ___ girl over there?", ["that", "those", "this"], "Einzahl, weit weg: that."],
-          ["gap", "Are ___ your keys here on the table? (diese hier)", "these"],
-          ["gap", "Is ___ your house over there? (das dort)", "that"],
+          ["gap", "Are ___ your keys here on the table? (diese hier)", "these", "", ["this", "those"]],
+          ["gap", "Is ___ your house over there? (das dort)", "that", "", ["this", "these"]],
           ["pick", "I like ___ T-shirt. (dieses hier)", ["this", "these", "that"]],
           ["pick", "___ are my friends Tom and Ben. (diese hier)", ["These", "This", "That"]]
         ] },
@@ -457,14 +498,14 @@ window.GRAMMAR = {
         ],
         ex: [["Yesterday we **played** football.", "Gestern haben wir Fußball gespielt."], ["Last summer I **went** to Spain.", "Letzten Sommer bin ich nach Spanien gefahren."], ["**Did** you **like** the film?", "Hat dir der Film gefallen?"]],
         tasks: [
-          ["gap", "Yesterday we ___ football. (play)", "played"],
-          ["gap", "Last summer I ___ to Spain. (go)", "went", "go ist unregelmäßig: went."],
-          ["gap", "She ___ a fox in the park. (see)", "saw", "see ist unregelmäßig: saw."],
-          ["gap", "The baby ___ all night. (cry)", "cried", "Konsonant + y wird zu -ied."],
+          ["gap", "Yesterday we ___ football. (play)", "played", "", ["play", "plaied"]],
+          ["gap", "Last summer I ___ to Spain. (go)", "went", "go ist unregelmäßig: went.", ["goed", "go"]],
+          ["gap", "She ___ a fox in the park. (see)", "saw", "see ist unregelmäßig: saw.", ["seed", "see"]],
+          ["gap", "The baby ___ all night. (cry)", "cried", "Konsonant + y wird zu -ied.", ["cryed", "crys"]],
           ["pick", "I ___ tired yesterday.", ["was", "were", "am"], "I → was."],
           ["pick", "___ you watch the match last night?", ["Did", "Do", "Was"], "Frage in der Vergangenheit: did."],
           ["pick", "We didn't ___ the bus.", ["catch", "caught", "catched"], "Nach didn't steht die Grundform."],
-          ["gap", "They ___ at home last weekend. (nicht sein)", "weren't|were not", "they → were, verneint weren't."]
+          ["gap", "They ___ at home last weekend. (nicht sein)", "weren't|were not", "they → were, verneint weren't.", ["wasn't", "didn't be"]]
         ] },
       { id: "countable", band: "6", t: "Countable and uncountable nouns", de: "Zählbar oder nicht",
         explain: [
@@ -480,7 +521,7 @@ window.GRAMMAR = {
           ["pick", "I'd like ___ water.", ["a glass of", "a", "an"], "water ist nicht zählbar."],
           ["pick", "The furniture in my room ___ new.", ["is", "are"], "furniture ist nicht zählbar, also is."],
           ["pick", "There ___ two apples on the table.", ["are", "is"], "apples ist zählbar und Mehrzahl."],
-          ["gap", "Can I have a ___ of cake? (Stück)", "piece"],
+          ["gap", "Can I have a ___ of cake? (Stück)", "piece", "", ["much", "many"]],
           ["pick", "I need some ___ about the trip.", ["information", "informations"], "information hat keine Mehrzahl."],
           ["pick", "I've got ___ good news!", ["some", "a"], "news ist nicht zählbar."]
         ] },
@@ -500,7 +541,7 @@ window.GRAMMAR = {
           ["pick", "Can I have a ___ water?", ["little", "few"], "water ist nicht zählbar."],
           ["pick", "We haven't got ___ time.", ["much", "many"]],
           ["pick", "There are ___ people at the party.", ["a lot of", "much"], "a lot of passt zu allem."],
-          ["gap", "How ___ is the T-shirt? – It's £10.", "much"]
+          ["gap", "How ___ is the T-shirt? – It's £10.", "much", "", ["many", "more"]]
         ] },
       { id: "presentperfect", band: "6", t: "Present perfect simple", de: "Schon passiert, wichtig für jetzt",
         explain: [
@@ -511,14 +552,14 @@ window.GRAMMAR = {
         ],
         ex: [["I **have** just **finished** my homework.", "Ich habe gerade meine Hausaufgaben fertig gemacht."], ["**Have** you ever **been** to London?", "Warst du schon einmal in London?"]],
         tasks: [
-          ["gap", "I ___ my homework. (finish)", "have finished|'ve finished"],
-          ["gap", "She ___ this film three times. (see)", "has seen|'s seen", "see – saw – seen."],
+          ["gap", "I ___ my homework. (finish)", "have finished|'ve finished", "", ["finished", "have finish"]],
+          ["gap", "She ___ this film three times. (see)", "has seen|'s seen", "see – saw – seen.", ["has saw", "have seen"]],
           ["pick", "Have you ___ been to London?", ["ever", "yet"], "Schon einmal = ever."],
-          ["gap", "We have just ___ lunch. (eat)", "eaten", "eat – ate – eaten."],
+          ["gap", "We have just ___ lunch. (eat)", "eaten", "eat – ate – eaten.", ["ate", "eat"]],
           ["pick", "Tom ___ lost his key.", ["has", "have"], "Tom = he, also has."],
           ["pick", "They have ___ to the beach.", ["gone", "went", "go"], "Nach have steht die 3. Form."],
           ["pick", "I have never ___ a horse.", ["ridden", "rode", "ride"], "ride – rode – ridden."],
-          ["gap", "My parents ___ a new car. (buy)", "have bought|'ve bought", "buy – bought – bought."]
+          ["gap", "My parents ___ a new car. (buy)", "have bought|'ve bought", "buy – bought – bought.", ["have buyed", "bought"]]
         ] },
       { id: "goingto", band: "6", t: "going to-future", de: "Pläne und Absichten",
         explain: [
@@ -528,14 +569,14 @@ window.GRAMMAR = {
         ],
         ex: [["I**'m going to** learn the guitar.", "Ich werde Gitarre lernen."], ["Watch out! You**'re going to** fall!", "Pass auf! Du fällst gleich!"]],
         tasks: [
-          ["gap", "I ___ going to buy a new bike.", "am|'m"],
-          ["gap", "My sister ___ going to learn Spanish.", "is|'s"],
+          ["gap", "I ___ going to buy a new bike.", "am|'m", "", ["is", "are"]],
+          ["gap", "My sister ___ going to learn Spanish.", "is|'s", "", ["are", "am"]],
           ["pick", "We are going to ___ a party.", ["have", "having", "has"], "Nach going to steht die Grundform."],
-          ["gap", "Look at that boy! He ___ fall! (going to)", "is going to|'s going to"],
+          ["gap", "Look at that boy! He ___ fall! (going to)", "is going to|'s going to", "", ["will going to", "is go to"]],
           ["pick", "___ you going to watch the match?", ["Are", "Do", "Will"], "Frage: Are you going to … ?"],
           ["order", "I am going to visit my grandma."],
           ["pick", "They ___ going to stay at home.", ["are", "is"]],
-          ["gap", "What ___ you going to do this weekend?", "are"]
+          ["gap", "What ___ you going to do this weekend?", "are", "", ["is", "do"]]
         ] },
       { id: "will", band: "6", t: "will-future", de: "Vorhersagen und spontane Entschlüsse",
         explain: [
@@ -546,14 +587,14 @@ window.GRAMMAR = {
         ],
         ex: [["Maybe we **will** live on Mars one day.", "Vielleicht werden wir eines Tages auf dem Mars leben."], ["I **won't** tell anyone.", "Ich werde es niemandem sagen."]],
         tasks: [
-          ["gap", "I think it ___ snow tomorrow.", "will|'ll"],
+          ["gap", "I think it ___ snow tomorrow.", "will|'ll", "", ["is", "going"]],
           ["pick", "She will ___ you later.", ["call", "calls", "to call"], "Nach will steht die Grundform."],
-          ["gap", "Don't worry, I ___ tell anyone. (nicht werden)", "won't|will not"],
+          ["gap", "Don't worry, I ___ tell anyone. (nicht werden)", "won't|will not", "", ["don't", "not will"]],
           ["pick", "„Ich will ein Eis.“ heißt auf Englisch:", ["I want an ice cream.", "I will an ice cream."], "ich will = I want."],
           ["pick", "Maybe we ___ live on Mars one day.", ["will", "are"]],
           ["order", "I think you will like the film."],
           ["pick", "It's cold in here. – OK, I ___ close the window.", ["'ll", "am"], "Spontaner Entschluss: I'll."],
-          ["gap", "___ you help me, please? (werden)", "Will"]
+          ["gap", "___ you help me, please? (werden)", "Will", "", ["Do", "Are"]]
         ] },
       { id: "comparison", band: "6", t: "Comparison of adjectives", de: "Steigerung und Vergleich",
         explain: [
@@ -564,14 +605,14 @@ window.GRAMMAR = {
         ],
         ex: [["An elephant is **bigger than** a dog.", "Ein Elefant ist größer als ein Hund."], ["This is **the best** day ever!", "Das ist der beste Tag überhaupt!"]],
         tasks: [
-          ["gap", "An elephant is ___ than a dog. (big)", "bigger", "big → bigger mit Doppel-g."],
-          ["gap", "This is the ___ day of my life! (happy)", "happiest", "y wird zu i: happiest."],
-          ["gap", "Maths is ___ than art. (difficult)", "more difficult", "Lange Adjektive: more."],
-          ["gap", "My cake is ___ than yours. (good)", "better", "good – better – best."],
-          ["gap", "This is the ___ film I know. (bad)", "worst", "bad – worse – worst."],
+          ["gap", "An elephant is ___ than a dog. (big)", "bigger", "big → bigger mit Doppel-g.", ["biger", "more big"]],
+          ["gap", "This is the ___ day of my life! (happy)", "happiest", "y wird zu i: happiest.", ["happyest", "most happy"]],
+          ["gap", "Maths is ___ than art. (difficult)", "more difficult", "Lange Adjektive: more.", ["difficulter", "most difficult"]],
+          ["gap", "My cake is ___ than yours. (good)", "better", "good – better – best.", ["gooder", "best"]],
+          ["gap", "This is the ___ film I know. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
           ["pick", "Lisa is taller ___ her mum.", ["than", "as", "then"], "als = than."],
           ["pick", "My bike is as fast ___ yours.", ["as", "than"], "as … as."],
-          ["gap", "Mount Everest is the ___ mountain in the world. (high)", "highest"]
+          ["gap", "Mount Everest is the ___ mountain in the world. (high)", "highest", "", ["higher", "most high"]]
         ] },
       { id: "adverbsmanner", band: "6", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
         explain: [
@@ -737,12 +778,12 @@ window.GRAMMAR = {
     ],
     ex: [["If you **hurry**, you **will catch** the bus.", "Wenn du dich beeilst, erwischst du den Bus."], ["If I **were** you, I **would call** her.", "An deiner Stelle würde ich sie anrufen."], ["If we **lived** by the sea, we **would go** swimming every day.", "Wenn wir am Meer wohnten, gingen wir jeden Tag schwimmen."]],
     tasks: [
-      ["gap", "If it ___ tomorrow, we will cancel the trip. (rain)", "rains", "Typ 1: Im if-Teil steht simple present, nicht will."],
+      ["gap", "If it ___ tomorrow, we will cancel the trip. (rain)", "rains", "Typ 1: Im if-Teil steht simple present, nicht will.", ["will rain", "rain"]],
       ["pick", "If I ___ you, I would apologise.", ["were", "am", "would be"], "Typ 2 mit be: If I were you."],
-      ["gap", "If she had more time, she ___ a novel. (write)", "would write", "Typ 2: had (simple past) im if-Teil, would + Verb im Hauptsatz."],
+      ["gap", "If she had more time, she ___ a novel. (write)", "would write", "Typ 2: had (simple past) im if-Teil, would + Verb im Hauptsatz.", ["will write", "wrote"]],
       ["pick", "We'll miss the train unless we ___.", ["hurry", "will hurry", "hurried"], "unless = if not, auch hier kein will."],
       ["pick", "If you heat ice, it ___.", ["melts", "would melt", "will have melted"], "Naturgesetz: if + present, present (Typ 0)."],
-      ["gap", "If he ___ harder, he would pass. (study)", "studied", "Typ 2: simple past im if-Teil."],
+      ["gap", "If he ___ harder, he would pass. (study)", "studied", "Typ 2: simple past im if-Teil.", ["would study", "studies"]],
       ["order", "I would travel the world if I won the lottery.", "Der if-Teil darf auch hinten stehen, dann ohne Komma."],
       ["pick", "If I ___ the answer, I'd tell you – but I don't.", ["knew", "know", "would know"], "Unwirklich in der Gegenwart: Typ 2, also knew."]
     ]
@@ -755,10 +796,10 @@ window.GRAMMAR = {
     ],
     ex: [["If we **had left** earlier, we **would have caught** the train.", "Wären wir früher losgefahren, hätten wir den Zug erwischt."], ["If she **hadn't helped** me, I **would have failed**.", "Hätte sie mir nicht geholfen, wäre ich durchgefallen."]],
     tasks: [
-      ["gap", "If I ___ about the party, I would have come. (know)", "had known", "Typ 3: had + 3. Form im if-Teil."],
+      ["gap", "If I ___ about the party, I would have come. (know)", "had known", "Typ 3: had + 3. Form im if-Teil.", ["knew", "would have known"]],
       ["pick", "If they had trained more, they ___ the match.", ["would have won", "would win", "had won"], "Typ 3 im Hauptsatz: would have + 3. Form."],
       ["pick", "If I had gone to bed earlier, I ___ so tired now.", ["wouldn't be", "wouldn't have been", "won't be"], "Gemischt: früher (Typ 3) mit Folge jetzt (now), also would be."],
-      ["gap", "She would have called if she ___ your number. (have)", "had had", "had + 3. Form von have = had had."],
+      ["gap", "She would have called if she ___ your number. (have)", "had had", "had + 3. Form von have = had had.", ["would have", "has had"]],
       ["order", "If you had asked me I would have helped you.", "Typ 3: had asked, would have helped."]
     ]
   });

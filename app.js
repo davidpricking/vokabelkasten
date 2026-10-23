@@ -891,7 +891,7 @@ function renderRoundTask() {
     tick();
     const first = !(item in R.first);
     dayLog().gram++;
-    if (first) { R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] ?? true) && ok; }
+    if (first) { R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); }
     R.queue.shift();
     if (ok) { R.done.add(item); if (first) { R.combo++; R.best = Math.max(R.best, R.combo); } }
     else { R.combo = 0; R.queue.splice(Math.min(R.queue.length, 3), 0, item); }
@@ -907,7 +907,7 @@ function renderRoundTask() {
 function renderSummary() {
   tick();
   R.finished = true;
-  const gl = Object.entries(R.gram).map(([id, ok]) => gMove(id, ok)).filter(Boolean);
+  const gl = Object.entries(R.gram).map(([id, err]) => gMove(id, err <= G_MAX_ERR)).filter(Boolean);
   const n = R.total, g = R.good, lv = levelOf(S.xp);
   const earned = R.total >= 5 && !R.packed; if (earned) { R.packed = true; S.packQ.push(makePack(R)); }
   if (R.total >= 5 && g === n) dayLog().perfect = 1;
@@ -1535,15 +1535,20 @@ function gStore() { return S.gram[S.cur] || (S.gram[S.cur] = {}); }
 function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>"); }
 function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
 // Grammatik-Kasten: Geübte Themen bekommen ein Fach und melden sich in wachsenden Abständen in der Tagesrunde.
+// Haken für „Wir sind bei“ (Lernlogik): gesperrte Themen kommen nicht in die Tagesrunde.
+function gUnlocked(t) { return true; }
 function gDue() {
   const d = gData(); if (!d) return [];
   const st = gStore(), now = Date.now();
-  return d.topics.filter(t => gReady(t) && st[t.id] && st[t.id].box && st[t.id].due <= now).sort((a, b) => st[a.id].due - st[b.id].due);
+  return d.topics.filter(t => gReady(t) && gUnlocked(t) && st[t.id] && st[t.id].box && st[t.id].due <= now).sort((a, b) => st[a.id].due - st[b.id].due);
 }
+// Ein fälliges Thema kommt immer ganz (alle Aufgaben) ans Ende der Tagesrunde.
 function grammarItems() {
   const t = gDue()[0]; if (!t) return [];
-  return shuffle(t.tasks.map((_, i) => i)).slice(0, 3).map(i => `g|${t.id}|${i}`);
+  return shuffle(t.tasks.map((_, i) => i)).map(i => `g|${t.id}|${i}`);
 }
+// Ins nächste Fach geht es erst nach der ganzen Runde, mit höchstens einem Fehler beim ersten Versuch.
+const G_MAX_ERR = 1;
 function gMove(id, ok) {
   const d = gData(), t = d && d.topics.find(x => x.id === id), st = gStore()[id]; if (!t || !st) return "";
   const b0 = st.box || 1;
@@ -1682,11 +1687,36 @@ function startGrammar(t) {
 function gnorm(s) { return norm(s).replace(/[,!?.]/g, "").replace(/\s+/g, " ").trim(); }
 function taskQuestion(task) {
   return task[0] === "order" ? "Bring die Wörter in die richtige Reihenfolge."
-    : esc(task[1]).replace(/___/g, '<span class="gapline" aria-label="Lücke">&nbsp;</span>');
+    : tapWords(task[1]).replace(/___/g, '<span class="gapline" aria-label="Lücke">&nbsp;</span>');
 }
+// Antippen übersetzt ein Wort für TAP_MS. Quelle: eigene Wortkarten, dann die Grundwörter aus grammar.js.
+const TAP_MS = 2000;
+function tapWords(s) { return esc(s).replace(/\p{L}[\p{L}'’]*/gu, w => `<span class="tw" data-w="${w}">${w}</span>`); }
+let glossMap = null, glossLang = null;
+function glossOf(w) {
+  if (glossLang !== S.cur || !glossMap) {
+    glossLang = S.cur; glossMap = new Map(Object.entries((gData() || {}).gloss || {}));
+    cardsL().forEach(c => String(c.en).split(/[,/;]/).forEach(e => {
+      const k = e.replace(/\([^)]*\)/g, "").replace(/^\s*to\s+/i, "").trim().toLowerCase();
+      if (k && !k.includes(" ") && !glossMap.has(k)) glossMap.set(k, c.de);
+    }));
+  }
+  const l = w.toLowerCase().replace(/’/g, "'"), b = l.replace(/'s$/, "");
+  const tries = [l, b, b.replace(/s$/, ""), b.replace(/es$/, ""), b.replace(/ies$/, "y"), b.replace(/ied$/, "y"), b.replace(/ed$/, ""), b.replace(/d$/, ""),
+    b.replace(/ing$/, ""), b.replace(/ing$/, "e"), b.replace(/(.)\1(ing|ed)$/, "$1"), b.replace(/(er|est)$/, ""), b.replace(/i(er|est)$/, "y"), b.replace(/(.)\1(er|est)$/, "$1")];
+  for (const k of tries) if (glossMap.has(k)) return glossMap.get(k);
+  return "";
+}
+document.addEventListener("click", e => {
+  const el = e.target.closest(".tw"); if (!el) return;
+  const old = $(".twpop"); if (old) old.remove();
+  const pop = h(`<span class="twpop" role="status">${esc(glossOf(el.dataset.w) || "nicht in deinen Karten")}</span>`).firstElementChild;
+  el.append(pop); setTimeout(() => pop.remove(), TAP_MS);
+});
 // Zeichnet eine Aufgabe (auswählen, Lücke, Reihenfolge) und meldet done(richtig, ganzer Satz, Begründung).
 function drawTask(task, area, done) {
   const [type, q] = task;
+  if (type === "gap" && task[4]) return drawTask(["pick", q, [task[2].split("|")[0], ...task[4]], task[3]], area, done);
   if (type === "pick") {
     const right = task[2][0], opts = shuffle([...task[2]]);
     area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}">${esc(o)}</button>`).join("")}</div>`));
@@ -1694,7 +1724,7 @@ function drawTask(task, area, done) {
       const ok = opts[+b.dataset.k] === right;
       $$(".choice", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
       if (!ok) b.classList.add("wrong");
-      done(ok, q.includes("___") ? q.replace("___", right) : right, task[3]);
+      done(ok, q.includes("___") ? q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", right) : right, task[3]);
     });
   } else if (type === "gap") {
     const sols = task[2].split("|");
@@ -1771,7 +1801,7 @@ function gAnswered(ok, full, why) {
 }
 function renderGSummary() {
   tick();
-  const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id], ok = g / n >= .75;
+  const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id], ok = n - g <= G_MAX_ERR;
   st[t.id] = { best: Math.max(old ? old.best : 0, g / n), last: dayKey(), n: (old ? old.n : 0) + 1, box: old && old.box || 0, due: old ? old.due : 0 };
   if (!old || !old.box) { st[t.id].box = ok ? 2 : 1; st[t.id].due = today() + INTERVAL[st[t.id].box] * DAY; }
   else gMove(t.id, ok);
