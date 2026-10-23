@@ -7,6 +7,7 @@ Die App läuft im Handy-Browser, lässt sich auf den Startbildschirm legen und f
 ## Was die App kann
 
 - **Persönlich:** Beim ersten Start fragt die App nach dem Namen und der ersten Sprache. Jede Sprache hat ihren eigenen Kasten und erscheint oben als Fahne. Weitere Sprachen kommen über das + dazu.
+- **Motivation:** Wortzähler mit Meilensteinen, ein Pausentag pro Woche schützt die Serie, Wortmonster für Wörter, die oft danebengehen, ein Wochen-Duell per Link und in der Camden-Welt Häuser, die mit dem Fach strahlender werden, Viertel im Nebel und ein täglicher Schatz.
 - **Übungskalender:** Tage am Stück, Übungszeit heute und diese Woche, ein Monatskalender (Tag antippen zeigt Übungszeit, abgefragte Wörter, Trefferquote und neue Wörter) und die letzten Wochen im Vergleich.
 - **Karteikasten mit 7 Fächern.** Ein Wort kommt nach 1, 2, 4, 8 und 16 Tagen, nach einem Monat und nach einem halben Jahr wieder dran. Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück.
 - **Kurze Runden** mit 10 Wörtern. Neue Wörter kommen zuerst als Auswahl aus vier Antworten, danach zum Eintippen. Falsche Wörter kommen in derselben Runde noch einmal. Bei kleinen Tippfehlern zeigt die App die richtige Schreibweise.

@@ -13,6 +13,15 @@ const PALETTE = {
   3: ["#D9534F"], 4: ["#D8CFC0"], 5: ["#E9C46A", "#F4A261"], 6: ["#AEB8C2", "#C2B8A3"]
 };
 const ROOF = ["#A9A6A8", "#B8ABA1", "#E6E1D9", "#D6CFC5", "#C3C8CE"];
+// Viertel: Camden Town ist von Anfang an offen, jede geschaffte Unit lichtet den Nebel über dem nächsten.
+// [Name, x, z, Vorsprung in Metern]; jedes Haus gehört zum nächsten Mittelpunkt (Camden Town bekommt etwas mehr Fläche).
+const DISTRICTS = [
+  ["Camden Town", 0, -30, 110], ["Camden Lock", -170, -290, 0], ["Parkway", -220, 220, 0], ["Stables Market", -560, -420, 0],
+  ["Camden Square", 330, 60, 0], ["Camden Road", 280, -290, 0], ["Mornington Crescent", 290, 520, 0]
+];
+// Wie schön ein Haus ist, hängt am Fach seines Worts: 0 Farbe blättert ab, 1 steht, 2 Fenster leuchten, 3 goldenes Dach
+const tierOf = lv => lv >= 7 ? 3 : lv >= 5 ? 2 : lv >= SIT ? 1 : 0;
+const MARK_AT = [4, 19, 39, 69, 99, 149, 199];   // an diesen Stellen eines Viertels kommt das nächste Wahrzeichen
 
 // ---------- kleine Helfer ----------
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -78,7 +87,8 @@ function buildBuildings(data) {
     const pal = PALETTE[kind] || PALETTE[0], wall = new THREE.Color(pal[Math.floor(hash(i * 3.1) * pal.length)]);
     if (row[3]) wall.set(["#E76F51", "#2A9D8F", "#E9C46A", "#9B5DE5", "#F15BB5", "#00BBF9"][i % 6]);
     const roof = new THREE.Color(kind === 1 && a < 200 ? ROOF[Math.floor(hash(i) * 2)] : ROOF[2 + Math.floor(hash(i * 1.7) * 3)]);
-    meta[i] = { x: cx, z: cz, h, area: a, kind, name: row[2] >= 0 ? data.names[row[2]] : "", mark: !!row[3], r: Math.sqrt(a / Math.PI) };
+    let d = 0, dd = 1e9; DISTRICTS.forEach(([, x, z, bonus], k) => { const q = Math.hypot(cx - x, cz - z) - bonus; if (q < dd) { dd = q; d = k; } });
+    meta[i] = { x: cx, z: cz, h, area: a, kind, name: row[2] >= 0 ? data.names[row[2]] : "", mark: !!row[3], r: Math.sqrt(a / Math.PI), d };
     // Wände: je Kante ein Viereck; y = 0 unten, y = h oben; im Shader mal Wachstum
     let u = 0;
     for (let k = 0; k < pts.length; k++) {
@@ -228,6 +238,19 @@ function vehicle(parts) {
   return g;
 }
 
+// Reihenfolge, in der ein Viertel bebaut wird: Camden Town von innen nach außen wie in camden.json,
+// die anderen Viertel von ihrem Mittelpunkt aus; Wahrzeichen kommen in jedem Viertel an festen Stellen.
+function districtOrder(meta) {
+  return DISTRICTS.map(([, x, z], d) => {
+    const all = meta.map((m, i) => i).filter(i => meta[i].d === d);
+    const near = d ? i => Math.hypot(meta[i].x - x, meta[i].z - z) : i => i;   // Camden Town: Reihenfolge aus camden.json
+    const plain = all.filter(i => !meta[i].mark).sort((a, b) => near(a) - near(b)), marks = all.filter(i => meta[i].mark).sort((a, b) => near(a) - near(b));
+    const at = d ? MARK_AT : [0, ...MARK_AT.slice(1)];      // der Bahnhof kommt gleich mit dem ersten Wort
+    marks.forEach((i, k) => plain.splice(Math.min(at[k] ?? plain.length, plain.length), 0, i));
+    return plain;
+  });
+}
+
 // ---------- Shader: Wachstum, Fenster, Licht in der Nacht ----------
 function patchBuildings(mat, U, depth) {
   mat.onBeforeCompile = sh => {
@@ -250,9 +273,15 @@ function patchBuildings(mat, U, depth) {
         varying vec4 vInfo; varying vec4 vState; varying float vY; varying float vDist;
         float h21(vec3 p) { p = fract(p * .1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }`)
       .replace("#include <color_fragment>", `#include <color_fragment>
-        float built = vState.b;
+        float built = vState.b, tier = floor(vState.a * 3. + .5);
         // Bauplatz: blasser Grundriss
         diffuseColor.rgb = mix(vec3(.84, .81, .75), diffuseColor.rgb, built);
+        // Wort aus Fach 3 gerutscht: Farbe wird blass und blättert in Flecken ab
+        if (built > .5 && tier < .5) {
+          float n = h21(vec3(floor(vec2(vInfo.z, vY) * 1.4), mod(vInfo.x, 257.) + .5));
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(dot(diffuseColor.rgb, vec3(.3, .59, .11))) * .92, .65);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.80, .76, .70), step(.6, n) * (1. - vInfo.w) * .85);
+        }
         float win = 0.; vec2 cell = vec2(0.);
         if (vInfo.w < .5 && built > .5) {
           cell = vec2(vInfo.z / 2.7, (vY - 1.) / 3.2);
@@ -265,10 +294,18 @@ function patchBuildings(mat, U, depth) {
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * .78, step(vY, 1.) * .5);
           diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(.30, .38, .48), vec3(.12, .14, .22), uNight), win * .85);
         }
-        if (vInfo.w > .5) diffuseColor.rgb *= mix(.97, 1.03, h21(vec3(mod(vInfo.x, 257.) + .5)));`)
+        if (vInfo.w > .5) diffuseColor.rgb *= mix(.97, 1.03, h21(vec3(mod(vInfo.x, 257.) + .5)));
+        // Fach 7: goldenes Dach und goldener Sims
+        if (built > .5 && tier > 2.5) {
+          if (vInfo.w > .5) diffuseColor.rgb = vec3(1., .78, .24);
+          else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1., .80, .30), step(vInfo.y - .8, vY) * .95);
+        }`)
       .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
-        float lit = step(.42, h21(vec3(floor(cell) + .5, mod(vInfo.x, 257.) + .5)));
-        totalEmissiveRadiance += vec3(1., .72, .38) * win * lit * uNight * 1.1;
+        float lit = tier > 1.5 ? 1. : step(.42, h21(vec3(floor(cell) + .5, mod(vInfo.x, 257.) + .5)));
+        totalEmissiveRadiance += vec3(1., .72, .38) * win * lit * uNight * (tier > 1.5 ? 1.6 : 1.1);
+        // ab Fach 5 leuchten die Fenster auch tagsüber ein wenig warm
+        totalEmissiveRadiance += vec3(1., .80, .45) * win * step(1.5, tier) * .28 * (1. - uNight);
+        if (built > .5 && tier > 2.5) totalEmissiveRadiance += vec3(1., .72, .2) * (vInfo.w > .5 ? .22 + .18 * sin(uTime * 2.2 + vInfo.x) : 0.) * (1. + uNight);
         // ausgewählt oder gerade gewachsen: leuchtet
         totalEmissiveRadiance += vec3(1., .85, .35) * vState.g * (.22 + .1 * sin(uTime * 5.)) * (1. - .6 * uNight);`);
   };
@@ -320,7 +357,17 @@ const CSS = `
 .welt.night .w-osm{color:rgba(255,255,255,.8);background:rgba(0,0,0,.3)}
 .welt .w-load{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display,system-ui);font-weight:800;font-size:1.2rem;color:#1F4E5F}
 .welt .w-skip{position:absolute;right:14px;bottom:calc(150px + env(safe-area-inset-bottom,0px));border:0;border-radius:99px;padding:8px 14px;background:rgba(0,0,0,.45);color:#fff;font-weight:700;font:inherit;z-index:4;cursor:pointer}
-@media (prefers-reduced-motion: reduce){.welt .w-sheet,.welt .w-banner{transition:none}}
+.welt .w-map{width:auto;padding:0 12px;border-radius:99px;gap:4px;display:flex;font-size:1.05rem}
+.welt .w-map b{font-size:.85rem;font-family:var(--display,system-ui)}
+.welt .w-hint{position:absolute;left:50%;top:calc(66px + env(safe-area-inset-top,0px));transform:translateX(-50%);border:0;font:inherit;font-weight:700;background:#FFF1C2;color:#7A5200;
+  border-radius:99px;padding:8px 14px;box-shadow:0 4px 14px rgba(20,40,60,.2);cursor:pointer;width:max-content;max-width:92%;animation:whint 1.6s ease-in-out infinite}
+@keyframes whint{50%{transform:translateX(-50%) scale(1.05)}}
+.welt .w-how{margin-top:10px;font-size:.92rem;color:#3E4C59;background:#F2F5F7;border-radius:12px;padding:8px 10px}
+.welt .w-dl{display:grid;gap:6px;margin-top:10px;max-height:42vh;overflow:auto}
+.welt .w-dr{display:grid;grid-template-columns:1.6rem 1fr auto;gap:8px;align-items:center;border:0;background:#EAF4EC;border-radius:12px;padding:8px 10px;font:inherit;text-align:left;cursor:pointer;color:#1D2A36}
+.welt .w-dr.off{background:#ECEFF2;color:#6B7884}
+.welt .w-dr small{color:#5D6B78}
+@media (prefers-reduced-motion: reduce){.welt .w-sheet,.welt .w-banner{transition:none}.welt .w-hint{animation:none}}
 `;
 
 // ---------- Hauptteil ----------
@@ -334,13 +381,46 @@ export async function open(root, api) {
   catch (e) { el.querySelector(".w-load").textContent = "Die Welt konnte nicht geladen werden."; addClose(); return; }
   function addClose() { const b = document.createElement("button"); b.className = "w-btn"; b.style.cssText = "position:absolute;left:14px;top:14px"; b.textContent = "✕"; b.onclick = () => { el.remove(); api.onClose(); }; el.append(b); }
 
-  // --- Spielstand: welches Wort hat welches Haus gebaut ---
-  const W = api.state;                          // { built: [{id,en,de,t}], seen: n }
-  W.built = W.built || []; W.seen = W.seen || 0;
-  const N = data.b.length, have = new Set(W.built.map(b => b.id));
-  api.cards().filter(c => c.level >= SIT && !have.has(c.id)).forEach(c => { if (W.built.length < N) W.built.push({ id: c.id, en: c.en, de: c.de, t: Date.now() }); });
+  const { geo, meta } = buildBuildings(data);
+  const order = districtOrder(meta);
+
+  // --- Spielstand: welches Wort hat welches Haus (b) gebaut, welche Viertel sind offen ---
+  // { built: [{id,en,de,t,b}], seen, dist: [Unit, die Viertel 1, 2, … geöffnet hat], dSeen, tier: {id: zuletzt gezeigte Stufe}, wait: [ids] }
+  const W = api.state, N = data.b.length;
+  W.built = W.built || []; W.seen = W.seen || 0; W.dist = W.dist || []; W.dSeen = W.dSeen ?? W.dist.length; W.tier = W.tier || {};
+  const owner = new Int32Array(N).fill(-1), slotAt = DISTRICTS.map(() => 0), cnt = DISTRICTS.map(() => 0);
+  const openD = () => Math.min(DISTRICTS.length - 1, W.dist.length);
+  // Gebaut wird im offenen Viertel, das am wenigsten voll ist: ein neues Viertel wächst zuerst schnell, danach wachsen alle gleichmäßig.
+  function nextSlot(at = slotAt, n = cnt) {
+    let best = -1, bf = 2;
+    for (let d = 0; d <= openD(); d++) {
+      const o = order[d]; while (at[d] < o.length && owner[o[at[d]]] >= 0) at[d]++;
+      if (at[d] < o.length && n[d] / o.length < bf) { bf = n[d] / o.length; best = d; }
+    }
+    return best < 0 ? -1 : order[best][at[best]];
+  }
+  const place = (b, k) => { owner[b] = k; cnt[meta[b].d]++; };
+  // ältere Stände ohne Hausnummer: neu verteilen
+  if (W.built.some(w => w.b == null || w.b >= N)) W.built.forEach(w => w.b = null);
+  W.built.forEach((w, k) => { if (w.b != null) place(w.b, k); });
+  W.built.forEach((w, k) => { if (w.b == null) { w.b = nextSlot(); if (w.b >= 0) place(w.b, k); } });
+  if (W.built.some(w => w.b < 0)) { W.built = W.built.filter(w => w.b >= 0); owner.fill(-1); cnt.fill(0); W.built.forEach((w, k) => place(w.b, k)); }
+  const units = api.units ? api.units() : [];
+  units.filter(u => u.done && !W.dist.includes(u.key)).forEach(u => { if (W.dist.length < DISTRICTS.length - 1) W.dist.push(u.key); });
+  const have = new Set(W.built.map(b => b.id)), wait = [];
+  api.cards().filter(c => c.level >= SIT && !have.has(c.id)).forEach(c => {
+    let b = nextSlot();
+    // alle offenen Viertel voll: dann öffnet sich das nächste auch ohne geschaffte Unit
+    while (b < 0 && W.dist.length < DISTRICTS.length - 1) { W.dist.push("voll:" + W.dist.length); b = nextSlot(); }
+    if (b < 0) { wait.push(c.id); return; }
+    place(b, W.built.length); W.built.push({ id: c.id, en: c.en, de: c.de, t: Date.now(), b });
+  });
+  W.wait = wait;
   const fresh = Math.max(0, W.built.length - W.seen);
   const startBuilt = W.built.length - fresh;
+  const levelOf = new Map(api.cards().map(c => [c.id, c.level]));
+  const tierNow = w => tierOf(levelOf.get(w.id) ?? SIT);
+  const newDist = []; for (let d = W.dSeen + 1; d <= openD(); d++) newDist.push(d);
   api.save();
 
   // --- Szene ---
@@ -359,10 +439,15 @@ export async function open(root, api) {
   const stateTex = new THREE.DataTexture(stateArr, cols, rowsN, THREE.RGBAFormat, THREE.FloatType);
   stateTex.needsUpdate = true;
   const U = { uState: { value: stateTex }, uSize: { value: new THREE.Vector2(cols, rowsN) }, uNight: { value: 0 }, uTime: { value: 0 } };
-  const setState = (i, g, glow, built) => { stateArr[i * 4] = g; stateArr[i * 4 + 1] = glow; stateArr[i * 4 + 2] = built; };
-  for (let i = 0; i < N; i++) setState(i, i < startBuilt ? 1 : 0, 0, i < startBuilt ? 1 : 0);
-
-  const { geo, meta } = buildBuildings(data);
+  const setTier = (b, t) => { stateArr[b * 4 + 3] = t / 3; };
+  // Häuser, die schon standen: mit der zuletzt gezeigten Stufe; Aufstiege werden gleich gefeiert, Abstiege gleich gezeigt
+  const ups = [];
+  for (let k = 0; k < startBuilt; k++) {
+    const w = W.built[k], now = tierNow(w), was = W.tier[w.id] ?? 1;
+    stateArr[w.b * 4] = 1; stateArr[w.b * 4 + 2] = 1;
+    if (now > was && now >= 2) { setTier(w.b, was); ups.push(k); } else { setTier(w.b, now); W.tier[w.id] = now; }
+  }
+  for (let k = startBuilt; k < W.built.length; k++) setTier(W.built[k].b, tierNow(W.built[k]));
   const bMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   patchBuildings(bMat, U, false);
   const buildings = new THREE.Mesh(geo, bMat);
@@ -423,13 +508,62 @@ export async function open(root, api) {
     }
   }
 
+  // Nebel über Vierteln, die noch zu sind: weiche Wolken aus Punkten, je Viertel ein Objekt
+  const puffTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d");
+    for (let k = 0; k < 7; k++) { const x = 30 + hash(k) * 68, y = 40 + hash(k + 9) * 48, r = 26 + hash(k + 3) * 22, gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, "rgba(255,255,255,.95)"); gr.addColorStop(.6, "rgba(255,255,255,.5)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const clouds = [];
+  for (let d = W.dSeen + 1; d < DISTRICTS.length; d++) {
+    const o = order[d], pts = [], step = Math.max(1, Math.floor(o.length / 70));
+    for (let k = 0; k < o.length; k += step) { const m = meta[o[k]]; pts.push(m.x + (hash(k + d) - .5) * 30, 34 + hash(k * 1.7 + d) * 30, m.z + (hash(k * 2.3 + d) - .5) * 30); }
+    const g = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    const c = new THREE.Points(g, new THREE.PointsMaterial({ map: puffTex, size: 150, transparent: true, depthWrite: false, opacity: .93, color: "#FFFFFF" }));
+    c.userData = { d, lift: 0 }; c.renderOrder = 2; scene.add(c); clouds.push(c);
+  }
+  function liftClouds(d) { const c = clouds.find(c => c.userData.d === d); if (c) c.userData.lift = reduce ? 1 : .001; }
+  function stepClouds(dt, t) {
+    for (let k = clouds.length - 1; k >= 0; k--) {
+      const c = clouds[k], u = c.userData;
+      c.position.x = Math.sin(t * .07 + u.d) * 8; c.position.z = Math.cos(t * .05 + u.d * 2) * 6;
+      if (!u.lift) continue;
+      u.lift += dt / 2.6; const e = ease(Math.min(1, u.lift));
+      c.position.y = e * 160; c.material.opacity = .93 * (1 - e); c.material.size = 150 + e * 120;
+      if (u.lift >= 1) { scene.remove(c); c.geometry.dispose(); c.material.dispose(); clouds.splice(k, 1); }
+    }
+  }
+
+  // Tagesschatz: ein Päckchen auf einem Haus, mit Lichtstrahl, sobald heute geübt wurde
+  let treasure = null;
+  const T = api.treasure;
+  if (T && T.ready && startBuilt >= 3) {
+    let hs = 0; for (const ch of T.day) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
+    const pickK = hs % startBuilt, m = meta[W.built[pickK].b];
+    const box = new THREE.Group();
+    [[3.2, 3.2, 3.2, 0, "#FFC233"], [3.5, 1, 3.5, 1.6, "#E8574A"], [.8, 3.4, 3.4, 0, "#E8574A"], [3.4, 3.4, .8, 0, "#E8574A"]].forEach(([w, h, d, y, c]) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: .35 })); b.position.y = y; box.add(b); });
+    box.position.set(m.x, m.h + 5, m.z); box.scale.setScalar(1.6);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 4, 320, 16, 1, true).translate(0, 160, 0),
+      new THREE.MeshBasicMaterial({ color: "#FFE08A", transparent: true, opacity: .4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    beam.position.set(m.x, m.h, m.z);
+    scene.add(box, beam);
+    treasure = { box, beam, m, found: false, t: 0 };
+  }
+  function findTreasure() {
+    treasure.found = true; T.claim(); burst(treasure.m, true); burst(treasure.m, true);
+    api.sound?.("up"); api.confetti?.(); $("#w-hint").hidden = true;
+    banner("🎁 Schatz gefunden!", "Ein Sticker-Päckchen wartet auf der Startseite", 2600);
+  }
+
   // --- Oberfläche ---
   el.insertAdjacentHTML("beforeend", `
     <div class="w-top">
       <button class="w-btn" id="w-close" aria-label="Zurück">✕</button>
       <div class="w-chip w-title">🏙️ <span id="w-count"></span></div>
+      <button class="w-btn w-map" id="w-dist" aria-label="Viertel"><span>🗺️</span><b id="w-dn"></b></button>
       <button class="w-btn" id="w-home" aria-label="Zur Übersicht"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
     </div>
+    <button class="w-hint" id="w-hint" hidden></button>
     <div class="w-bottom" id="w-bottom">
       <div class="w-next" id="w-next"></div>
       <div class="w-time"><span aria-hidden="true">☀️</span><input type="range" id="w-hour" min="0" max="24" step=".05" aria-label="Tageszeit"><span id="w-clock"></span><button id="w-now">Jetzt</button></div>
@@ -439,14 +573,34 @@ export async function open(root, api) {
     <div id="w-labels"></div>
     <div class="w-osm">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende</div>`);
   const $ = s => el.querySelector(s);
-  let built = startBuilt;
+  let built = startBuilt, shownD = W.dSeen;          // built: so viele Einträge aus W.built stehen schon; shownD: so viele Viertel sind ohne Nebel
+  const isBuilt = b => owner[b] >= 0 && owner[b] < built;
+  // Die freien Bauplätze in der Reihenfolge, in der sie bebaut werden
+  function upcoming(max = 3000) {
+    const at = [...slotAt], n = [...cnt], out = [];
+    const saved = owner.slice();
+    while (out.length < max) { const b = nextSlot(at, n); if (b < 0) break; out.push(b); owner[b] = 1e9; n[meta[b].d]++; }
+    owner.set(saved);
+    return out;
+  }
   function hud() {
-    $("#w-count").textContent = `${built} ${built === 1 ? "Gebäude" : "Gebäude"} in Camden`;
-    let next = -1; for (let i = built; i < N; i++) if (meta[i].mark) { next = i; break; }
-    let prev = 0; for (let i = built - 1; i >= 0; i--) if (meta[i].mark) { prev = i + 1; break; }
-    if (next < 0) { $("#w-next").innerHTML = `<b>Ganz Camden gehört dir!</b>`; return; }
-    const left = next + 1 - built, pct = clamp((built - prev) / (next + 1 - prev), 0, 1) * 100;
-    $("#w-next").innerHTML = `<div class="w-nt"><span>Nächstes Wahrzeichen</span><span>noch <b>${left}</b> ${left === 1 ? "Wort" : "Wörter"}</span></div><b class="w-nn">★ ${esc(meta[next].name)}</b><div class="w-bar"><i style="width:${pct}%"></i></div>`;
+    $("#w-count").textContent = `${built} ${built === 1 ? "Haus" : "Häuser"}`;
+    $("#w-dn").textContent = `${shownD + 1}/${DISTRICTS.length}`;
+    const up = upcoming(); let at = up.findIndex(b => meta[b].mark);
+    // ist das nächste Wahrzeichen weit weg, zählt der nächste bekannte Ort (Laden, Pub, Kirche) als Ziel
+    const named = up.findIndex(b => meta[b].name), far = at < 0 || at > 40;
+    if (far && named >= 0) {
+      const left = named + 1;
+      $("#w-next").innerHTML = `<div class="w-nt"><span>Nächster bekannter Ort</span><span>noch <b>${left}</b> ${left === 1 ? "Wort" : "Wörter"}</span></div><b class="w-nn">📍 ${esc(meta[up[named]].name)}</b><div class="w-bar"><i style="width:${clamp(1 - named / 12, .05, 1) * 100}%"></i></div>`;
+      return;
+    }
+    let prev = 0; for (let k = built - 1; k >= 0; k--) if (meta[W.built[k].b].mark) { prev = k + 1; break; }
+    if (at < 0) {
+      $("#w-next").innerHTML = openD() < DISTRICTS.length - 1 ? `<b>Alle Wahrzeichen hier stehen!</b><div class="w-nt"><span>Schaff eine Unit, dann lichtet sich der Nebel über ${esc(DISTRICTS[openD() + 1][0])}.</span></div>` : `<b>Ganz Camden gehört dir!</b>`;
+      return;
+    }
+    const left = at + 1, pct = clamp((built - prev) / (built - prev + left), 0, 1) * 100;
+    $("#w-next").innerHTML = `<div class="w-nt"><span>Nächstes Wahrzeichen</span><span>noch <b>${left}</b> ${left === 1 ? "Wort" : "Wörter"}</span></div><b class="w-nn">★ ${esc(meta[up[at]].name)}</b><div class="w-bar"><i style="width:${pct}%"></i></div>`;
   }
   hud();
 
@@ -457,7 +611,7 @@ export async function open(root, api) {
     const d = document.createElement("div"); d.className = "w-label" + (gold ? " gold" : ""); d.textContent = (gold ? "★ " : "") + meta[i].name;
     $("#w-labels").append(d); labels.push({ i, d, w: d.offsetWidth }); labels.sort((a, b) => a.i - b.i);
   }
-  for (let i = 0; i < startBuilt; i++) if (meta[i].mark) addLabel(i, true);
+  for (let k = 0; k < startBuilt; k++) if (meta[W.built[k].b].mark) addLabel(W.built[k].b, true);
 
   // --- Kamera ---
   const controls = new MapControls(camera, renderer.domElement);
@@ -501,6 +655,7 @@ export async function open(root, api) {
     scene.fog.color.copy(sky.hor);
     el.style.background = `linear-gradient(to bottom, #${sky.top.getHexString()} 0%, #${sky.hor.getHexString()} 75%)`;
     U.uNight.value = sky.night; lamps.material.opacity = sky.night;
+    clouds.forEach(c => c.material.color.copy(sky.hemi).lerp(new THREE.Color("#FFFFFF"), 1 - sky.night * .7));
     el.classList.toggle("night", sky.night > .5);
     $("#w-hour").value = h; $("#w-clock").textContent = `${String(Math.floor(h) % 24).padStart(2, "0")}:${String(Math.floor((h % 1) * 60)).padStart(2, "0")}`;
     $("#w-now").hidden = hourOverride === null;
@@ -520,15 +675,19 @@ export async function open(root, api) {
     const r = renderer.domElement.getBoundingClientRect();
     ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
     ray.setFromCamera(ptr, camera);
+    if (treasure && !treasure.found) {      // Schatz: großzügig um ihn herum antippen reicht
+      tmp.copy(treasure.box.position).project(camera);
+      if (tmp.z < 1 && Math.hypot((tmp.x * .5 + .5) * r.width - (e.clientX - r.left), (-tmp.y * .5 + .5) * r.height - (e.clientY - r.top)) < 46) { findTreasure(); return; }
+    }
     const hits = ray.intersectObject(buildings);
     let id = -1;
-    for (const h of hits) { const b = geo.attributes.aInfo.getX(h.face.a); if (b < built) { id = b; break; } }
+    for (const h of hits) { const b = geo.attributes.aInfo.getX(h.face.a); if (isBuilt(b)) { id = b; break; } }
     if (id < 0) {   // Bauplatz am Boden?
       const g = ray.ray.intersectPlane(new THREE.Plane(v3(0, 1, 0), 0), v3(0, 0, 0));
       if (g) {
-        for (const h of hits) { const b = geo.attributes.aInfo.getX(h.face.a); if (b >= built && Math.hypot(meta[b].x - g.x, meta[b].z - g.z) < meta[b].r * 1.4) { showLot(b); return; } }
+        for (const h of hits) { const b = geo.attributes.aInfo.getX(h.face.a); if (!isBuilt(b) && Math.hypot(meta[b].x - g.x, meta[b].z - g.z) < meta[b].r * 1.4) { showLot(b); return; } }
         // knapp daneben getippt: nächstes gebautes Haus in der Nähe nehmen
-        let best = -1, bd = 14; for (let i = 0; i < built; i++) { const d = Math.hypot(meta[i].x - g.x, meta[i].z - g.z) - meta[i].r; if (d < bd) { bd = d; best = i; } }
+        let best = -1, bd = 14; for (let k = 0; k < built; k++) { const i = W.built[k].b, d = Math.hypot(meta[i].x - g.x, meta[i].z - g.z) - meta[i].r; if (d < bd) { bd = d; best = i; } }
         if (best >= 0) { select(best); return; }
       }
       hideSheet(); return;
@@ -538,13 +697,17 @@ export async function open(root, api) {
   function select(i, quiet) {
     if (selected >= 0) stateArr[selected * 4 + 1] = 0;
     selected = i; stateArr[i * 4 + 1] = .8; stateTex.needsUpdate = true;
-    const m = meta[i], w = W.built[i];
+    const m = meta[i], w = W.built[owner[i]];
     const card = api.cards().find(c => c.id === w.id);
-    const fach = card ? card.level : null;
+    const fach = card ? card.level : null, t = card ? tierOf(fach) : 1;
+    const how = !card ? "" : t === 0 ? `Die Farbe blättert ab, weil „${esc(w.en)}“ zurückgerutscht ist. Übe es wieder bis Fach ${SIT}, dann strahlt das Haus wieder.`
+      : t === 1 ? `Noch ${5 - fach} ${5 - fach === 1 ? "Fach" : "Fächer"}, dann leuchten die Fenster.`
+      : t === 2 ? `Die Fenster leuchten! Noch ${7 - fach} ${7 - fach === 1 ? "Fach" : "Fächer"} bis zum goldenen Dach.` : "Goldenes Dach! Dieses Wort sitzt richtig fest.";
     $("#w-sheet").innerHTML = `<button class="w-x" aria-label="Schließen">✕</button>
       ${m.mark ? `<div class="w-pill gold" style="display:inline-block;margin-bottom:6px">★ ${esc(m.name)}</div>` : m.name ? `<div class="w-pill" style="display:inline-block;margin-bottom:6px">${esc(m.name)}</div>` : ""}
       <div class="w-en">${esc(w.en)}</div><div class="w-de">${esc(w.de)}</div>
-      <div class="w-meta"><span class="w-pill">Haus Nr. ${i + 1}</span>${fach ? `<span class="w-pill">Fach ${fach}</span>` : ""}<span class="w-pill">gebaut am ${new Date(w.t).toLocaleDateString("de-DE")}</span></div>
+      <div class="w-meta"><span class="w-pill">Haus Nr. ${owner[i] + 1}</span>${fach ? `<span class="w-pill${t === 3 ? " gold" : ""}">Fach ${fach}</span>` : ""}<span class="w-pill">${esc(DISTRICTS[m.d][0])}</span><span class="w-pill">gebaut am ${new Date(w.t).toLocaleDateString("de-DE")}</span></div>
+      ${how ? `<div class="w-how">${how}</div>` : ""}
       ${api.say ? `<button class="w-say">🔊 Anhören</button>` : ""}`;
     $("#w-sheet").classList.add("on"); $("#w-bottom").style.visibility = "hidden"; shiftTo = .2;
     $("#w-sheet .w-x").onclick = hideSheet;
@@ -552,10 +715,11 @@ export async function open(root, api) {
     if (!quiet) { api.sound?.("good"); flyTo(v3(m.x, m.h * .5, m.z), clamp(m.h * 5 + m.r * 8, 140, 500), .9, undefined, 1.3); }
   }
   function showLot(i) {
-    const m = meta[i], left = i + 1 - built;
+    const m = meta[i], left = upcoming(N).indexOf(i) + 1;
     $("#w-sheet").innerHTML = `<button class="w-x" aria-label="Schließen">✕</button>
-      <div class="w-en" style="font-size:1.5rem">Bauplatz${m.mark ? ": " + esc(m.name) : ""}</div>
-      <div class="w-de">Hier wird gebaut, wenn noch ${left} ${left === 1 ? "Wort" : "Wörter"} sitzen (ab Fach ${SIT}).</div>`;
+      <div class="w-en" style="font-size:1.5rem">${m.d > shownD ? "Im Nebel" : "Bauplatz"}${m.mark ? ": " + esc(m.name) : ""}</div>
+      <div class="w-de">${m.d > shownD ? `Das Viertel ${esc(DISTRICTS[m.d][0])} liegt noch im Nebel. Jede Unit, die du schaffst (8 von 10 Wörtern ab Fach ${SIT}), öffnet ein neues Viertel.`
+        : `Hier wird gebaut, wenn noch ${left} ${left === 1 ? "Wort" : "Wörter"} sitzen (ab Fach ${SIT}).`}</div>`;
     $("#w-sheet").classList.add("on"); $("#w-bottom").style.visibility = "hidden";
     $("#w-sheet .w-x").onclick = hideSheet;
   }
@@ -564,6 +728,23 @@ export async function open(root, api) {
     $("#w-sheet").classList.remove("on"); $("#w-bottom").style.visibility = ""; shiftTo = 0;
   }
   $("#w-home").onclick = () => { hideSheet(); flyTo(overviewTarget(), overviewDist(), .9, undefined, 1.4); };
+  $("#w-dist").onclick = () => {
+    if (tour) return;
+    const best = units.filter(u => !u.done).sort((a, b) => b.pct - a.pct)[0];
+    $("#w-sheet").innerHTML = `<button class="w-x" aria-label="Schließen">✕</button>
+      <div class="w-en" style="font-size:1.5rem">Viertel von Camden</div>
+      <div class="w-dl">${DISTRICTS.map(([name], d) => { const n = order[d].filter(isBuilt).length;
+        return `<button class="w-dr${d > shownD ? " off" : ""}" data-d="${d}"><span>${d > shownD ? "☁️" : "📍"}</span><b>${esc(name)}</b><small>${d > shownD ? "im Nebel" : `${n} von ${order[d].length} Häusern`}</small></button>`; }).join("")}</div>
+      <div class="w-how">${shownD < DISTRICTS.length - 1 ? `Schaff eine Unit (8 von 10 Wörtern ab Fach ${SIT}), dann lichtet sich der Nebel über ${esc(DISTRICTS[shownD + 1][0])}.${best ? ` Am weitesten ist „${esc(best.name)}“: ${Math.min(99, Math.round(best.pct / .8 * 100))} %.` : ""}` : "Alle Viertel sind offen!"}</div>`;
+    $("#w-sheet").classList.add("on"); $("#w-bottom").style.visibility = "hidden";
+    $("#w-sheet .w-x").onclick = hideSheet;
+    el.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { const [, x, z] = DISTRICTS[+b.dataset.d]; hideSheet(); flyTo(v3(x, 0, z), 560, .9, undefined, 1.6); });
+  };
+  function finishIntro() {
+    if (!treasure || treasure.found) return;
+    const h = $("#w-hint"); h.hidden = false; h.innerHTML = "🎁 Heute ist ein Schatz versteckt. Folge dem Lichtstrahl! <u>Hilfe</u>";
+    h.onclick = () => { const m = treasure.m; hideSheet(); flyTo(v3(m.x + 60, 0, m.z + 60), 380, .95, undefined, 1.8); };
+  }
 
   // --- Wachsen ---
   const growing = [];
@@ -581,13 +762,14 @@ export async function open(root, api) {
     }
     stateTex.needsUpdate = true;
   }
+  const builtIds = () => { const out = []; for (let k = 0; k < built; k++) out.push(W.built[k].b); return out.length ? out : [order[0][0]]; };
   function overviewTarget() {
-    let x = 0, z = 0, n = 0; const end = Math.max(1, built);
-    for (let i = 0; i < end; i++) { x += meta[i].x; z += meta[i].z; n++; }
-    return v3(x / n * .7, 0, z / n * .7);
+    let x = 0, z = 0; const ids = builtIds();
+    ids.forEach(i => { x += meta[i].x; z += meta[i].z; });
+    return v3(x / ids.length * .7, 0, z / ids.length * .7);
   }
   function overviewDist() {
-    let r = 0; for (let i = 0; i < Math.max(1, built); i++) r = Math.max(r, Math.hypot(meta[i].x, meta[i].z));
+    const c = overviewTarget(); let r = 0; builtIds().forEach(i => r = Math.max(r, Math.hypot(meta[i].x - c.x, meta[i].z - c.z)));
     return clamp(r * 2.2 + 140, 160, 1100);
   }
   const banner = (big, small, ms = 2200) => new Promise(res => {
@@ -597,26 +779,37 @@ export async function open(root, api) {
 
   // Eröffnungsflug, danach die neuen Häuser
   let tour = false, skip = false;
+  const unitName = d => { const key = W.dist[d - 1] || ""; if (key.startsWith("voll:")) return null; const u = units.find(u => u.key === key); return u ? u.name : null; };
   async function intro() {
     setView(v3(0, 0, 0), 1500, .2, -.6);
-    if (!fresh) { await flyTo(overviewTarget(), overviewDist(), .95, .35, 2.6); return; }
+    if (!fresh && !newDist.length && !ups.length) { await flyTo(overviewTarget(), overviewDist(), .95, .35, 2.6); finishIntro(); return; }
     tour = true;
     const sk = document.createElement("button"); sk.className = "w-skip"; sk.textContent = "Überspringen ⏭"; el.append(sk);
     sk.onclick = () => { skip = true; sk.remove(); };
-    const list = []; for (let i = startBuilt; i < W.built.length; i++) list.push(i);
-    if (list.length <= 6) {
-      await flyTo(overviewTarget(), overviewDist(), .9, .35, 2.2);
-      for (const i of list) {
+    // 1. neue Viertel: der Nebel zieht ab
+    for (const d of newDist) {
+      const [name, x, z] = DISTRICTS[d];
+      if (!skip) await flyTo(v3(x, 0, z), 620, .85, undefined, 2);
+      liftClouds(d); shownD = d; hud(); api.sound?.("up"); api.confetti?.();
+      const un = unitName(d);
+      if (!skip) await banner(`Neues Viertel: ${name}!`, un ? `freigeschaltet mit „${un}“` : "Camden Town war voll, jetzt geht es hier weiter", 2800);
+    }
+    shownD = openD(); W.dSeen = shownD;
+    // 2. neue Häuser
+    const list = []; for (let k = startBuilt; k < W.built.length; k++) list.push(k);
+    if (list.length && list.length <= 6) {
+      if (!newDist.length) await flyTo(overviewTarget(), overviewDist(), .9, .35, 2.2);
+      for (const k of list) {
         if (skip) break;
-        const m = meta[i];
+        const i = W.built[k].b, m = meta[i];
         await flyTo(v3(m.x, m.h * .4, m.z), clamp(m.h * 4 + m.r * 6, 110, 280), .95, undefined, 1.5);
-        grow(i); built = i + 1; hud(); api.sound?.(m.mark ? "up" : "good");
+        grow(i); built = k + 1; hud(); api.sound?.(m.mark ? "up" : "good");
         if (m.mark) { addLabel(i, true); api.confetti?.(); }
-        await banner(m.mark ? `★ ${m.name}!` : W.built[i].en, m.mark ? `Wahrzeichen freigeschaltet mit „${W.built[i].en}“` : `hat ein Haus gebaut`, m.mark ? 2600 : 1500);
+        await banner(m.mark ? `★ ${m.name}!` : W.built[k].en, m.mark ? `Wahrzeichen freigeschaltet mit „${W.built[k].en}“` : m.name ? `hat ${m.name} gebaut` : `hat ein Haus gebaut`, m.mark ? 2600 : 1500);
       }
     }
     // viele auf einmal (oder übersprungen): als Welle
-    const rest = list.filter(i => stateArr[i * 4 + 2] === 0);
+    const rest = list.map(k => W.built[k].b).filter(i => stateArr[i * 4 + 2] === 0);
     if (rest.length) {
       built = W.built.length;
       if (!skip) await flyTo(overviewTarget(), overviewDist(), .85, .35, 2);
@@ -626,8 +819,26 @@ export async function open(root, api) {
       const marks = rest.filter(i => meta[i].mark).map(i => meta[i].name);
       await banner(`+${rest.length} Gebäude!`, marks.length ? `Neu: ★ ${marks.join(", ")}` : "Deine Wörter bauen Camden", 2600);
     }
+    built = W.built.length; W.seen = built;
+    for (let k = startBuilt; k < W.built.length; k++) W.tier[W.built[k].id] = tierNow(W.built[k]);
+    // 3. Häuser, deren Wort weiter nach hinten gewandert ist: Fenster leuchten oder das Dach wird golden
+    const show = ups.slice(0, 4);
+    for (const k of show) {
+      if (skip) break;
+      const w = W.built[k], i = w.b, m = meta[i], t = tierNow(w);
+      await flyTo(v3(m.x, m.h * .5, m.z), clamp(m.h * 4 + m.r * 6, 110, 260), .9, undefined, 1.4);
+      setTier(i, t); stateArr[i * 4 + 1] = .9; stateTex.needsUpdate = true; burst(m, true); api.sound?.("up");
+      await banner(t === 3 ? "Goldenes Dach!" : "Die Fenster leuchten!", `„${w.en}“ ist jetzt in Fach ${levelOf.get(w.id)}`, 1900);
+      stateArr[i * 4 + 1] = 0; stateTex.needsUpdate = true;
+    }
+    const restUp = ups.filter(k => stateArr[W.built[k].b * 4 + 3] * 3 < tierNow(W.built[k]) - .5);
+    restUp.forEach(k => setTier(W.built[k].b, tierNow(W.built[k]))); stateTex.needsUpdate = true;
+    if (restUp.length && !skip) await banner(`${restUp.length} ${restUp.length === 1 ? "Haus strahlt" : "Häuser strahlen"} jetzt heller`, "weil ihre Wörter weiter hinten im Kasten liegen", 2000);
+    ups.forEach(k => W.tier[W.built[k].id] = tierNow(W.built[k]));
     el.querySelector(".w-skip")?.remove();
-    built = W.built.length; W.seen = built; api.save(); hud(); tour = false;
+    api.save(); hud(); tour = false;
+    if (skip || fresh > 6) await flyTo(overviewTarget(), overviewDist(), .9, .35, 1.6);
+    finishIntro();
   }
 
   // --- Schleife ---
@@ -647,7 +858,13 @@ export async function open(root, api) {
     // nicht aus der Stadt hinausschieben
     const t = controls.target, R = data.radius + 60, l = Math.hypot(t.x, t.z);
     if (l > R) { tmp.set(t.x, 0, t.z).multiplyScalar(R / l - 1); t.add(tmp); camera.position.add(tmp); }
-    stepGrow(dt);
+    stepGrow(dt); stepClouds(dt, U.uTime.value);
+    if (treasure) {
+      const tb = treasure.box;
+      if (!treasure.found) { tb.rotation.y += dt * 1.6; tb.position.y = treasure.m.h + 5 + Math.sin(U.uTime.value * 2.4) * 1.2; treasure.beam.material.opacity = .3 + .12 * Math.sin(U.uTime.value * 3); }
+      else if (treasure.t < 1) { treasure.t += dt / .9; tb.scale.setScalar(1.6 + treasure.t * 2.5); tb.position.y += dt * 18; tb.rotation.y += dt * 9;
+        treasure.beam.material.opacity = .4 * (1 - treasure.t); if (treasure.t >= 1) { tb.visible = treasure.beam.visible = false; } }
+    }
     // Schatten folgen dem Blick
     const dist = camera.position.distanceTo(controls.target), sz = clamp(dist * .9, 120, 900);
     const sc = sun.shadow.camera; if (sc.right !== sz) { sc.left = sc.bottom = -sz; sc.right = sc.top = sz; sc.near = 1; sc.far = 3000; sc.updateProjectionMatrix(); }
@@ -689,9 +906,9 @@ export async function open(root, api) {
   function close() {
     alive = false; cancelAnimationFrame(raf); clearInterval(timeTimer);
     removeEventListener("resize", resize); document.removeEventListener("visibilitychange", onVis);
-    if (tour) { W.seen = W.built.length; api.save(); }
+    if (tour) { W.seen = W.built.length; W.dSeen = openD(); W.built.forEach(w => W.tier[w.id] = tierNow(w)); api.save(); }
     controls.dispose(); scene.traverse(o => { o.geometry?.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()); });
-    stateTex.dispose(); glowTex.dispose(); depthMat.dispose(); renderer.dispose(); renderer.forceContextLoss?.();
+    stateTex.dispose(); glowTex.dispose(); puffTex.dispose(); depthMat.dispose(); renderer.dispose(); renderer.forceContextLoss?.();
     el.remove(); api.onClose();
   }
   $("#w-close").onclick = close;

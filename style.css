@@ -425,3 +425,68 @@ button.streak{color:var(--ink);cursor:pointer}
 body.weltopen{overflow:hidden}
 @media (prefers-reduced-motion: reduce){.weltbadge{animation:none}}
 body.weltopen .confetti{z-index:60}
+
+/* Pausentag im Kalender */
+.day.pause{background:color-mix(in srgb,#9B5DE5 18%,var(--card))}
+.day.pause::after{content:"💤";position:absolute;right:1px;top:-4px;font-size:.7rem}
+
+/* Wortzähler und Meilensteine */
+.wcount{background:linear-gradient(135deg,#FFF6D6,#FFE8B0);color:#4A3B06;border-color:#F2D58A}
+.wcount .muted{color:#7A6420}
+.wc-row{display:flex;align-items:center;gap:14px}
+.wc-num{font-family:var(--display);font-weight:800;font-size:3.2rem;line-height:1;font-variant-numeric:tabular-nums;color:#B86E00;text-shadow:0 3px 0 #F2C94C}
+.wc-num.bump{animation:wcbump .5s cubic-bezier(.2,1.8,.4,1)}
+@keyframes wcbump{40%{transform:scale(1.25)}}
+.wc-txt{display:flex;flex-direction:column}
+.wc-txt b{font-family:var(--display);font-size:1.1rem}
+.bar.gold{background:#F7DFA0}
+.bar.gold i{background:linear-gradient(90deg,#FFD43B,#F59F00)}
+.mile{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(20,30,40,.6);opacity:0;transition:opacity .3s;padding:16px}
+.mile.on{opacity:1}
+.mile-rays{position:absolute;width:160vmax;height:160vmax;background:repeating-conic-gradient(rgba(255,212,59,.35) 0 10deg,transparent 10deg 20deg);animation:spin 18s linear infinite;pointer-events:none}
+@keyframes spin{to{transform:rotate(1turn)}}
+.mile-box{position:relative;background:var(--card);border-radius:28px;padding:26px 22px;text-align:center;max-width:22rem;display:flex;flex-direction:column;gap:10px;align-items:center;
+  transform:scale(.6);transition:transform .5s cubic-bezier(.2,1.6,.4,1);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.mile.on .mile-box{transform:none}
+.mile-n{font-family:var(--display);font-weight:800;font-size:5.5rem;line-height:1;color:#F59F00;text-shadow:0 5px 0 #B86E00;font-variant-numeric:tabular-nums}
+.mile-sub{font-family:var(--display);font-weight:800;font-size:1.3rem}
+
+/* Wortmonster */
+.moncard{background:linear-gradient(180deg,#EFE6FF,var(--card))}
+.monrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.mon{position:relative;width:84px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.mon svg{width:72px;height:80px;overflow:visible}
+.mon .mb{transform-origin:50% 100%;animation:monbob 1.8s ease-in-out infinite;animation-delay:var(--d,0s)}
+.mon .pu{animation:monlook 4s ease-in-out infinite;animation-delay:var(--d,0s)}
+@keyframes monbob{50%{transform:translateY(-4px) scaleY(1.04) scaleX(.97)}}
+@keyframes monlook{0%,40%,100%{transform:none}50%,80%{transform:translateX(-2px)}}
+.mon-hp{color:#E8574A;font-size:.85rem;letter-spacing:1px;line-height:1}
+.mon-hp i{color:#C9C3D6;font-style:normal}
+.mon-hp i.lost{color:#E8574A;display:inline-block;animation:heartlost 1s .6s forwards}
+@keyframes heartlost{30%{transform:scale(1.6)}100%{transform:translateY(-14px) scale(.4);opacity:0}}
+.mon-w{font-family:var(--hand);font-size:.95rem;line-height:1.1;text-align:center;overflow-wrap:anywhere;color:var(--ink)}
+.moncheer{font-family:var(--display);font-weight:800;text-align:center;font-size:1.1rem}
+.monsum{display:flex;flex-direction:column;gap:8px;width:100%}
+.monline{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 12px;text-align:left}
+.monline>span{display:flex;flex-direction:column}
+.mon.hit svg{animation:monhit .6s .3s}
+@keyframes monhit{20%{transform:translateX(-6px) rotate(-6deg);filter:brightness(1.6)}50%{transform:translateX(6px) rotate(5deg)}80%{transform:translateX(-3px)}}
+.mon.slain svg{animation:monpoof 1.2s .5s forwards}
+.mon.slain::after{content:"✨🏆✨";position:absolute;top:26px;left:0;right:0;text-align:center;font-size:1.3rem;opacity:0;animation:monstar .8s 1.4s forwards}
+@keyframes monpoof{25%{transform:scale(1.2) rotate(-8deg);filter:brightness(1.8)}100%{transform:scale(0) rotate(200deg);opacity:0}}
+@keyframes monstar{from{transform:scale(.3)}to{opacity:1;transform:none}}
+.mon.born svg{animation:monborn .7s cubic-bezier(.2,1.8,.4,1)}
+@keyframes monborn{from{transform:scale(0) translateY(30px)}}
+.montag{background:#E9D8FF;color:#4B2A7A}
+
+/* Wochen-Duell */
+.duelrow{display:grid;grid-template-columns:6.5rem 1fr 2.5rem;gap:10px;align-items:center;margin:6px 0}
+.duelrow .bar{height:12px}
+.duelrow.me .bar i{background:linear-gradient(90deg,#FFD43B,#F59F00)}
+.duelrow b{text-align:right;font-family:var(--display);font-variant-numeric:tabular-nums}
+.duelname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+
+/* Welt-Karte: Neuigkeiten */
+.weltnews{background:rgba(255,255,255,.7);border-radius:12px;padding:6px 10px;font-weight:700;font-size:.92rem}
+.weltgift{position:absolute;left:10px;top:0;font-size:1.6rem;animation:weltpulse 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.mon .mb,.mon .pu,.mile-rays,.weltgift{animation:none}}

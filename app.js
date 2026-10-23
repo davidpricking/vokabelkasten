@@ -167,12 +167,24 @@ function tick() {
   if (run) run.last = now;
 }
 function shiftDay(k, n) { const [y, m, d] = k.split("-").map(Number); return dayKey(new Date(y, m - 1, d + n).getTime()); }
-function liveStreak() {
-  let k = dayKey();
+// Serie: Tage am Stück. Pro Woche (Mo–So) darf ein Tag ausfallen, ohne dass die Serie reißt (Pausentag).
+// Ein Pausentag zählt nicht mit, zwei Pausentage hintereinander gibt es nicht.
+function streakInfo() {
+  let k = dayKey(), n = 0, prevPause = false;
+  const pauses = new Set(), used = new Set();
   if (!practiced(k)) k = shiftDay(k, -1);
-  let n = 0; while (practiced(k)) { n++; k = shiftDay(k, -1); }
-  return n;
+  for (let guard = 0; guard < 4000; guard++) {
+    if (practiced(k)) { n++; prevPause = false; }
+    else {
+      const wk = weekStart(k);
+      if (prevPause || used.has(wk) || !practiced(shiftDay(k, -1))) break;
+      used.add(wk); pauses.add(k); prevPause = true;
+    }
+    k = shiftDay(k, -1);
+  }
+  return { n, pauses };
 }
+function liveStreak() { return streakInfo().n; }
 function fmtMin(sec) {
   const m = Math.round(sec / 60);
   if (sec > 0 && m < 1) return "< 1 Min";
@@ -445,6 +457,7 @@ function renderHomeView() {
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
       ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
+    ${counterCard()}
     ${placeU ? `<section class="panel place">
       <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
       <p class="muted small">Im Schnelltest kommt jedes Wort genau einmal. Was du schon kannst, fliegt gleich nach hinten in Fach ${PLACE_LEVEL}. So lernst du nur, was wirklich neu ist.</p>
@@ -454,9 +467,11 @@ function renderHomeView() {
       ${kastenHtml(levelCounts())}
       <p class="muted small">Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück. Unter jedem Fach steht, wann ein Wort daraus wieder drankommt.</p>
     </section>` : ""}
+    ${monsterCard()}
     ${grammarCard()}
     ${questCard()}
     ${weltCard()}
+    ${duelCard()}
     ${albumCard()}
     <section>
       <div class="spread"><h2>Abzeichen</h2><button class="link" id="badges">Alle ${BADGES.length} ansehen</button></div>
@@ -509,6 +524,8 @@ function renderHomeView() {
   $("#lv").onclick = $("#badges").onclick = () => renderBadges();
   if ($("#album")) $("#album").onclick = () => renderAlbum();
   $("#welt").onclick = () => renderWelt();
+  if ($("#duelShare")) $("#duelShare").onclick = shareDuel;
+  save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
   if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
   $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
@@ -590,7 +607,7 @@ function renderCard() {
     <div class="icard" id="icard">
       <div class="spread"><span class="eyebrow">${dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
         ${dir === "en-de" && canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
-      ${card.level === 0 && fresh && !R.practice ? '<span class="newtag">Neues Wort</span>' : ""}
+      ${card.level === 0 && fresh && !R.practice ? '<span class="newtag">Neues Wort</span>' : isMonster(card) ? `<span class="newtag montag">👾 Monster-Wort · noch ${Math.max(1, 3 - card.level)} ♥</span>` : ""}
       ${mode === "speak" ? `<div class="flip" id="flip"><div class="face front"><div class="q">${qHtml}</div></div><div class="face back"><div class="q">${esc(sol)}</div></div></div>`
         : `<div class="q">${qHtml}</div>`}
       <div id="answerArea"></div>
@@ -826,6 +843,7 @@ function answered(card, result, sol, dir, typed) {
   else if (firstTime) { R.combo++; R.best = Math.max(R.best, R.combo); }
   if (moved && from < 3 && to >= 3) { R.sat++; dl.sat = (dl.sat || 0) + 1; }
   if (moved && to > from && result === "good") dl.up = (dl.up || 0) + 1;
+  monsterHit(card, from, to, result, moved);
   if (result !== "bad" && firstTime) dl.combo = Math.max(dl.combo || 0, R.combo);
   if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
   sound(result === "bad" ? "bad" : "good");
@@ -903,16 +921,18 @@ function renderSummary() {
     ${R.practice ? '<p class="muted small">Beim freien Üben und beim Testtraining bleiben richtige Wörter in ihrem Fach, ihre Wartezeit beginnt neu. Falsche rutschen zwei Fächer zurück und kommen morgen wieder.</p>'
       : `<div class="moves">${R.up ? `<span class="up">${R.up} ${R.up === 1 ? "Karte" : "Karten"} nach hinten</span>` : ""}${R.down ? `<span class="down">${R.down} zurück</span>` : ""}</div>
          ${kastenHtml(levelCounts())}`}
+    ${monsterSummary()}
     ${gl.map(x => `<p class="small">${x}</p>`).join("")}
     ${doneQ.map(q => `<p class="questdone">✓ Tagesaufgabe geschafft: ${esc(q)}</p>`).join("")}
-    ${weltNew() ? `<button class="packbtn welt" id="toWelt" type="button"><span class="weltmini" aria-hidden="true">${SKYLINE}</span><span><b>${weltNew() === 1 ? "Ein neues Haus in Camden!" : weltNew() + " neue Häuser in Camden!"}</b><span class="small">Antippen und zuschauen, wie es wächst</span></span></button>` : ""}
+    ${weltNew() || weltDistrictNew() || treasureReady() ? `<button class="packbtn welt" id="toWelt" type="button"><span class="weltmini" aria-hidden="true">${SKYLINE}</span><span><b>${weltDistrictNew() ? "Ein neues Viertel in Camden!" : weltNew() ? (weltNew() === 1 ? "Ein neues Haus in Camden!" : weltNew() + " neue Häuser in Camden!") : "🎁 In Camden ist ein Schatz versteckt!"}</b><span class="small">${weltNew() || weltDistrictNew() ? "Antippen und zuschauen, wie es wächst" : "Folge dem Lichtstrahl und tipp ihn an"}</span></span></button>` : ""}
     ${earned ? `<button class="packbtn" id="openPack" type="button"><span class="pack mini" aria-hidden="true"><i></i></span><span><b>${S.packQ.length > 1 ? S.packQ.length + " Sticker-Päckchen!" : "Neues Sticker-Päckchen!"}</b><span class="small">Antippen und aufreißen</span></span></button>` : ""}
     <div class="xpline"><b>+${R.xp} Punkte</b><span class="lvchip static"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></span></div>
     ${R.newBadges.length ? `<div class="newbadges">${R.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
     <div class="row" style="justify-content:center"><button class="btn" id="again">Noch eine Runde</button><button class="btn ghost" id="home">Fertig</button></div>
   </div>`));
-  if ((g === n && n >= 5) || R.newBadges.length) confetti();
+  if ((g === n && n >= 5) || R.newBadges.length || (R.mon || []).some(x => x.slain)) confetti();
+  setTimeout(checkMilestone, 1200);
   const unit = R.practice ? R.unit : null;
   $("#again").onclick = () => startRound(unit === null && !dueCards().length && !Math.min(newLeft(), newCards().length) && !gDue().length ? FREE : unit);
   $("#home").onclick = () => { R = null; renderHome(); };
@@ -1072,7 +1092,8 @@ function todaysQuests() {
     const ok = QUESTS.filter(q => !q[3] || q[3]()), out = [];
     // "goal" ist jeden zweiten Tag dabei, der Rest wechselt
     if (h % 2) out.push("goal");
-    while (out.length < 3 && ok.length) { h = (h * 1103515245 + 12345) >>> 0; const q = ok[h % ok.length][0]; if (!out.includes(q) && !(q === "combo8" && out.includes("combo")) && !(q === "combo" && out.includes("combo8"))) out.push(q); if (out.length >= ok.length) break; }
+    // Math.imul: ohne das wird die Zahl zu groß, verliert Stellen und die Schleife lief manchmal endlos
+    for (let n = 0; out.length < 3 && ok.length && n < 200; n++) { h = (Math.imul(h, 1103515245) + 12345) >>> 0; const q = ok[h % ok.length][0]; if (!out.includes(q) && !(q === "combo8" && out.includes("combo")) && !(q === "combo" && out.includes("combo8"))) out.push(q); if (out.length >= ok.length) break; }
     d.quests = out; d.qdone = [];
   }
   return d.quests.map(id => QUESTS.find(q => q[0] === id)).filter(Boolean);
@@ -1159,22 +1180,26 @@ function stickerHtml(x, opts = {}) {
 // ---------- Camden-Welt: jedes Wort ab Fach 3 baut ein echtes Haus in Camden Town (3D, lädt erst beim Öffnen) ----------
 const SKYLINE = `<svg viewBox="0 0 120 56"><rect x="4" y="22" width="20" height="34" rx="2" fill="#E8B796"/><rect x="26" y="10" width="18" height="46" rx="2" fill="#FF6B6B"/><rect x="46" y="26" width="16" height="30" rx="2" fill="#FFD166"/><rect x="64" y="4" width="22" height="52" rx="2" fill="#4CC9F0"/><rect x="88" y="18" width="14" height="38" rx="2" fill="#06D6A0"/><rect x="104" y="28" width="14" height="28" rx="2" fill="#C77DFF"/><g fill="#fff" opacity=".75"><rect x="8" y="28" width="4" height="5"/><rect x="16" y="28" width="4" height="5"/><rect x="30" y="16" width="4" height="5"/><rect x="37" y="16" width="4" height="5"/><rect x="30" y="26" width="4" height="5"/><rect x="68" y="10" width="5" height="6"/><rect x="77" y="10" width="5" height="6"/><rect x="68" y="22" width="5" height="6"/><rect x="77" y="22" width="5" height="6"/><rect x="50" y="32" width="4" height="5"/><rect x="92" y="24" width="4" height="5"/></g></svg>`;
 function weltNew() {
-  const W = S.welt || {}, built = W.built || [], have = new Set(built.map(b => b.id));
+  const W = S.welt || {}, built = W.built || [], have = new Set([...built.map(b => b.id), ...(W.wait || [])]);
   return S.cards.filter(c => c.level >= 3 && !have.has(c.id)).length + Math.max(0, built.length - (W.seen || 0));
 }
 function weltCard() {
-  const n = (S.welt.built || []).length, fresh = weltNew();
+  const n = (S.welt.built || []).length, fresh = weltNew(), dn = weltDistrictNew(), tr = treasureReady();
+  const nd = 1 + (S.welt.dist || []).length, next = weltUnits().filter(u => !u.done).sort((a, b) => b.pct - a.pct)[0];
   return `<section class="panel weltcard">
-    <div class="spread"><h2>Deine Camden-Welt</h2><span class="muted small">${n} ${n === 1 ? "Haus" : "Häuser"}</span></div>
-    <div class="weltpeek" aria-hidden="true">${SKYLINE}${fresh ? `<span class="weltbadge">+${fresh}</span>` : ""}</div>
-    <p class="muted small">Jedes Wort, das sitzt (ab Fach 3), baut ein echtes Haus in Camden Town. Tipp ein Haus an, dann siehst du sein Wort.</p>
-    <button class="btn${fresh ? "" : " ghost"}" id="welt">${fresh ? (fresh === 1 ? "1 neues Haus bauen" : fresh + " neue Häuser bauen") : "Welt ansehen"}</button>
+    <div class="spread"><h2>Deine Camden-Welt</h2><span class="muted small">${n} ${n === 1 ? "Haus" : "Häuser"} · Viertel ${nd}/7</span></div>
+    <div class="weltpeek" aria-hidden="true">${SKYLINE}${fresh ? `<span class="weltbadge">+${fresh}</span>` : ""}${tr ? `<span class="weltgift">🎁</span>` : ""}</div>
+    ${dn ? `<p class="weltnews">🗺️ Eine Unit ist geschafft. Ein neues Viertel wartet auf dich!</p>` : ""}
+    ${tr ? `<p class="weltnews">🎁 Heute ist in Camden ein Sticker-Päckchen versteckt. Folge dem Lichtstrahl!</p>` : ""}
+    <p class="muted small">Jedes Wort ab Fach 3 baut ein Haus. In Fach 5 leuchten nachts seine Fenster, in Fach 7 bekommt es ein goldenes Dach.${nd < 7 && next ? ` Nächstes Viertel: „${esc(next.name)}“ zu ${Math.min(99, Math.round(next.pct / .8 * 100))} % geschafft.` : ""}</p>
+    <button class="btn${fresh || dn || tr ? "" : " ghost"}" id="welt">${dn ? "Neues Viertel ansehen" : fresh ? (fresh === 1 ? "1 neues Haus bauen" : fresh + " neue Häuser bauen") : tr ? "Schatz suchen" : "Welt ansehen"}</button>
   </section>`;
 }
 function renderWelt() {
   document.body.classList.add("weltopen");
   import("./welt/welt.js").then(m => m.open(document.body, {
-    cards: () => S.cards, state: S.welt, save,
+    cards: () => S.cards, state: S.welt, save, units: weltUnits,
+    treasure: { ready: treasureReady(), day: dayKey(), claim: () => { dayLog().treasure = 1; S.packQ.push(makePack({ up: 6, sat: 1 })); save(); } },
     say: canSpeak ? t => say(t, "en-GB") : null,
     sound: k => sound(k), confetti,
     onClose: () => { document.body.classList.remove("weltopen"); renderHome(); }
@@ -1781,13 +1806,13 @@ function renderCalendar() {
   const [y, m] = calMonth;
   const first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
   const maxSec = Math.max(600, ...Object.values(S.log).map(d => d.sec));
-  const cells = [];
+  const cells = [], pauses = streakInfo().pauses;
   for (let i = 0; i < lead; i++) cells.push(`<span></span>`);
   for (let d = 1; d <= days; d++) {
     const k = dayKey(new Date(y, m, d).getTime()), e = S.log[k];
     const lvl = practiced(k) ? Math.min(4, 1 + Math.floor(e.sec / maxSec * 3.99)) : 0;
-    cells.push(`<button class="day lv${lvl}${k === tk ? " today" : ""}" data-day="${k}" aria-pressed="${k === calSel}"
-      aria-label="${d}. ${MONTHS[m]}${practiced(k) ? ", " + fmtMin(e.sec) + " geübt" : ""}">${d}${e && e.added ? '<i class="dot"></i>' : ""}</button>`);
+    cells.push(`<button class="day lv${lvl}${k === tk ? " today" : ""}${pauses.has(k) ? " pause" : ""}" data-day="${k}" aria-pressed="${k === calSel}"
+      aria-label="${d}. ${MONTHS[m]}${practiced(k) ? ", " + fmtMin(e.sec) + " geübt" : pauses.has(k) ? ", Pausentag" : ""}">${d}${e && e.added ? '<i class="dot"></i>' : ""}</button>`);
   }
   const ws = weekStart(tk), weekSec = sumDays(ws, 7, "sec");
   const weekDays = [...Array(7)].filter((_, i) => practiced(shiftDay(ws, i))).length;
@@ -1811,7 +1836,8 @@ function renderCalendar() {
         <h3>${MONTHS[m]} ${y}</h3>
         <button class="iconbtn" id="nextM" aria-label="Nächster Monat" style="transform:scaleX(-1)">${ICON.back}</button></div>
       <div class="cal">${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map(d => `<span class="wd">${d}</span>`).join("")}${cells.join("")}</div>
-      <p class="muted small legend"><span class="day lv2 sw"></span> geübt, je dunkler, desto länger · <span class="dot" style="position:static;display:inline-block"></span> neue Wörter dazu</p>
+      <p class="muted small legend"><span class="day lv2 sw"></span> geübt, je dunkler, desto länger · <span class="dot" style="position:static;display:inline-block"></span> neue Wörter dazu · 💤 Pausentag</p>
+      <p class="muted small">Pro Woche darf ein Tag ausfallen, ohne dass deine Serie reißt. Das ist dein Pausentag.</p>
     </section>
     <section class="panel">
       <h3>${selDate}</h3>
@@ -1822,7 +1848,7 @@ function renderCalendar() {
         <div><dt>Zum ersten Mal geübt</dt><dd>${sel.learned}</dd></div>
         <div><dt>Neu hinzugefügt</dt><dd>${sel.added}</dd></div>
         ${sel.gram ? `<div><dt>Grammatik</dt><dd>${sel.gram} ${sel.gram === 1 ? "Aufgabe" : "Aufgaben"}</dd></div>` : ""}
-      </dl>` : `<p class="muted small">An diesem Tag wurde nicht geübt.</p>`}
+      </dl>` : `<p class="muted small">${pauses.has(calSel) ? "Pausentag. Deine Serie lief trotzdem weiter." : "An diesem Tag wurde nicht geübt."}</p>`}
     </section>
     <section class="panel">
       <h3>Letzte Wochen</h3>
@@ -1932,7 +1958,183 @@ function renderSettings(msg) {
 }
 
 // ---------- Start ----------
+// ---------- Pausentag: Hinweis, wenn gestern einer gebraucht wurde ----------
+function pauseNotice() {
+  const y = shiftDay(dayKey(), -1);
+  if (S.pauseNote === y || !streakInfo().pauses.has(y)) return;
+  S.pauseNote = y; save();
+  setTimeout(() => toast("💤 Gestern war dein Pausentag. Deine Serie läuft weiter!"), 700);
+}
+
+// ---------- Wortzähler: „Ich kann schon … Wörter“, mit großem Fest bei jedem Meilenstein ----------
+const MILES = [10, 25, 50, 100, 150, 200, 300, 400, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000];
+const MILE_TXT = {
+  10: "Die ersten zehn sitzen. So fängt jeder Wortschatz an!", 25: "25 Wörter! Das ist schon eine ganze Buchseite.",
+  50: "50 Wörter! Damit kannst du dich schon vorstellen und von dir erzählen.", 100: "100 Wörter! Jetzt verstehst du schon viele Sätze im Buch.",
+  150: "150 Wörter! Du wirst richtig schnell.", 200: "200 Wörter! Das ist so viel wie ein halbes Schuljahr.",
+  300: "300 Wörter! Damit kommst du in London durch einen ganzen Tag.", 400: "400 Wörter! Englische Lieder ergeben langsam Sinn.",
+  500: "500 Wörter! Das ist ungefähr ein ganzes Schuljahr.", 750: "750 Wörter! Du kannst dich schon über fast alles unterhalten.",
+  1000: "1000 Wörter! Mit so vielen versteht man die meisten Alltagsgespräche.", 1500: "1500 Wörter! Jetzt kannst du einfache Bücher lesen.",
+  2000: "2000 Wörter! Damit verstehst du schon die meisten Wörter in einem Film.", 3000: "3000 Wörter! Das ist ein riesiger Wortschatz.",
+  4000: "4000 Wörter! Kaum jemand in deinem Alter kann so viele.", 5000: "5000 Wörter! Unglaublich."
+};
+function sitCount() { return cardsL().filter(c => c.level >= 3).length; }
+function mileSt() { S.miles = S.miles || {}; return S.miles[S.cur] || (S.miles[S.cur] = {}); }
+function counterCard() {
+  if (!cardsL().length) return "";
+  const n = sitCount(), st = mileSt(), from = Math.min(st.shown ?? n, n);
+  const next = MILES.find(m => m > n), prev = [...MILES].reverse().find(m => m <= n) || 0;
+  return `<section class="panel wcount">
+    <div class="wc-row"><b class="wc-num" id="wcN" data-from="${from}" data-to="${n}">${from}</b>
+      <span class="wc-txt"><b>${n === 1 ? "Wort" : "Wörter"} kannst du schon</b><span class="muted small">Alle, die ab Fach 3 sitzen</span></span></div>
+    ${next ? `<div class="bar gold"><i style="width:${Math.round((n - prev) / (next - prev) * 100)}%"></i></div>
+      <p class="muted small">Noch ${next - n} ${next - n === 1 ? "Wort" : "Wörter"} bis zur ${next}!</p>` : ""}
+  </section>`;
+}
+function animateCounter() {
+  const el = $("#wcN"); if (!el) return;
+  const a = +el.dataset.from, b = +el.dataset.to; mileSt().shown = b; save();
+  if (a === b || reduced()) { el.textContent = b; return; }
+  const t0 = performance.now(), dur = Math.min(1800, 500 + (b - a) * 70);
+  (function f(t) {
+    const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(a + (b - a) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(f); else { el.classList.add("bump"); sound("land"); }
+  })(t0);
+}
+// Ein Meilenstein wird nur einmal gefeiert; liefert true, wenn gerade gefeiert wird.
+function checkMilestone() {
+  const n = sitCount(), st = mileSt(), hit = [...MILES].reverse().find(m => m <= n);
+  if (!hit || (st.best || 0) >= hit) return false;
+  st.best = hit; save(); showMilestone(hit); return true;
+}
+function showMilestone(m) {
+  const lang = L().name, d = document.createElement("div");
+  d.className = "mile"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", `Meilenstein: ${m} Wörter`);
+  d.innerHTML = `<div class="mile-rays" aria-hidden="true"></div><div class="mile-box">
+    <p class="eyebrow">Meilenstein</p><div class="mile-n" id="mileN">0</div>
+    <p class="mile-sub">${lang === "Englisch" ? "englische " : ""}Wörter kannst du jetzt${S.name ? `, ${esc(S.name)}` : ""}!</p>
+    <p class="muted">${esc(MILE_TXT[m] || "")}</p><button class="btn big" id="mileOk">Weiter</button></div>`;
+  document.body.append(d); sound("up");
+  const el = d.querySelector("#mileN"), t0 = performance.now();
+  if (reduced()) el.textContent = m;
+  else (function f(t) { const k = Math.min(1, (t - t0) / 1400); el.textContent = Math.round(m * (1 - Math.pow(1 - k, 4))); if (k < 1) requestAnimationFrame(f); else { confetti(); sound("up"); } })(t0);
+  setTimeout(() => d.classList.add("on"), 20);
+  d.querySelector("#mileOk").onclick = () => { d.classList.remove("on"); setTimeout(() => d.remove(), 300); };
+}
+
+// ---------- Wortmonster: Wörter, die oft danebengehen, werden zu kleinen Monstern ----------
+// Jedes Fach weiter kostet das Monster ein Herz, in Fach 3 ist es besiegt und es gibt ein goldenes Päckchen.
+const MONSTER_MISS = 3;
+function monsters() { return S.monsters || (S.monsters = {}); }        // Karten-id: { b: Tag geboren, s: Tag besiegt }
+function isMonster(c) { const m = monsters()[c.id]; return !!m && !m.s; }
+function wakeMonster(c) {
+  if ((c.miss || 0) < MONSTER_MISS || c.level >= 3 || monsters()[c.id]) return false;
+  monsters()[c.id] = { b: dayKey(), s: 0 }; return true;
+}
+// aus answered(): merkt sich, was in dieser Runde mit Monstern passiert ist
+function monsterHit(card, from, to, result, moved) {
+  if (!R) return;
+  R.mon = R.mon || [];
+  if (result === "bad") { if (wakeMonster(card)) R.mon.push({ id: card.id, born: true }); return; }
+  const m = monsters()[card.id];
+  if (!m || m.s || !moved || to <= from) return;
+  const slain = to >= 3;
+  if (slain) { m.s = dayKey(); S.packQ.push(makePack({ up: 6, sat: 2 }, true)); }
+  R.mon = R.mon.filter(x => x.id !== card.id); R.mon.push({ id: card.id, from, to, slain });
+}
+function monsterSvg(id) {
+  let h = 7; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const r = () => (h = (h * 1103515245 + 12345) >>> 0) / 4294967296;
+  const COLS = [["#9B5DE5", "#C9A6F5"], ["#F15BB5", "#F9A8D8"], ["#00A8E8", "#8FDBFA"], ["#00B386", "#8EE6C9"], ["#FF9F1C", "#FFD08A"], ["#FF6B6B", "#FFB3B3"], ["#7DBA2F", "#C4E59A"], ["#4D7CFE", "#A9BFFF"]];
+  const [c, light] = COLS[Math.floor(r() * COLS.length)], eyes = 1 + Math.floor(r() * 3), top = Math.floor(r() * 3), teeth = r() < .6, spots = r() < .5, wide = r() < .5;
+  const body = wide ? "M50 22C82 22 94 46 92 68C90 88 72 94 50 94C28 94 10 88 8 68C6 46 18 22 50 22Z" : "M50 12C76 12 86 38 85 64C84 88 70 95 50 95C30 95 16 88 15 64C14 38 24 12 50 12Z";
+  const ey = wide ? 50 : 44, E = eyes === 1 ? [[50, ey, 13]] : eyes === 2 ? [[36, ey, 10], [64, ey, 10]] : [[31, ey + 3, 8], [50, ey - 7, 8], [69, ey + 3, 8]];
+  const hy = wide ? 24 : 15;
+  return `<svg viewBox="0 0 100 110" aria-hidden="true"><g class="mb">
+    ${top === 1 ? `<path d="M30 ${hy + 6}L24 ${hy - 12}L40 ${hy}Z M70 ${hy + 6}L76 ${hy - 12}L60 ${hy}Z" fill="${light}"/>` : top === 2 ? `<circle cx="28" cy="${hy + 4}" r="9" fill="${c}"/><circle cx="72" cy="${hy + 4}" r="9" fill="${c}"/>` : `<path d="M50 ${hy}Q52 ${hy - 14} 60 ${hy - 14}" stroke="${c}" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="61" cy="${hy - 14}" r="4" fill="${light}"/>`}
+    <ellipse cx="34" cy="98" rx="11" ry="6" fill="${c}" filter="brightness(.8)"/><ellipse cx="66" cy="98" rx="11" ry="6" fill="${c}"/>
+    <path d="${body}" fill="${c}"/>
+    <ellipse cx="50" cy="${wide ? 74 : 72}" rx="${wide ? 28 : 22}" ry="16" fill="${light}" opacity=".7"/>
+    ${spots ? `<circle cx="22" cy="66" r="4" fill="${light}"/><circle cx="80" cy="60" r="3" fill="${light}"/><circle cx="76" cy="76" r="2.5" fill="${light}"/>` : ""}
+    ${E.map(([x, y, s]) => `<circle cx="${x}" cy="${y}" r="${s}" fill="#fff"/><circle class="pu" cx="${x + s * .2}" cy="${y + s * .15}" r="${s * .5}" fill="#1D2A36"/><circle cx="${x + s * .4}" cy="${y - s * .25}" r="${s * .18}" fill="#fff"/>`).join("")}
+    <path d="M38 ${ey + 22}Q50 ${ey + 32} 62 ${ey + 22}" stroke="#1D2A36" stroke-width="3" fill="${teeth ? "#7A2E3A" : "none"}" stroke-linecap="round"/>
+    ${teeth ? `<path d="M43 ${ey + 24.5}l3 4 3-3.5Z M53 ${ey + 25}l3 3.5 3-4.5Z" fill="#fff"/>` : ""}
+    <path d="M12 60Q2 56 4 46" stroke="${c}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M88 60Q98 56 96 46" stroke="${c}" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g></svg>`;
+}
+function monsterHtml(c, cls = "", lv = c.level) {
+  const hearts = Math.max(0, 3 - lv);
+  return `<div class="mon ${cls}" aria-label="Wortmonster ${esc(c.en)}, noch ${hearts} ${hearts === 1 ? "Herz" : "Herzen"}">
+    ${monsterSvg(c.id)}<span class="mon-hp" aria-hidden="true">${"♥".repeat(hearts)}<i>${"♥".repeat(3 - hearts)}</i></span><b class="mon-w">${esc(c.en)}</b></div>`;
+}
+function monsterCard() {
+  const all = cardsL(); all.forEach(wakeMonster);
+  const act = all.filter(isMonster), slain = all.filter(c => monsters()[c.id] && monsters()[c.id].s).length;
+  if (!act.length && !slain) return "";
+  return `<section class="panel moncard">
+    <div class="spread"><h2>Wortmonster</h2><span class="muted small">${slain} besiegt</span></div>
+    ${act.length ? `<div class="monrow">${act.slice(0, 6).map((c, i) => monsterHtml(c, "", c.level).replace('class="mon ', `style="--d:${i * .37}s" class="mon `)).join("")}</div>
+      ${act.length > 6 ? `<p class="muted small">… und noch ${act.length - 6} weitere.</p>` : ""}` : `<p class="moncheer">🏆 Alle Monster besiegt!</p>`}
+    <p class="muted small">Diese Wörter gehen oft daneben. Jedes Mal, wenn eins ein Fach weiterkommt, verliert sein Monster ein Herz. In Fach 3 ist es besiegt, dafür gibt es ein goldenes Päckchen.</p>
+  </section>`;
+}
+function monsterSummary() {
+  if (!R || !R.mon || !R.mon.length) return "";
+  return `<div class="monsum">${R.mon.map(x => { const c = S.cards.find(k => k.id === x.id); if (!c) return "";
+    if (x.born) return `<div class="monline">${monsterHtml(c, "born")}<span><b>Ein Wortmonster ist aufgetaucht!</b><span class="small">„${esc(c.en)}“ ging oft daneben. Bring es bis Fach 3, dann besiegst du es.</span></span></div>`;
+    if (x.slain) return `<div class="monline">${monsterHtml(c, "slain", x.from)}<span><b>Monster besiegt!</b><span class="small">„${esc(c.en)}“ sitzt jetzt. Dafür gibt es ein goldenes Päckchen.</span></span></div>`;
+    return `<div class="monline">${monsterHtml(c, "hit", x.from).replace(/<span class="mon-hp"[^]*?<\/span>/, `<span class="mon-hp" aria-hidden="true">${"♥".repeat(3 - x.to)}<i class="lost">${"♥".repeat(x.to - x.from)}</i><i>${"♥".repeat(x.from)}</i></span>`)}<span><b>Treffer!</b><span class="small">„${esc(c.en)}“ ist jetzt in Fach ${x.to}. Noch ${3 - x.to} ${3 - x.to === 1 ? "Herz" : "Herzen"}.</span></span></div>`;
+  }).join("")}</div>`;
+}
+
+// ---------- Wochen-Duell: Wer bringt diese Woche mehr Wörter ein Fach weiter? Stand per Link austauschen ----------
+function weekScore(ws = weekStart(dayKey())) { let n = 0; for (let i = 0; i < 7; i++) { const d = S.log[shiftDay(ws, i)]; if (d) n += d.up || 0; } return n; }
+function myPid() { return S.pid || (S.pid = uid() + uid()); }
+async function shareDuel() {
+  const p = { i: myPid(), n: S.name || "Jemand", w: weekStart(dayKey()), s: weekScore() };
+  const url = appUrl() + "#duell=" + b64u(new TextEncoder().encode(JSON.stringify(p)));
+  const text = `Wochen-Duell im Vokabelkasten: Ich habe diese Woche ${p.s} ${p.s === 1 ? "Wort" : "Wörter"} ein Fach weiter gebracht. Schaffst du mehr?`;
+  try { if (navigator.share) { await navigator.share({ title: "Wochen-Duell", text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  await copyText(text + " " + url); toast("Link kopiert. Schick ihn per Nachricht.");
+}
+function takeDuel(code) {
+  try {
+    const p = JSON.parse(new TextDecoder().decode(unb64u(code)));
+    if (!p || !p.i || typeof p.s !== "number") throw 0;
+    if (p.i === myPid()) { toast("Das ist dein eigener Stand."); return; }
+    S.rivals = S.rivals || {}; S.rivals[p.i] = { n: String(p.n).slice(0, 24), s: Math.max(0, Math.min(9999, p.s | 0)), w: p.w, t: Date.now() };
+    save(); toast(`${p.n} fordert dich heraus: ${p.s} Wörter diese Woche!`);
+  } catch (e) { toast("Dieser Duell-Link ist nicht lesbar."); }
+}
+function duelCard() {
+  if (!cardsL().length) return "";
+  const ws = weekStart(dayKey()), last = shiftDay(ws, -7), me = weekScore(), rv = Object.values(S.rivals || {});
+  const now = rv.filter(r => r.w === ws), prev = rv.filter(r => r.w === last);
+  const rows = [{ n: "Du", s: me, me: 1 }, ...now].sort((a, b) => b.s - a.s), max = Math.max(5, ...rows.map(r => r.s));
+  const [y, m, d] = ws.split("-").map(Number), left = 7 - Math.round((today() - new Date(y, m - 1, d).getTime()) / DAY);
+  const mePrev = weekScore(last), won = prev.length && prev.every(r => mePrev > r.s);
+  return `<section class="panel duel">
+    <div class="spread"><h2>Wochen-Duell</h2><span class="muted small">noch ${left} ${left === 1 ? "Tag" : "Tage"}</span></div>
+    ${rows.map((r, i) => `<div class="duelrow${r.me ? " me" : ""}"><span class="duelname">${i === 0 && r.s > 0 && rows.length > 1 ? "👑 " : ""}${esc(r.n)}</span>
+      <span class="bar"><i style="width:${Math.round(r.s / max * 100)}%"></i></span><b>${r.s}</b></div>`).join("")}
+    ${prev.length ? `<p class="small">${won ? "🏆 Letzte Woche hast du gewonnen!" : "Letzte Woche:"} Du ${mePrev}, ${prev.map(r => `${esc(r.n)} ${r.s}`).join(", ")}.</p>` : ""}
+    <p class="muted small">${now.length ? "Gezählt wird jedes Wort, das ein Fach weiterkommt. Die anderen sehen deinen Stand, wenn du ihn schickst." : "Fordere Papa, Mama oder deine Geschwister heraus: Wer bringt diese Woche mehr Wörter ein Fach weiter? Schick deinen Stand, die anderen schicken ihren zurück."}</p>
+    <button class="btn ghost" id="duelShare">Meinen Stand schicken</button>
+  </section>`;
+}
+
+// ---------- Camden-Welt: Viertel und Schatz (die 3D-Seite liegt in welt/welt.js) ----------
+function weltUnits() {
+  const g = {};
+  S.cards.forEach(c => { if (c.unit === SAMPLE_UNIT) return; const k = c.lang + "|" + c.unit; const u = g[k] || (g[k] = { key: k, name: c.unit, n: 0, sit: 0 }); u.n++; if (c.level >= 3) u.sit++; });
+  return Object.values(g).map(u => ({ ...u, pct: u.sit / u.n, done: u.n >= 8 && u.sit / u.n >= .8 }));
+}
+function weltDistrictNew() { const have = new Set(S.welt.dist || []); return (S.welt.dist || []).length < 6 && weltUnits().some(u => u.done && !have.has(u.key)); }
+function treasureReady() { return !!S.cards.length && goalCount() >= Math.min(S.goal, ROUND_SIZE) && !dayLog().treasure && (S.welt.built || []).length >= 3; }
+
 async function boot() {
+  const du = location.hash.match(/^#duell=([A-Za-z0-9_-]+)$/);
+  if (du) { history.replaceState(null, "", location.pathname); takeDuel(du[1]); }
   const m = location.hash.match(/^#pack=([zj][A-Za-z0-9_-]+)$/);
   if (m) {
     history.replaceState(null, "", location.pathname);
