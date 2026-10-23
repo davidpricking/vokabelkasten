@@ -53,4 +53,6 @@ Reines HTML, CSS und JavaScript ohne Build-Schritt:
 
 Kartendaten der Camden-Welt: © [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende, verfügbar unter der Open Database License (ODbL 1.0). `welt/camden.json` ist eine aus diesen Daten abgeleitete Datenbank und steht ebenfalls unter der ODbL.
 
+Fotos der Wahrzeichen in `welt/fotos/`: von Wikimedia Commons unter freien Lizenzen (CC0, CC BY, CC BY-SA). Fotograf, Lizenz und Quelle stehen je Bild in `welt/fotos/credits.json` und werden in der App unter dem Foto angezeigt. Die Bilder wurden nur verkleinert.
+
 Zum lokalen Testen reicht ein einfacher Webserver, zum Beispiel `python3 -m http.server` im Projektordner.

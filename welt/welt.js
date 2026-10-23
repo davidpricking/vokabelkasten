@@ -624,6 +624,7 @@ export async function open(root, api) {
   function addLabel(i, gold) {
     if (labels.some(l => l.i === i)) return;
     const d = document.createElement("div"); d.className = "w-label" + (gold ? " gold" : ""); d.textContent = (gold ? "★ " : "") + meta[i].name;
+    if (gold) { d.style.pointerEvents = "auto"; d.style.cursor = "pointer"; d.onclick = e => { e.stopPropagation(); isBuilt(i) ? select(i) : showLot(i); }; }
     $("#w-labels").append(d); labels.push({ i, d, w: d.offsetWidth }); labels.sort((a, b) => a.i - b.i);
   }
   for (let k = 0; k < startBuilt; k++) if (meta[W.built[k].b].mark) addLabel(W.built[k].b, true);
