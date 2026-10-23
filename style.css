@@ -412,3 +412,130 @@ button.streak{color:var(--ink);cursor:pointer}
 .gagain summary{cursor:pointer}
 .gagain[open] summary{margin-bottom:10px}
 .ggroup{margin-bottom:-8px}
+
+/* Camden-Welt: Karte auf der Startseite; die 3D-Ansicht bringt ihr eigenes CSS mit (welt/welt.js). */
+.weltcard{background:linear-gradient(180deg,#CFE7F7,#F7EBDD);color:#1D2A36}
+.weltcard .muted{color:#4A5866}
+.weltpeek{position:relative;height:72px;display:flex;align-items:flex-end;justify-content:center}
+.weltpeek svg{height:64px;width:auto;filter:drop-shadow(0 3px 0 rgba(0,0,0,.12))}
+.weltbadge{position:absolute;right:8px;top:0;background:#F59F00;color:#fff;font-family:var(--display);font-weight:800;border-radius:99px;padding:3px 10px;animation:weltpulse 1.4s ease-in-out infinite}
+@keyframes weltpulse{50%{transform:scale(1.12)}}
+.packbtn.welt{background:linear-gradient(90deg,#CFE7F7,#F7EBDD);color:#1D2A36}
+.weltmini svg{height:40px;width:auto;display:block}
+body.weltopen{overflow:hidden}
+@media (prefers-reduced-motion: reduce){.weltbadge{animation:none}}
+body.weltopen .confetti{z-index:60}
+
+/* Pausentag im Kalender */
+.day.pause{background:color-mix(in srgb,#9B5DE5 18%,var(--card))}
+.day.pause::after{content:"💤";position:absolute;right:1px;top:-4px;font-size:.7rem}
+
+/* Wortzähler und Meilensteine */
+.wcount{background:linear-gradient(135deg,#FFF6D6,#FFE8B0);color:#4A3B06;border-color:#F2D58A}
+.wcount .muted{color:#7A6420}
+.wc-row{display:flex;align-items:center;gap:14px}
+.wc-num{font-family:var(--display);font-weight:800;font-size:3.2rem;line-height:1;font-variant-numeric:tabular-nums;color:#B86E00;text-shadow:0 3px 0 #F2C94C}
+.wc-num.bump{animation:wcbump .5s cubic-bezier(.2,1.8,.4,1)}
+@keyframes wcbump{40%{transform:scale(1.25)}}
+.wc-txt{display:flex;flex-direction:column}
+.wc-txt b{font-family:var(--display);font-size:1.1rem}
+.bar.gold{background:#F7DFA0}
+.bar.gold i{background:linear-gradient(90deg,#FFD43B,#F59F00)}
+.mile{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(20,30,40,.6);opacity:0;transition:opacity .3s;padding:16px}
+.mile.on{opacity:1}
+.mile-rays{position:absolute;width:160vmax;height:160vmax;background:repeating-conic-gradient(rgba(255,212,59,.35) 0 10deg,transparent 10deg 20deg);animation:spin 18s linear infinite;pointer-events:none}
+@keyframes spin{to{transform:rotate(1turn)}}
+.mile-box{position:relative;background:var(--card);border-radius:28px;padding:26px 22px;text-align:center;max-width:22rem;display:flex;flex-direction:column;gap:10px;align-items:center;
+  transform:scale(.6);transition:transform .5s cubic-bezier(.2,1.6,.4,1);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.mile.on .mile-box{transform:none}
+.mile-n{font-family:var(--display);font-weight:800;font-size:5.5rem;line-height:1;color:#F59F00;text-shadow:0 5px 0 #B86E00;font-variant-numeric:tabular-nums}
+.mile-sub{font-family:var(--display);font-weight:800;font-size:1.3rem}
+
+/* Wortmonster */
+.moncard{background:linear-gradient(180deg,#EFE6FF,var(--card))}
+.monrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.mon{position:relative;width:84px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.mon svg{width:72px;height:80px;overflow:visible}
+.mon .mb{transform-origin:50% 100%;animation:monbob 1.8s ease-in-out infinite;animation-delay:var(--d,0s)}
+.mon .pu{animation:monlook 4s ease-in-out infinite;animation-delay:var(--d,0s)}
+@keyframes monbob{50%{transform:translateY(-4px) scaleY(1.04) scaleX(.97)}}
+@keyframes monlook{0%,40%,100%{transform:none}50%,80%{transform:translateX(-2px)}}
+.mon-hp{color:#E8574A;font-size:.85rem;letter-spacing:1px;line-height:1}
+.mon-hp i{color:#C9C3D6;font-style:normal}
+.mon-hp i.lost{color:#E8574A;display:inline-block;animation:heartlost 1s .6s forwards}
+@keyframes heartlost{30%{transform:scale(1.6)}100%{transform:translateY(-14px) scale(.4);opacity:0}}
+.mon-w{font-family:var(--hand);font-size:.95rem;line-height:1.1;text-align:center;overflow-wrap:anywhere;color:var(--ink)}
+.moncheer{font-family:var(--display);font-weight:800;text-align:center;font-size:1.1rem}
+.monsum{display:flex;flex-direction:column;gap:8px;width:100%}
+.monline{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 12px;text-align:left}
+.monline>span{display:flex;flex-direction:column}
+.mon.hit svg{animation:monhit .6s .3s}
+@keyframes monhit{20%{transform:translateX(-6px) rotate(-6deg);filter:brightness(1.6)}50%{transform:translateX(6px) rotate(5deg)}80%{transform:translateX(-3px)}}
+.mon.slain svg{animation:monpoof 1.2s .5s forwards}
+.mon.slain::after{content:"✨🏆✨";position:absolute;top:26px;left:0;right:0;text-align:center;font-size:1.3rem;opacity:0;animation:monstar .8s 1.4s forwards}
+@keyframes monpoof{25%{transform:scale(1.2) rotate(-8deg);filter:brightness(1.8)}100%{transform:scale(0) rotate(200deg);opacity:0}}
+@keyframes monstar{from{transform:scale(.3)}to{opacity:1;transform:none}}
+.mon.born svg{animation:monborn .7s cubic-bezier(.2,1.8,.4,1)}
+@keyframes monborn{from{transform:scale(0) translateY(30px)}}
+.montag{background:#E9D8FF;color:#4B2A7A}
+
+/* Wochen-Duell */
+.duelrow{display:grid;grid-template-columns:6.5rem 1fr 2.5rem;gap:10px;align-items:center;margin:6px 0}
+.duelrow .bar{height:12px}
+.duelrow.me .bar i{background:linear-gradient(90deg,#FFD43B,#F59F00)}
+.duelrow b{text-align:right;font-family:var(--display);font-variant-numeric:tabular-nums}
+.duelname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+
+/* Welt-Karte: Neuigkeiten */
+.weltnews{background:rgba(255,255,255,.7);border-radius:12px;padding:6px 10px;font-weight:700;font-size:.92rem}
+.weltgift{position:absolute;left:10px;top:0;font-size:1.6rem;animation:weltpulse 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.mon .mb,.mon .pu,.mile-rays,.weltgift{animation:none}}
+.duelvs{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.duelvs .dv{font-family:var(--display);font-weight:800;font-size:1.3rem;padding:8px 14px;border-radius:14px;background:var(--memo);color:var(--memo-ink);text-align:center}
+.duelvs input.dv{border:2px dashed #E3C53B;width:8.5rem;font:inherit;font-family:var(--display);font-weight:800;font-size:1.3rem}
+.duelvs>b{color:var(--muted)}
+.duelbig{font-size:4rem;animation:wcbump 1s ease-in-out infinite}
+.duelpods{display:flex;gap:18px;justify-content:center;align-items:flex-end;margin:10px 0}
+.pod{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:7rem}
+.pod .crown{font-size:2rem;height:2.4rem;animation:wcbump 1.2s ease-in-out infinite}
+.podbar{display:flex;align-items:flex-start;justify-content:center;width:100%;height:var(--h);background:var(--line);border-radius:12px 12px 4px 4px;padding-top:6px;animation:podup .9s cubic-bezier(.2,1.4,.4,1)}
+.pod.win .podbar{background:linear-gradient(180deg,#FFD43B,#F59F00)}
+.podn{font-family:var(--display);font-weight:800;font-size:1.4rem}
+@keyframes podup{from{height:0}}
+.duelwords{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left}
+.dw{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-size:.92rem}
+@media (prefers-reduced-motion: reduce){.duelbig,.pod .crown,.podbar{animation:none}}
+/* Zeit-Training */
+.sprintparts{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.sprintpart{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:14px;border:2px solid var(--line,#ddd);background:var(--card,#fff);color:inherit;font:inherit;cursor:pointer;transition:transform .15s}
+.sprintpart:active{transform:scale(.95)}
+.sprintpart b{font-size:1.25rem}
+.sprintpart.done{border-color:var(--marker);background:var(--near-bg)}
+.sprintpart .rec{font-size:.8rem;font-weight:700}
+.dclock{font-variant-numeric:tabular-nums;font-size:1.1rem;padding:2px 10px;border-radius:999px;background:var(--paper)}
+.dclock.pen{background:var(--bad-bg);color:var(--bad);animation:penshake .4s}
+@keyframes penshake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.newrec{font-size:1.6rem;font-weight:900;color:var(--near);animation:recpop .7s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes recpop{from{transform:scale(.3) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+.sprintres .score{font-size:3rem;font-weight:900;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){.newrec,.dclock.pen{animation:none}}
+.sprintpart.whole{grid-column:1/-1}
+.partchecks{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin:12px 0}
+.partcheck{position:relative;display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:12px;border:2px solid var(--line);background:var(--card);cursor:pointer;user-select:none;transition:transform .12s}
+.partcheck:active{transform:scale(.94)}
+.partcheck input{position:absolute;opacity:0;pointer-events:none}
+.partcheck.on{border-color:var(--accent);background:var(--good-bg)}
+.partcheck.on b::before{content:"✓ ";color:var(--good)}
+.partcheck:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.btn.small{padding:6px 14px;font-size:.9rem}
+.tw{cursor:pointer;position:relative;border-radius:4px}
+.tw:active{background:var(--accent-soft, rgba(127,127,255,.2))}
+.twpop{position:absolute;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%);white-space:nowrap;background:var(--ink, #222);color:var(--bg, #fff);font:600 .85rem/1.2 system-ui, sans-serif;padding:5px 9px;border-radius:8px;z-index:5;pointer-events:none;animation:twin .15s ease-out}
+@keyframes twin{from{opacity:0;transform:translate(-50%,4px)}}
+/* Wie weit seid ihr? */
+.pos .eyebrow{margin:0}
+.posunit summary .tag{margin-left:6px}
+.poswords{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pw{border:1.5px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 10px;font:inherit;font-size:.9rem}
+.pw.on{border-color:var(--good);color:var(--ink);background:var(--good-bg)}
+.pwpart{font-weight:700;font-size:.8rem;color:var(--accent,#1F4E5F);margin-left:4px}

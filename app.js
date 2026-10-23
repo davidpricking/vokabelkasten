@@ -3,10 +3,14 @@
 
 // ---------- Einstellungen des Kastens ----------
 const DAY = 864e5;
-const INTERVAL = [0, 1, 2, 4, 8, 16, 30, 180];          // Tage bis zur nächsten Abfrage, je Fach
-const FACH_LABEL = ["neu", "1 Tag", "2 Tage", "4 Tage", "8 Tage", "16 Tage", "1 Monat", "½ Jahr"];
+const INTERVAL = [0, 1, 2, 4, 8, 16, 30, 180];          // Grammatik-Kasten: Tage bis zur nächsten Abfrage, je Fach
+// Vokabeln: FSRS rechnet für jedes Wort einzeln, wann es wiederkommt. Das Fach zeigt grob, wie weit der Abstand schon ist.
+const FACH_MAX = [0, 2, 5, 10, 21, 45, 120, Infinity];  // Abstand in Tagen bis einschließlich dieses Fachs
+const FACH_LABEL = ["neu", "1–2 Tage", "3–5 Tage", "1 Woche", "2–3 Wochen", "1 Monat", "2–4 Monate", "½ Jahr"];
 const FACH_IN = ["", "morgen", "in 2 Tagen", "in 4 Tagen", "in 8 Tagen", "in 16 Tagen", "in 1 Monat", "in ½ Jahr"];
-const PLACE_LEVEL = 6;                                 // Schnelltest: "Kann ich" legt das Wort direkt in Fach 6
+const DUE_SHOW = 30;                                   // höchstens so viele Wiederholungen pro Tag, der Rest wartet unsichtbar
+const NEW_GATE = 20;                                   // neue Wörter nur, solange weniger Wiederholungen offen sind
+const DAY_BUDGET = 15 * 60;                            // nach 15 Minuten Übungszeit kommen heute keine neuen Wörter mehr
 const ROUND_SIZE = 10;
 const KEY = "vokabelkasten.v1";
 
@@ -34,6 +38,7 @@ function flagOf(l) {
 
 // Tags: kleine Stichwörter wie #tiere oder #verb, nach denen man gezielt üben kann.
 // Jedes Wort bekommt genau ein Thema und höchstens eine Wortart.
+const WB = "wordbank-";                                 // Tags der Wordbanks aus dem Buch (Camden Town 6)
 const THEME_TAGS = ["familie", "schule", "zuhause", "essen", "kleidung", "körper", "gesundheit", "gefühle", "freizeit", "sport", "tiere", "natur", "wetter", "stadt", "fortbewegung", "reisen", "einkaufen", "beruf", "zeit", "zahlen", "farben", "feste", "redemittel", "allgemein"];
 const GRAM_TAGS = ["nomen", "verb", "unregelmäßiges-verb", "adjektiv", "adverb", "präposition", "pronomen", "fragewort", "redewendung"];
 const BASE_TAGS = [...THEME_TAGS, ...GRAM_TAGS];
@@ -74,7 +79,7 @@ function defaults() {
     name: "", onboarded: false, langs: [], cur: null, cards: [], log: {}, gram: {},
     streak: 0, lastDay: 0, newPerDay: 10, aiHelp: false, bot: "chatgpt", speechMode: "say",
     goal: 20, sound: true, input: "tiles", xp: 0, badges: {},
-    stickers: {}, packQ: [], marks: 0, packDay: ""
+    stickers: {}, packQ: [], marks: 0, packDay: "", welt: {}
   };
 }
 // Ältere Stände ohne Sprachen werden zu einem Kasten "Englisch".
@@ -141,20 +146,64 @@ function check(input, solution) {
 }
 
 // ---------- Kasten ----------
-function dueCards() { const now = Date.now(); return cardsL().filter(c => c.level > 0 && c.due <= now).sort((a, b) => a.due - b.due); }
+// Fällig, niedrigste Fächer zuerst, dann die am längsten wartenden
+function dueCards() { const now = Date.now(); return cardsL().filter(c => c.level > 0 && c.due <= now).sort((a, b) => a.level - b.level || a.due - b.due); }
+// Tagesbudget: höchstens DUE_SHOW Wiederholungen am Tag; was darüber liegt, wartet unsichtbar auf morgen
+function dueLeft() { return Math.max(0, DUE_SHOW - (dayLog().rev || 0)); }
+function dueToday() { return dueCards().slice(0, dueLeft()); }
+// Neue Wörter nur, wenn kein Stau da ist und die 15 Minuten noch nicht um sind
+function newAllowed() { return dueCards().length < NEW_GATE && dayLog().sec < DAY_BUDGET ? newLeft() : 0; }
 function newLeft() { const l = L(); if (l.newDay !== today()) { l.newDay = today(); l.newCount = 0; } return Math.max(0, S.newPerDay - l.newCount); }
-// Pausierte Units (zum Beispiel Themes, die in der Schule noch nicht dran sind) liefern keine neuen Wörter.
-function isPaused(c) { const p = L().paused; return !!p && p.includes(c.unit); }
-function newCards() { return cardsL().filter(c => c.level === 0 && !isPaused(c)); }
 function levelCounts() { const n = Array(8).fill(0); cardsL().forEach(c => { if (c.level || !isPaused(c)) n[c.level]++; }); return n; }
+// ---------- FSRS (Free Spaced Repetition Scheduler, Version 5, Standardgewichte) ----------
+const FW = [0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621];
+const F_DECAY = -0.5, F_FACTOR = 19 / 81, F_RETAIN = 0.9, F_MAXIVL = 365;
+const fClampD = d => Math.min(10, Math.max(1, d));
+const fInitD = g => fClampD(FW[4] - Math.exp(FW[5] * (g - 1)) + 1);
+function fRecall(t, st) { return Math.pow(1 + F_FACTOR * t / st, F_DECAY); }
+function fIvl(st) { return Math.min(F_MAXIVL, Math.max(1, Math.round(st / F_FACTOR * (Math.pow(F_RETAIN, 1 / F_DECAY) - 1)))); }
+// Ältere Karten ohne FSRS-Werte: Stabilität aus dem bisherigen Fach schätzen
+function fInit(card) {
+  if (card.st) return;
+  if (!card.level) return;
+  const iv = INTERVAL[card.level] || 1;
+  card.st = iv; card.df = 5; card.seen = card.due ? card.due - iv * DAY : Date.now();
+}
+// g: 1 = falsch, 2 = fast (Tippfehler), 3 = richtig
+function fsrs(card, g) {
+  fInit(card);
+  const now = Date.now();
+  if (!card.st) { card.st = FW[g - 1]; card.df = fInitD(g); }
+  else {
+    const t = Math.max(0, (now - (card.seen || now)) / DAY), r = fRecall(t, card.st), d = card.df;
+    if (t < 1) card.st = Math.max(0.1, card.st * Math.exp(FW[17] * (g - 3 + FW[18])));
+    else if (g === 1) card.st = Math.min(card.st, FW[11] * Math.pow(d, -FW[12]) * (Math.pow(card.st + 1, FW[13]) - 1) * Math.exp(FW[14] * (1 - r)));
+    else card.st = card.st * (Math.exp(FW[8]) * (11 - d) * Math.pow(card.st, -FW[9]) * (Math.exp(FW[10] * (1 - r)) - 1) * (g === 2 ? FW[15] : 1) + 1);
+    const d1 = d - FW[6] * (g - 3) * (10 - d) / 9;
+    card.df = fClampD(FW[7] * fInitD(4) + (1 - FW[7]) * d1);
+  }
+  card.seen = now;
+  card.ivl = g === 1 ? 1 : fIvl(card.st);
+  return card.ivl;
+}
+function fachFor(days) { let f = 1; while (days > FACH_MAX[f]) f++; return f; }
+// Wann kommt die Karte wieder, in Worten
+function whenText(card) {
+  const n = Math.round((card.due - today()) / DAY);
+  return n <= 1 ? "morgen" : n < 14 ? `in ${n} Tagen` : n < 60 ? `in ${Math.round(n / 7)} Wochen` : n < 330 ? `in ${Math.round(n / 30)} Monaten` : "in einem Jahr";
+}
+// Richtig: mindestens ein Fach weiter (leichte Wörter springen weiter). Fast: bleibt. Falsch: zwei Fächer zurück, kommt morgen.
 function grade(card, result) {
   const wasNew = card.level === 0;
-  if (result === "good") card.level = Math.min(7, card.level + 1);
+  const iv = fsrs(card, result === "good" ? 3 : result === "near" ? 2 : 1);
+  if (result === "good") card.level = Math.min(7, Math.max(card.level + 1, fachFor(iv)));
   else if (result === "bad") card.level = Math.max(1, card.level - 2);
   else card.level = Math.max(1, card.level);
-  card.due = today() + INTERVAL[result === "good" ? card.level : 1] * DAY;
-  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++; }
+  card.due = today() + iv * DAY;
+  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++; } else { const dl = dayLog(); dl.rev = (dl.rev || 0) + 1; }
 }
+// Freies Üben, richtig: Wort bleibt im Fach, seine Wartezeit beginnt von vorn
+function rest(card) { fInit(card); card.due = today() + (card.ivl || INTERVAL[card.level] || 1) * DAY; card.seen = Date.now(); }
 
 // ---------- Übungstagebuch: pro Tag Übungszeit, Antworten und neue Wörter ----------
 function dayKey(t = Date.now()) { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
@@ -167,12 +216,24 @@ function tick() {
   if (run) run.last = now;
 }
 function shiftDay(k, n) { const [y, m, d] = k.split("-").map(Number); return dayKey(new Date(y, m - 1, d + n).getTime()); }
-function liveStreak() {
-  let k = dayKey();
+// Serie: Tage am Stück. Pro Woche (Mo–So) darf ein Tag ausfallen, ohne dass die Serie reißt (Pausentag).
+// Ein Pausentag zählt nicht mit, zwei Pausentage hintereinander gibt es nicht.
+function streakInfo() {
+  let k = dayKey(), n = 0, prevPause = false;
+  const pauses = new Set(), used = new Set();
   if (!practiced(k)) k = shiftDay(k, -1);
-  let n = 0; while (practiced(k)) { n++; k = shiftDay(k, -1); }
-  return n;
+  for (let guard = 0; guard < 4000; guard++) {
+    if (practiced(k)) { n++; prevPause = false; }
+    else {
+      const wk = weekStart(k);
+      if (prevPause || used.has(wk) || !practiced(shiftDay(k, -1))) break;
+      used.add(wk); pauses.add(k); prevPause = true;
+    }
+    k = shiftDay(k, -1);
+  }
+  return { n, pauses };
 }
+function liveStreak() { return streakInfo().n; }
 function fmtMin(sec) {
   const m = Math.round(sec / 60);
   if (sec > 0 && m < 1) return "< 1 Min";
@@ -241,7 +302,7 @@ async function packCode(obj) {
   return "j" + b64u(bytes);
 }
 function packRows(cards) {
-  return cards.map(c => { const r = [c.en, c.de, c.ex || "", c.mn || 0, c.dx || 0, c.tags && c.tags.length ? c.tags : 0]; while (r.length > 2 && !r[r.length - 1]) r.pop(); return r; });
+  return cards.map(c => { const r = [c.en, c.de, c.ex || "", c.mn || 0, c.dx || 0, c.tags && c.tags.length ? c.tags : 0, c.part || 0]; while (r.length > 2 && !r[r.length - 1]) r.pop(); return r; });
 }
 // Fallen: falsche, aber leicht verwechselbare Antworten für die Auswahl, {en: [...], de: [...]}.
 function dxList(d) {
@@ -285,10 +346,10 @@ async function decodePack(code) {
   let bytes = unb64u(code.slice(1));
   if (code[0] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined }));
+  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined, part: r[6] ? String(r[6]).slice(0, 8) : undefined }));
   const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
     .filter(u => u.rows.length);
-  return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, paused: (obj.p || []).map(String) };
+  return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, isBook: Array.isArray(obj.u), paused: (obj.p || []).map(String) };
 }
 function appUrl() { return location.origin + location.pathname.replace(/index\.html$/, ""); }
 
@@ -415,7 +476,7 @@ function ringHtml(n, goal) {
 function renderHomeView() {
   const qd = checkQuests(); if (qd.length) setTimeout(() => celebrate(`Tagesaufgabe geschafft: ${qd[0]}`), 400);
   const lang = L(), all = cardsL(), paused = lang.paused || [];
-  const due = dueCards().length, nl = Math.min(newLeft(), newCards().length), gd = gDue().length;
+  const due = dueToday().length, nl = Math.min(newAllowed(), newCards().length), gd = gDue().length;
   const units = [...new Set(all.map(c => c.unit))];
   const dirs = [["de-en", `Deutsch → ${lang.name}`], ["en-de", `${lang.name} → Deutsch`], ["mix", "gemischt"]];
   const inputs = [["tiles", "Buchstaben und Sprechen"], ["keyboard", "Tastatur"]];
@@ -445,17 +506,22 @@ function renderHomeView() {
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
       ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
+    ${posCard()}
+    ${counterCard()}
     ${placeU ? `<section class="panel place">
       <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
-      <p class="muted small">Im Schnelltest kommt jedes Wort genau einmal. Was du schon kannst, fliegt gleich nach hinten in Fach ${PLACE_LEVEL}. So lernst du nur, was wirklich neu ist.</p>
-      <button class="btn ghost" data-place="${esc(placeU)}">Schnelltest starten</button></section>` : ""}
+      <p class="muted small">Beim Sortieren tippst du nur die richtige Bedeutung an. Was du schon kannst, fliegt gleich nach hinten. So lernst du nur, was wirklich neu ist.</p>
+      <button class="btn ghost" data-place="${esc(placeU)}">Sortieren starten</button></section>` : ""}
     ${all.length ? `<section>
       <div class="spread"><h2>Dein Kasten</h2><span class="muted small">${all.length} Wörter</span></div>
       ${kastenHtml(levelCounts())}
-      <p class="muted small">Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück. Unter jedem Fach steht, wann ein Wort daraus wieder drankommt.</p>
+      <p class="muted small">Richtig heißt mindestens ein Fach weiter, leichte Wörter springen auch weiter. Falsch heißt zwei Fächer zurück. Unter jedem Fach steht ungefähr, wann ein Wort daraus wieder drankommt.</p>
     </section>` : ""}
+    ${monsterCard()}
     ${grammarCard()}
     ${questCard()}
+    ${weltCard()}
+    ${duelCard()}
     ${albumCard()}
     <section>
       <div class="spread"><h2>Abzeichen</h2><button class="link" id="badges">Alle ${BADGES.length} ansehen</button></div>
@@ -474,7 +540,7 @@ function renderHomeView() {
           ${isP ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}
           <div class="row">
             ${isP ? `<button class="btn small" data-unpause="${esc(u)}">Freischalten</button>`
-              : `<button class="btn ghost small" data-test="${esc(u)}">Für den Test üben</button>${canPlace(u) ? `<button class="link" data-place="${esc(u)}">Schnelltest</button>` : ""}`}
+              : `<button class="btn ghost small" data-test="${esc(u)}">Für den Test üben</button>${canPlace(u) ? `<button class="link" data-place="${esc(u)}">Sortieren</button>` : ""}`}
             <button class="link" data-share="${esc(u)}">Teilen</button>
             ${!isP && fresh ? `<button class="link" data-pause="${esc(u)}">Pausieren</button>` : ""}
             ${confirmDelete === u
@@ -485,10 +551,10 @@ function renderHomeView() {
       <p class="muted small">Pausierte Units liefern keine neuen Wörter. Schalte sie frei, wenn das Thema in der Schule drankommt.</p>
     </section>
     ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3 && t !== "allgemein").sort((a, b) => n[b] - n[a]);
-      const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">#${esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
-      const th = ts.filter(t => !GRAM_TAGS.includes(t)), gr = ts.filter(t => GRAM_TAGS.includes(t));
+      const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">${t.startsWith(WB) ? esc(t.slice(WB.length).replace(/-/g, " ")) : "#" + esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
+      const wb = ts.filter(t => t.startsWith(WB)), th = ts.filter(t => !GRAM_TAGS.includes(t) && !t.startsWith(WB)), gr = ts.filter(t => GRAM_TAGS.includes(t));
       return ts.length ? `<details class="panel"><summary><b>Nach Thema üben</b></summary>
-      ${th.length ? chips(th) : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
+      ${th.length ? chips(th) : ""}${wb.length ? `<h3>Wordbanks aus dem Buch</h3>${chips(wb)}` : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
       <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Richtig: Das Wort bleibt im Fach, seine Wartezeit beginnt neu. Falsch: zwei Fächer zurück.</p></details>` : ""; })()}
     <details class="panel">
       <summary><b>So wirst du abgefragt</b></summary>
@@ -507,6 +573,11 @@ function renderHomeView() {
   $("#addLang").onclick = () => renderAddLang(false);
   $("#lv").onclick = $("#badges").onclick = () => renderBadges();
   if ($("#album")) $("#album").onclick = () => renderAlbum();
+  $("#welt").onclick = () => renderWelt();
+  if ($("#duelGo")) $("#duelGo").onclick = renderDuelSetup;
+  if ($("#sprintGo")) $("#sprintGo").onclick = renderSprint;
+  bindPos();
+  save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
   if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
   $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
@@ -517,7 +588,7 @@ function renderHomeView() {
   $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   $$("[data-share]").forEach(b => b.onclick = () => renderShare(b.dataset.share));
   $$("[data-pause]").forEach(b => b.onclick = () => { lang.paused = [...paused, b.dataset.pause]; save(); keepScroll(renderHome); });
-  $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
+  $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); if (lang.upto) delete lang.upto[b.dataset.unpause]; save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
   $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderHome); });
   $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderHome); });
   $$("[data-del-yes]").forEach(b => b.onclick = () => {
@@ -545,8 +616,8 @@ function startRound(unit) {
   } else if (unit) {
     pick = shuffle(cardsL().filter(c => c.unit === unit)).slice(0, 20);
   } else {
-    pick = dueCards().slice(0, ROUND_SIZE);
-    if (pick.length < ROUND_SIZE) pick = pick.concat(newCards().slice(0, Math.min(newLeft(), ROUND_SIZE - pick.length)));
+    pick = dueToday().slice(0, ROUND_SIZE);
+    if (pick.length < ROUND_SIZE) pick = pick.concat(newCards().slice(0, Math.min(newAllowed(), ROUND_SIZE - pick.length)));
     pick = shuffle(pick);
   }
   const items = pick.map(c => c.id);
@@ -573,7 +644,7 @@ function renderCard() {
   if (R.queue[0].startsWith("g|")) return renderRoundTask();
   const card = S.cards.find(c => c.id === R.queue[0]);
   if (!card) { R.queue.shift(); return renderCard(); }
-  const dir = dirFor();
+  const dir = card.chk && !R.practice ? "de-en" : dirFor();   // Gekonnt einsortiert: einmal in die schwere Richtung prüfen
   const q = dir === "de-en" ? card.de : card.en;
   const sol = dir === "de-en" ? card.en : card.de;
   const lname = L().name;
@@ -583,12 +654,12 @@ function renderCard() {
   const fresh = !R.done.has(card.id) && !(card.id in R.first);
   const useChoice = card.level <= 1 && fresh && pool.length >= 3 && !R.practice;
   const mode = useChoice ? "choice" : S.input === "keyboard" ? "keyboard" : dir === "de-en" ? "tiles" : "speak";
-  const label = R.unit === FREE ? " · Freies Üben" : R.unit && R.unit.startsWith(TAG) ? " · #" + esc(R.unit.slice(TAG.length)) : R.practice ? " · Testtraining" : "";
+  const label = R.unit === FREE ? " · Freies Üben" : R.unit && R.unit.startsWith(TAG) ? (R.unit.startsWith(TAG + WB) ? " · Wordbank " + esc(R.unit.slice((TAG + WB).length).replace(/-/g, " ")) : " · #" + esc(R.unit.slice(TAG.length))) : R.practice ? " · Testtraining" : "";
   app.replaceChildren(h(`${roundHead()}
     <div class="icard" id="icard">
       <div class="spread"><span class="eyebrow">${dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
         ${dir === "en-de" && canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
-      ${card.level === 0 && fresh && !R.practice ? '<span class="newtag">Neues Wort</span>' : ""}
+      ${card.level === 0 && fresh && !R.practice ? '<span class="newtag">Neues Wort</span>' : isMonster(card) ? `<span class="newtag montag">👾 Monster-Wort · noch ${Math.max(1, 3 - card.level)} ♥</span>` : ""}
       ${mode === "speak" ? `<div class="flip" id="flip"><div class="face front"><div class="q">${qHtml}</div></div><div class="face back"><div class="q">${esc(sol)}</div></div></div>`
         : `<div class="q">${qHtml}</div>`}
       <div id="answerArea"></div>
@@ -814,7 +885,8 @@ function answered(card, result, sol, dir, typed) {
   $$("#answerArea button, #answerArea input").forEach(x => x.disabled = true);
   const firstTime = !(card.id in R.first), from = card.level;
   const dl = dayLog(); dl.ans++; if (result !== "bad") dl.right++;
-  if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); else if (card.level > 0) { if (result === "bad") grade(card, "bad"); else if (result === "good") card.due = today() + INTERVAL[card.level] * DAY; } }
+  if (firstTime && !R.practice) delete card.chk;
+  if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); else if (card.level > 0) { if (result === "bad") grade(card, "bad"); else if (result === "good") rest(card); } }
   // Beim freien Üben: falsch rutscht zwei Fächer zurück, richtig bleibt im Fach und die Wartezeit beginnt von vorn.
   const to = card.level, moved = firstTime && !R.practice, slipped = firstTime && R.practice && to < from, rested = firstTime && R.practice && result === "good" && to > 0;
   R.queue.shift();
@@ -824,11 +896,12 @@ function answered(card, result, sol, dir, typed) {
   else if (firstTime) { R.combo++; R.best = Math.max(R.best, R.combo); }
   if (moved && from < 3 && to >= 3) { R.sat++; dl.sat = (dl.sat || 0) + 1; }
   if (moved && to > from && result === "good") dl.up = (dl.up || 0) + 1;
+  monsterHit(card, from, to, result, moved);
   if (result !== "bad" && firstTime) dl.combo = Math.max(dl.combo || 0, R.combo);
   if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
   sound(result === "bad" ? "bad" : "good");
-  const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : rested ? `Bleibt in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : !moved ? "" : from === 0 ? "Ab in Fach 1, kommt morgen wieder."
-    : to > from ? `Weiter in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : to < from ? `Zurück in Fach ${to}, kommt morgen wieder.` : `Bleibt in Fach ${to}, kommt morgen wieder.`;
+  const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : rested ? `Bleibt in Fach ${to}, kommt ${whenText(card)} wieder.` : !moved ? "" : from === 0 ? `Ab in Fach ${to}, kommt ${whenText(card)} wieder.`
+    : to > from ? `Weiter in Fach ${to}, kommt ${whenText(card)} wieder.` : to < from ? `Zurück in Fach ${to}, kommt morgen wieder.` : `Bleibt in Fach ${to}, kommt ${whenText(card)} wieder.`;
   const msg = result === "good" ? ["good", pick(["Richtig!", "Super!", "Genau!", "Stark!"]), ""]
     : result === "near" ? ["near", "Fast!", `Achte auf die Schreibweise: <span class="sol">${typed ? markDiff(typed, sol) : esc(sol)}</span>`]
     : ["bad", "Noch nicht.", `Richtig ist: <span class="sol">${esc(sol)}</span><span class="small">Das Wort kommt in dieser Runde gleich noch einmal.</span>`];
@@ -870,7 +943,7 @@ function renderRoundTask() {
     tick();
     const first = !(item in R.first);
     dayLog().gram++;
-    if (first) { R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] ?? true) && ok; }
+    if (first) { R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); }
     R.queue.shift();
     if (ok) { R.done.add(item); if (first) { R.combo++; R.best = Math.max(R.best, R.combo); } }
     else { R.combo = 0; R.queue.splice(Math.min(R.queue.length, 3), 0, item); }
@@ -886,7 +959,7 @@ function renderRoundTask() {
 function renderSummary() {
   tick();
   R.finished = true;
-  const gl = Object.entries(R.gram).map(([id, ok]) => gMove(id, ok)).filter(Boolean);
+  const gl = Object.entries(R.gram).map(([id, err]) => gMove(id, err <= G_MAX_ERR)).filter(Boolean);
   const n = R.total, g = R.good, lv = levelOf(S.xp);
   const earned = R.total >= 5 && !R.packed; if (earned) { R.packed = true; S.packQ.push(makePack(R)); }
   if (R.total >= 5 && g === n) dayLog().perfect = 1;
@@ -901,78 +974,209 @@ function renderSummary() {
     ${R.practice ? '<p class="muted small">Beim freien Üben und beim Testtraining bleiben richtige Wörter in ihrem Fach, ihre Wartezeit beginnt neu. Falsche rutschen zwei Fächer zurück und kommen morgen wieder.</p>'
       : `<div class="moves">${R.up ? `<span class="up">${R.up} ${R.up === 1 ? "Karte" : "Karten"} nach hinten</span>` : ""}${R.down ? `<span class="down">${R.down} zurück</span>` : ""}</div>
          ${kastenHtml(levelCounts())}`}
+    ${monsterSummary()}
     ${gl.map(x => `<p class="small">${x}</p>`).join("")}
     ${doneQ.map(q => `<p class="questdone">✓ Tagesaufgabe geschafft: ${esc(q)}</p>`).join("")}
+    ${weltNew() || weltDistrictNew() || treasureReady() ? `<button class="packbtn welt" id="toWelt" type="button"><span class="weltmini" aria-hidden="true">${SKYLINE}</span><span><b>${weltDistrictNew() ? "Ein neues Viertel in Camden!" : weltNew() ? (weltNew() === 1 ? "Ein neues Haus in Camden!" : weltNew() + " neue Häuser in Camden!") : "🎁 In Camden ist ein Schatz versteckt!"}</b><span class="small">${weltNew() || weltDistrictNew() ? "Antippen und zuschauen, wie es wächst" : "Folge dem Lichtstrahl und tipp ihn an"}</span></span></button>` : ""}
     ${earned ? `<button class="packbtn" id="openPack" type="button"><span class="pack mini" aria-hidden="true"><i></i></span><span><b>${S.packQ.length > 1 ? S.packQ.length + " Sticker-Päckchen!" : "Neues Sticker-Päckchen!"}</b><span class="small">Antippen und aufreißen</span></span></button>` : ""}
     <div class="xpline"><b>+${R.xp} Punkte</b><span class="lvchip static"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></span></div>
     ${R.newBadges.length ? `<div class="newbadges">${R.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
     <div class="row" style="justify-content:center"><button class="btn" id="again">Noch eine Runde</button><button class="btn ghost" id="home">Fertig</button></div>
   </div>`));
-  if ((g === n && n >= 5) || R.newBadges.length) confetti();
+  if ((g === n && n >= 5) || R.newBadges.length || (R.mon || []).some(x => x.slain)) confetti();
+  setTimeout(checkMilestone, 1200);
   const unit = R.practice ? R.unit : null;
-  $("#again").onclick = () => startRound(unit === null && !dueCards().length && !Math.min(newLeft(), newCards().length) && !gDue().length ? FREE : unit);
+  $("#again").onclick = () => startRound(unit === null && !dueToday().length && !Math.min(newAllowed(), newCards().length) && !gDue().length ? FREE : unit);
   $("#home").onclick = () => { R = null; renderHome(); };
   if ($("#openPack")) $("#openPack").onclick = () => { R = null; openPack(); };
+  if ($("#toWelt")) $("#toWelt").onclick = () => { R = null; renderWelt(); };
   $("#toCal").onclick = () => { R = null; renderCalendar(); scrollTo(0, 0); };
   window.scrollTo(0, 0);
 }
 
-// ---------- Schnelltest: Was schon sitzt, fliegt gleich nach hinten ----------
+// ---------- Wie weit seid ihr im Buch? Nur was schon dran war, wird abgefragt ----------
+// L().pos = { u, n }: In Unit u sind die ersten n Wörter frei, alle Units davor auch (außer übersprungene), alle danach warten.
+// L().paused: gesperrte Units, L().upto[u]: Anzahl freier Wörter in einer halb freien Unit, L().skip: Units, die die Lehrerin auslässt.
+let ordCache = null;
+function unitList() { return [...new Set(cardsL().map(c => c.unit))]; }
+function unitCards(u) { return cardsL().filter(c => c.unit === u); }
+function ordOf(c) {
+  const key = S.cur + ":" + S.cards.length;
+  if (!ordCache || ordCache.key !== key) { const m = new Map(), n = {}; cardsL().forEach(x => { n[x.unit] = n[x.unit] || 0; m.set(x.id, n[x.unit]++); }); ordCache = { key, m }; }
+  return ordCache.m.get(c.id) ?? 0;
+}
+function isPaused(c) {
+  const l = L(); if ((l.paused || []).includes(c.unit)) return true;
+  const n = l.upto && l.upto[c.unit];
+  return n != null && ordOf(c) >= n;
+}
+// Neue Wörter: zuerst aus der Unit, die in der Schule gerade dran ist, dann der Rest der Reihe nach
+function newCards() {
+  const cs = cardsL().filter(c => c.level === 0 && !isPaused(c)), u = L().pos && L().pos.u;
+  return u ? cs.filter(c => c.unit === u).concat(cs.filter(c => c.unit !== u)) : cs;
+}
+function setPos(u, n) {
+  const l = L(), us = unitList(), i = us.indexOf(u), len = unitCards(u).length, before = newCards().length;
+  n = Math.max(0, Math.min(n, len));
+  l.skip = (l.skip || []).filter(x => x !== u);
+  l.pos = { u, n }; l.upto = {}; l.paused = [];
+  us.forEach((x, j) => { if (j > i || (j < i && l.skip.includes(x))) l.paused.push(x); });
+  if (n < len) l.upto[u] = n;
+  save();
+  return newCards().length - before;
+}
+function posLabel() {
+  const p = L().pos; if (!p) return "";
+  const cs = unitCards(p.u); if (!cs.length) return "";
+  if (p.n >= cs.length) return `${p.u}, ganz`;
+  if (!p.n) return `${p.u}, noch nichts`;
+  const c = cs[p.n - 1];
+  return c.part ? `${p.u}, Teil ${c.part}` : `${p.u}, bis „${c.en}“`;
+}
+// Ein Teil weiter: bis zum Ende des nächsten Buch-Teils, ohne Teile zehn Wörter weiter, am Ende in die nächste Unit
+function stepPos() {
+  const l = L(), p = l.pos; if (!p) return 0;
+  let u = p.u, n = p.n, cs = unitCards(u);
+  if (n >= cs.length) {
+    const us = unitList(), nx = us.slice(us.indexOf(u) + 1).find(x => !(l.skip || []).includes(x));
+    if (!nx) { toast("Das war die letzte Unit."); return 0; }
+    u = nx; n = 0; cs = unitCards(u);
+  }
+  if (cs[n] && cs[n].part) { const pt = cs[n].part; while (n < cs.length && cs[n].part === pt) n++; }
+  else n = Math.min(cs.length, n + 10);
+  return setPos(u, n);
+}
+function posCard() {
+  if (!cardsL().length) return "";
+  const lbl = posLabel();
+  return `<section class="panel pos"><div class="spread"><div><span class="eyebrow">Wir sind bei</span><br><b>${lbl ? esc(lbl) : "Noch nicht eingestellt"}</b></div>
+      <button class="link" id="posEdit">${lbl ? "ändern" : "einstellen"}</button></div>
+    ${lbl ? `<button class="btn ghost small" id="posStep">Ein Teil weiter</button>` : ""}
+    <p class="muted small">Abgefragt wird nur, was in der Schule schon dran war.</p></section>`;
+}
+function bindPos() {
+  if ($("#posEdit")) $("#posEdit").onclick = () => renderPos(L().pos && L().pos.u);
+  if ($("#posStep")) $("#posStep").onclick = () => { const k = stepPos(); toast(`${posLabel()} ist frei${k > 0 ? `, ${k} neue Wörter` : ""}.`); keepScroll(renderHome); };
+}
+function renderPos(openU) {
+  const l = L(), us = unitList(), p = l.pos;
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Wie weit seid ihr?</h2></div>
+    <p class="muted">Tipp an, was in der Schule zuletzt dran war: eine ganze Unit, einen Teil oder ein einzelnes Wort. Alles davor wird frei, alles danach wartet.</p>
+    ${us.map(u => {
+      const cs = unitCards(u), sk = (l.skip || []).includes(u), lock = (l.paused || []).includes(u);
+      const n = lock ? 0 : l.upto && l.upto[u] != null ? l.upto[u] : cs.length;
+      const parts = [...new Set(cs.map(c => c.part).filter(Boolean))];
+      return `<details class="panel posunit"${u === openU ? " open" : ""}><summary><b>${esc(u)}</b>
+          <span class="tag${n && !sk ? "" : " soft"}">${sk ? "fällt aus" : n >= cs.length ? "frei" : n ? `${n} von ${cs.length}` : "noch nicht"}</span>${p && p.u === u ? ' <span class="tag">hier seid ihr</span>' : ""}</summary>
+        <div class="row"><button class="btn small" data-pall="${esc(u)}">Ganze Unit war dran</button>
+          <button class="link" data-pskip="${esc(u)}">${sk ? "Kommt doch dran" : "Lässt die Lehrerin aus"}</button></div>
+        ${parts.length > 1 ? `<h3>Bis zu diesem Teil</h3><div class="chips">${parts.map(pt => `<button class="chip" data-ppart="${esc(pt)}" data-u="${esc(u)}">${esc(pt)}</button>`).join("")}</div>` : ""}
+        <h3>Bis zu diesem Wort</h3>
+        <div class="poswords">${cs.map((c, i) => `${c.part && (!i || cs[i - 1].part !== c.part) ? `<span class="pwpart">${esc(c.part)}</span>` : ""}<button class="pw${i < n && !sk ? " on" : ""}" data-pw="${i}" data-u="${esc(u)}">${esc(c.en)}</button>`).join("")}</div>
+      </details>`; }).join("")}
+    <button class="btn wide" id="done">Fertig</button>`));
+  const after = (u, k) => { toast(`${posLabel()} ist frei${k > 0 ? `, ${k} neue Wörter` : ""}.`); keepScroll(() => renderPos(u)); };
+  $("#back").onclick = $("#done").onclick = () => renderHome();
+  $$("[data-pall]").forEach(b => b.onclick = () => { const u = b.dataset.pall; after(u, setPos(u, unitCards(u).length)); });
+  $$("[data-ppart]").forEach(b => b.onclick = () => { const u = b.dataset.u, cs = unitCards(u); let i = cs.length; while (i > 0 && cs[i - 1].part !== b.dataset.ppart) i--; after(u, setPos(u, i)); });
+  $$("[data-pw]").forEach(b => b.onclick = () => { const u = b.dataset.u; after(u, setPos(u, +b.dataset.pw + 1)); });
+  $$("[data-pskip]").forEach(b => b.onclick = () => {
+    const u = b.dataset.pskip, sk = new Set(l.skip || []);
+    sk.has(u) ? sk.delete(u) : sk.add(u); l.skip = [...sk];
+    if (l.pos && l.pos.u !== u) { const s2 = l.skip; setPos(l.pos.u, l.pos.n); l.skip = s2; save(); }
+    keepScroll(() => renderPos(u));
+  });
+  if (!keepScroll.on) window.scrollTo(0, 0);
+}
+
+// ---------- Schnell-Sortieren: Was schon sitzt, wird nicht neu gelernt ----------
+// Englisches Wort, vier deutsche Antworten. Schnell richtig = kann ich, langsam richtig = unsicher, sonst neu lernen.
+// Erst eine Stichprobe von 20 Wörtern: Sitzt fast alles, gilt die ganze Unit als gekonnt.
 let P = null;
-function placeable(u) { return cardsL().filter(c => c.unit === u && c.level === 0 && !c.pl); }
+const PLACE_FAST = 4000, PLACE_SAMPLE = 20;
+function placeable(u) { return cardsL().filter(c => c.unit === u && c.level === 0 && !c.pl && !isPaused(c)); }
 function canPlace(u) { return placeable(u).length >= 5; }
 function startPlace(u) {
-  const ids = placeable(u).map(c => c.id);
-  P = { unit: u, queue: ids, total: ids.length, known: 0, unknown: 0, last: Date.now(), newBadges: [] };
+  const ids = shuffle(placeable(u).map(c => c.id));
+  P = { unit: u, queue: ids, total: ids.length, known: 0, unsure: 0, unknown: 0, sample: ids.length > PLACE_SAMPLE + 10 ? PLACE_SAMPLE : 0,
+        sk: 0, bulk: "", last: Date.now(), newBadges: [] };
   renderPlace();
+}
+// Fälligkeit verteilen: der Tag im Fenster, an dem bisher am wenigsten fällig ist. So kommt nie eine Welle.
+function spreadDue(minD, maxD) {
+  const t0 = today(), load = new Map();
+  cardsL().forEach(c => { if (c.level) { const d = Math.round((c.due - t0) / DAY); if (d >= minD && d <= maxD) load.set(d, (load.get(d) || 0) + 1); } });
+  let best = minD; for (let d = minD; d <= maxD; d++) if ((load.get(d) || 0) < (load.get(best) || 0)) best = d;
+  return t0 + best * DAY;
+}
+function placeCard(card, how) {
+  if (how === "known") { card.level = 5; card.st = 30; card.df = 5; card.seen = Date.now(); card.ivl = 30; card.due = spreadDue(7, 56); card.chk = 1; P.known++; }
+  else if (how === "unsure") { card.level = 2; card.st = 4; card.df = 6; card.seen = Date.now(); card.ivl = 4; card.due = spreadDue(1, 14); P.unsure++; }
+  else { card.pl = 1; P.unknown++; }
 }
 function renderPlace() {
   tick();
+  if (P.sample && P.total - P.queue.length === P.sample) {
+    const rate = P.sk / P.sample; P.sample = 0;
+    const bulk = rate >= 0.9 ? "known" : rate < 0.6 ? "unknown" : "";
+    if (bulk) { P.bulk = bulk; P.queue.splice(0).forEach(id => { const c = S.cards.find(x => x.id === id); if (c) placeCard(c, bulk); }); save(); }
+  }
   if (!P.queue.length) return renderPlaceDone();
   const card = S.cards.find(c => c.id === P.queue[0]);
   if (!card) { P.queue.shift(); return renderPlace(); }
-  const k = P.total - P.queue.length;
+  const k = P.total - P.queue.length, n = P.sample || P.total;
+  const opts = choiceOpts(card, card.de, "en-de", cardsL().filter(c => c.id !== card.id));
   app.replaceChildren(h(`
-    <div class="progress"><button class="iconbtn" id="quit" aria-label="Schnelltest beenden">${ICON.x}</button>
-      <div class="bar"><i style="width:${Math.round(k / P.total * 100)}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${k}/${P.total}</span></div>
+    <div class="progress"><button class="iconbtn" id="quit" aria-label="Sortieren beenden">${ICON.x}</button>
+      <div class="bar"><i style="width:${Math.round(k / n * 100)}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${k}/${n}</span></div>
     ${kastenHtml(levelCounts(), true)}
     <div class="icard" id="icard">
-      <div class="spread"><span class="eyebrow">Schnelltest</span>${canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
-      <div class="flip" id="flip"><div class="face front"><div class="q">${esc(card.en)}</div></div><div class="face back"><div class="q">${esc(card.de)}</div></div></div>
-      <p class="muted small">Weißt du, was das heißt? Tipp auf die Karte, wenn du nachsehen willst.</p>
-      <div class="choices"><button class="choice yes" id="yes">✓ Kann ich</button><button class="choice no" id="no">Noch nicht</button></div>
+      <div class="spread"><span class="eyebrow">${P.sample ? "Stichprobe" : "Sortieren"}</span>${canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
+      <div class="q">${esc(card.en)}</div>
+      <p class="muted small">Was heißt das? Tipp an${SR ? " oder sag es auf Deutsch" : ""}.</p>
+      <div class="choices">${opts.map(o => `<button class="choice" data-o="${esc(o)}">${esc(o)}</button>`).join("")}</div>
+      <div class="row" style="justify-content:center">${SR ? `<button class="speak" id="bigmic">${ICON.mic || "🎤"}Sagen</button>` : ""}<button class="choice no" id="no">Weiß ich nicht</button></div>
     </div>
-    <button class="link" id="stop" style="align-self:center">Rest später testen</button>`));
-  $("#quit").onclick = $("#stop").onclick = () => { tick(); save(); P = null; renderHome(); };
+    <button class="link" id="stop" style="align-self:center">Rest später sortieren</button>`));
+  const t0 = Date.now();
+  $("#quit").onclick = $("#stop").onclick = () => { stopListening(); tick(); save(); P = null; renderHome(); };
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
-  $("#flip").onclick = () => { $("#flip").classList.toggle("turned"); sound("flip"); };
   liftCard(0);
-  const go = known => {
-    $$("#icard button").forEach(b => b.disabled = true); tick();
-    if (known) { card.level = PLACE_LEVEL; card.due = today() + INTERVAL[PLACE_LEVEL] * DAY; P.known++; }
-    else { card.pl = 1; P.unknown++; }
+  const go = (how, btn) => {
+    stopListening(); $$("#icard button").forEach(b => b.disabled = true); tick();
+    $$("[data-o]").forEach(b => { if (b.dataset.o === card.de) b.classList.add("right"); });
+    if (btn && how === "unknown") btn.classList.add("wrong");
+    if (how !== "unknown") P.sk++;
+    placeCard(card, how);
     P.queue.shift(); S.xp++; save();
-    flyCard(0, known ? PLACE_LEVEL : 0, known, card.en);
-    sound(known ? "good" : "tap");
-    setTimeout(renderPlace, reduced() ? 150 : 720);
+    flyCard(0, card.level, how !== "unknown", card.en);
+    sound(how === "unknown" ? "tap" : "good");
+    setTimeout(renderPlace, reduced() ? 150 : how === "unknown" ? 1100 : 720);
   };
-  $("#yes").onclick = () => go(true);
-  $("#no").onclick = () => go(false);
+  $$("[data-o]").forEach(b => b.onclick = () => go(b.dataset.o === card.de ? (Date.now() - t0 <= PLACE_FAST ? "known" : "unsure") : "unknown", b));
+  $("#no").onclick = () => go("unknown");
+  // Sprechen: Deutsch versteht die Erkennung gut. Nicht verstanden heißt nicht falsch, dann einfach antippen.
+  if ($("#bigmic")) $("#bigmic").onclick = () => listenDe(card.de, (hit, heard) => {
+    if (hit) go(Date.now() - t0 <= PLACE_FAST + 2000 ? "known" : "unsure");
+    else toast(heard ? `Verstanden: „${heard}“. Tipp die Antwort lieber an.` : "Nichts gehört. Tipp die Antwort an.");
+  }, () => {});
 }
 function renderPlaceDone() {
   P.finished = true; checkBadges(); save();
-  const nextU = [...new Set(cardsL().map(c => c.unit))].find(u => u !== P.unit && !(L().paused || []).includes(u) && canPlace(u));
+  const nextU = [...new Set(cardsL().map(c => c.unit))].find(u => u !== P.unit && canPlace(u));
   app.replaceChildren(h(`<div class="done">
-    <p class="eyebrow">Schnelltest geschafft</p>
-    <div class="score">${P.known}</div>
-    <p>${P.known === 1 ? "Wort kannst" : "Wörter kannst"} du schon. Sie liegen jetzt in Fach ${PLACE_LEVEL} und kommen in einem Monat zur Kontrolle.</p>
-    ${P.unknown ? `<p class="muted">${P.unknown} ${P.unknown === 1 ? "Wort lernst" : "Wörter lernst"} du neu, ${S.newPerDay} am Tag.</p>` : ""}
+    <p class="eyebrow">„${esc(P.unit)}“ sortiert</p>
+    <div class="score">${P.known + P.unsure}</div>
+    <p>${P.known + P.unsure === 1 ? "Wort kennst" : "Wörter kennst"} du schon.${P.bulk === "known" ? " Die Stichprobe saß fast komplett, darum gilt die ganze Unit als gekonnt." : P.bulk ? " Die Stichprobe war noch wackelig, darum lernst du den Rest der Unit nach und nach neu." : ""}</p>
+    <p class="muted small">${P.known} sitzen und kommen verteilt über die nächsten Wochen zur Kontrolle, ${P.unsure} unsicher kommen in den nächsten Tagen.</p>
+    ${P.unknown ? `<p class="muted">${P.unknown} ${P.unknown === 1 ? "Wort lernst" : "Wörter lernst"} du neu, nach und nach, wenn Platz ist.</p>` : ""}
     ${kastenHtml(levelCounts())}
     ${P.newBadges.length ? `<div class="newbadges">${P.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
-    <div class="row" style="justify-content:center">${nextU ? `<button class="btn" id="nextU">Nächste Unit testen</button>` : ""}<button class="btn ${nextU ? "ghost" : ""}" id="home">Fertig</button></div>
+    <div class="row" style="justify-content:center">${nextU ? `<button class="btn" id="nextU">Nächste Unit sortieren</button>` : ""}<button class="btn ${nextU ? "ghost" : ""}" id="home">Fertig</button></div>
   </div>`));
-  if (P.known) confetti();
+  if (P.known + P.unsure) confetti();
   if (nextU) $("#nextU").onclick = () => startPlace(nextU);
   $("#home").onclick = () => { P = null; renderHome(); };
   window.scrollTo(0, 0);
@@ -1068,7 +1272,8 @@ function todaysQuests() {
     const ok = QUESTS.filter(q => !q[3] || q[3]()), out = [];
     // "goal" ist jeden zweiten Tag dabei, der Rest wechselt
     if (h % 2) out.push("goal");
-    while (out.length < 3 && ok.length) { h = (h * 1103515245 + 12345) >>> 0; const q = ok[h % ok.length][0]; if (!out.includes(q) && !(q === "combo8" && out.includes("combo")) && !(q === "combo" && out.includes("combo8"))) out.push(q); if (out.length >= ok.length) break; }
+    // Math.imul: ohne das wird die Zahl zu groß, verliert Stellen und die Schleife lief manchmal endlos
+    for (let n = 0; out.length < 3 && ok.length && n < 200; n++) { h = (Math.imul(h, 1103515245) + 12345) >>> 0; const q = ok[h % ok.length][0]; if (!out.includes(q) && !(q === "combo8" && out.includes("combo")) && !(q === "combo" && out.includes("combo8"))) out.push(q); if (out.length >= ok.length) break; }
     d.quests = out; d.qdone = [];
   }
   return d.quests.map(id => QUESTS.find(q => q[0] === id)).filter(Boolean);
@@ -1152,6 +1357,35 @@ function stickerHtml(x, opts = {}) {
   return `<span class="stk r${x.r}${have ? "" : " missing"}${opts.cls ? " " + opts.cls : ""}" style="--pg:linear-gradient(135deg,${pg.bg})" aria-label="${have ? esc(x.en) : "Sticker " + x.no + " fehlt noch"}">
     <span class="em" aria-hidden="true">${x.e}</span>${have ? "" : `<b class="no">${x.no}</b>`}${x.r && have ? `<i class="rar" aria-hidden="true">${x.r === 2 ? "★★" : "★"}</i>` : ""}</span>`;
 }
+// ---------- Camden-Welt: jedes Wort ab Fach 3 baut ein echtes Haus in Camden Town (3D, lädt erst beim Öffnen) ----------
+const SKYLINE = `<svg viewBox="0 0 120 56"><rect x="4" y="22" width="20" height="34" rx="2" fill="#E8B796"/><rect x="26" y="10" width="18" height="46" rx="2" fill="#FF6B6B"/><rect x="46" y="26" width="16" height="30" rx="2" fill="#FFD166"/><rect x="64" y="4" width="22" height="52" rx="2" fill="#4CC9F0"/><rect x="88" y="18" width="14" height="38" rx="2" fill="#06D6A0"/><rect x="104" y="28" width="14" height="28" rx="2" fill="#C77DFF"/><g fill="#fff" opacity=".75"><rect x="8" y="28" width="4" height="5"/><rect x="16" y="28" width="4" height="5"/><rect x="30" y="16" width="4" height="5"/><rect x="37" y="16" width="4" height="5"/><rect x="30" y="26" width="4" height="5"/><rect x="68" y="10" width="5" height="6"/><rect x="77" y="10" width="5" height="6"/><rect x="68" y="22" width="5" height="6"/><rect x="77" y="22" width="5" height="6"/><rect x="50" y="32" width="4" height="5"/><rect x="92" y="24" width="4" height="5"/></g></svg>`;
+function weltNew() {
+  const W = S.welt || {}, built = W.built || [], have = new Set([...built.map(b => b.id), ...(W.wait || [])]);
+  return S.cards.filter(c => c.level >= 3 && !have.has(c.id)).length + Math.max(0, built.length - (W.seen || 0));
+}
+function weltCard() {
+  const n = (S.welt.built || []).length, fresh = weltNew(), dn = weltDistrictNew(), tr = treasureReady();
+  const nd = 1 + (S.welt.dist || []).length, next = weltUnits().filter(u => !u.done).sort((a, b) => b.pct - a.pct)[0];
+  return `<section class="panel weltcard">
+    <div class="spread"><h2>Deine Camden-Welt</h2><span class="muted small">${n} ${n === 1 ? "Haus" : "Häuser"} · Viertel ${nd}/7</span></div>
+    <div class="weltpeek" aria-hidden="true">${SKYLINE}${fresh ? `<span class="weltbadge">+${fresh}</span>` : ""}${tr ? `<span class="weltgift">🎁</span>` : ""}</div>
+    ${dn ? `<p class="weltnews">🗺️ Eine Unit ist geschafft. Ein neues Viertel wartet auf dich!</p>` : ""}
+    ${tr ? `<p class="weltnews">🎁 Heute ist in Camden ein Sticker-Päckchen versteckt. Folge dem Lichtstrahl!</p>` : ""}
+    <p class="muted small">Jedes Wort ab Fach 3 baut ein Haus. In Fach 5 leuchten nachts seine Fenster, in Fach 7 bekommt es ein goldenes Dach.${nd < 7 && next ? ` Nächstes Viertel: „${esc(next.name)}“ zu ${Math.min(99, Math.round(next.pct / .8 * 100))} % geschafft.` : ""}</p>
+    <button class="btn${fresh || dn || tr ? "" : " ghost"}" id="welt">${dn ? "Neues Viertel ansehen" : fresh ? (fresh === 1 ? "1 neues Haus bauen" : fresh + " neue Häuser bauen") : tr ? "Schatz suchen" : "Welt ansehen"}</button>
+  </section>`;
+}
+function renderWelt() {
+  document.body.classList.add("weltopen");
+  import("./welt/welt.js").then(m => m.open(document.body, {
+    cards: () => S.cards, state: S.welt, save, units: weltUnits,
+    treasure: { ready: treasureReady(), day: dayKey(), claim: () => { dayLog().treasure = 1; S.packQ.push(makePack({ up: 6, sat: 1 })); save(); } },
+    say: canSpeak ? t => say(t, "en-GB") : null,
+    sound: k => sound(k), confetti,
+    onClose: () => { document.body.classList.remove("weltopen"); renderHome(); }
+  })).catch(() => { document.body.classList.remove("weltopen"); toast("Die Welt braucht einmal Internet zum Laden."); });
+}
+
 function albumCard() {
   const n = albumCount(), N = STICKERS.length;
   return `<section class="panel albumcard">
@@ -1288,6 +1522,17 @@ function parseList(text) {
   }
   return { name, rows: out };
 }
+// Zurück aus dem KI-Chat: Liegt eine Vokabelliste in der Zwischenablage, wird sie gleich geprüft (ein Tipp weniger).
+let clipWatch = false;
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden || !clipWatch || !$("#paste") || !navigator.clipboard || !navigator.clipboard.readText) return;
+  try {
+    const t = await navigator.clipboard.readText();
+    if (!t || t === photoPrompt() || !parseList(t).rows.length) return;
+    clipWatch = false; $("#paste").value = t; addParsed(t);
+    toast(`${parseList(t).rows.length} Wörter gefunden. Prüfen und übernehmen.`);
+  } catch (e) {}
+});
 function renderImport(prefill) {
   if (prefill) { rows = prefill.rows; importName = prefill.name; }
   const shareFiles = !!(navigator.canShare && window.File);
@@ -1297,16 +1542,16 @@ function renderImport(prefill) {
     <p class="muted small">Für deinen Kasten <b>${esc(L().name)}</b></p>
     <label class="f">Name der Unit<input class="input" id="unitName" placeholder="z. B. Unit 2" value="${esc(importName)}"></label>
     ${prefill ? "" : `
-    <section class="panel">
-      <h3>1. Foto oder Datei an deinen KI-Chat</h3>
-      <p class="muted small">Die App schickt nichts selbst weg. Du entscheidest, an welchen Chat das Foto oder die Datei geht. Der Auftrag bittet den Chat auch um Tags wie #tiere oder #verb.</p>
+    <details class="panel" id="parents">
+      <summary><b>Für Eltern: Buchseite mit einem KI-Chat umwandeln</b></summary>
+      <p class="muted small">Über dein eigenes Konto, nicht das deines Kindes. Die App schickt nichts selbst weg. Du entscheidest, an welchen Chat das Foto oder die Datei geht. Der Auftrag bittet den Chat auch um Tags wie #tiere oder #verb.</p>
       <label class="btn wide" for="photo">${ICON.camera}<span id="photoLabel">Foto aufnehmen oder wählen</span></label>
       <input type="file" id="photo" accept="image/*" capture="environment" hidden>
       <label class="btn ghost wide" for="srcFile"><span id="fileLabel">Datei wählen (PDF, Word, Excel …)</span></label>
       <input type="file" id="srcFile" accept="image/*,application/pdf,.pdf,.doc,.docx,.odt,.xls,.xlsx,.ods,.csv,.txt" hidden>
       <button class="btn ghost wide" id="sharePhoto" hidden>${ICON.share}Datei und Auftrag an KI-Chat senden</button>
       <p class="muted small" id="shareHint" hidden>Im Teilen-Menü wählst du ChatGPT, Claude oder Gemini. Der Auftrag liegt außerdem in der Zwischenablage, falls die Chat-App nur das Bild übernimmt.</p>
-      <details>
+      <details id="selfOpen">
         <summary class="small" style="cursor:pointer">Ohne Teilen-Menü: Chat selbst öffnen</summary>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
           <p class="muted small">Öffne den Chat mit dem Auftrag und häng dort das Foto oder die Datei an.</p>
@@ -1315,9 +1560,10 @@ function renderImport(prefill) {
           <button class="btn ghost small" id="copy">Auftrag kopieren</button>
         </div>
       </details>
-    </section>
+      <p class="muted small">Kopier danach die Antwort im Chat und komm zurück. Die App holt sie sich selbst aus der Zwischenablage.</p>
+    </details>
     <section class="panel">
-      <h3>2. Antwort hier einfügen</h3>
+      <h3>Eigene Liste</h3>
       <p class="muted small">Kopiere die Liste aus dem Chat oder lade die Datei, die der Chat dir gibt. Du kannst auch selbst tippen: eine Vokabel pro Zeile, <b>${esc(L().name.toLowerCase())} ; deutsch ; Beispielsatz ; #tag</b>.</p>
       <textarea id="paste" placeholder="${isEn() ? "mother ; Mutter&#10;brother ; Bruder ; I have got a brother." : "Wort ; deutsche Bedeutung"}"></textarea>
       <div class="row">
@@ -1328,7 +1574,7 @@ function renderImport(prefill) {
       </div>
     </section>`}
     <section class="panel" id="reviewPanel" hidden>
-      <div class="spread"><h3>${prefill ? "Vokabeln der Unit" : "3. Erkannte Vokabeln"}</h3><span class="small muted" id="rcount"></span></div>
+      <div class="spread"><h3>${prefill ? "Vokabeln der Unit" : "Erkannte Vokabeln"}</h3><span class="small muted" id="rcount"></span></div>
       <div class="review" id="review"></div>
       <button class="btn wide" id="save">Übernehmen</button>
     </section>
@@ -1343,16 +1589,18 @@ function renderImport(prefill) {
       $("#fileLabel").textContent = photo.type.startsWith("image/") ? "Datei wählen (PDF, Word, Excel …)" : "Gewählt: " + photo.name;
       const can = shareFiles && navigator.canShare({ files: [photo] });
       $("#sharePhoto").hidden = !can; $("#shareHint").hidden = !can;
-      if (!can) { $("details").open = true; toast("Teilen geht hier nicht. Öffne den Chat und häng die Datei an."); }
+      if (!can) { $("#selfOpen").open = true; toast("Teilen geht hier nicht. Öffne den Chat und häng die Datei an."); }
     };
     $("#sharePhoto").onclick = async () => {
       if (!photo) return;
+      clipWatch = true;
       await copyText(photoPrompt());
       try { await navigator.share({ files: [photo], text: photoPrompt() }); }
-      catch (err) { if (err && err.name !== "AbortError") { $("details").open = true; toast("Teilen hat nicht geklappt. Öffne den Chat selbst."); } }
+      catch (err) { if (err && err.name !== "AbortError") { $("#selfOpen").open = true; toast("Teilen hat nicht geklappt. Öffne den Chat selbst."); } }
     };
-    $$("[data-bot]").forEach(a => a.onclick = () => { copyText(photoPrompt()); if (BOTS[a.dataset.bot].copyFirst) toast("Auftrag kopiert. Füge ihn im Chat ein."); });
+    $$("[data-bot]").forEach(a => a.onclick = () => { clipWatch = true; copyText(photoPrompt()); if (BOTS[a.dataset.bot].copyFirst) toast("Auftrag kopiert. Füge ihn im Chat ein."); });
     $("#copy").onclick = async () => {
+      clipWatch = true;
       if (await copyText(photoPrompt())) toast("Auftrag kopiert");
       else { const r = document.createRange(); r.selectNodeContents($("#promptText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Text markiert. Bitte kopieren."); }
     };
@@ -1375,49 +1623,46 @@ function renderImport(prefill) {
 }
 // Übernimmt Zeilen in eine Unit; doppelte Wörter in derselben Unit behalten ihren Lernstand,
 // bekommen aber neue Eselsbrücken und Beispielsätze aus dem Link.
-function addCards(unit, list) {
+function addCards(unit, list, book) {
   const existing = new Map(cardsL().filter(c => c.unit === unit).map(c => [norm(c.en) + "|" + norm(c.de), c]));
   let added = 0;
   list.forEach(r => {
     const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
-    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; } return; }
+    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; if (r.part) old.part = r.part; if (book) old.book = book; } return; }
     existing.set(k, null);
     const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
     if (r.mn) c.mn = r.mn;
     if (r.dx) c.dx = r.dx;
     if (r.tags && r.tags.length) c.tags = r.tags;
+    if (r.part) c.part = r.part;
+    if (book) c.book = book;
     S.cards.push(c); added++;
   });
   dayLog().added += added;
   return added;
 }
 // Ein Link mit einem ganzen Buch: Jede Unit lässt sich gleich lernen oder erst einmal pausieren.
-let bookSel = null;
 function renderBook(p) {
-  if (!bookSel) bookSel = p.units.map(u => !p.paused.includes(u.name));
   const have = new Set(cardsL().map(c => c.unit)), total = p.units.reduce((n, u) => n + u.rows.length, 0);
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Vokabeln übernehmen</h2></div>
     <section class="hero">
       <b class="herotitle">${esc(p.title || "Vokabelpaket")}</b>
-      <span class="muted small">${esc(p.lang)} · ${p.units.length} Units · ${total} Wörter</span>
+      <span class="muted small">${esc(p.lang)} · ${p.units.length === 1 ? esc(p.units[0].name) : p.units.length + " Units"} · ${total} Wörter</span>
     </section>
     <section class="panel">
-      <h3>Was soll gleich drankommen?</h3>
-      ${p.units.map((u, i) => `<label class="toggle bookrow"><span><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></span>
-        <input type="checkbox" data-b="${i}" ${bookSel[i] ? "checked" : ""}></label>`).join("")}
-      <p class="muted small">Mit Haken kommen die Wörter gleich dran. Ohne Haken liegen sie pausiert im Kasten, bis du sie freischaltest.</p>
+      ${p.units.map(u => `<p><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></p>`).join("")}
+      <p class="muted small">Gleich danach tippst du an, wie weit ihr in der Schule seid. Nur das wird abgefragt.</p>
     </section>
-    <button class="btn wide" id="save">Alle übernehmen</button>`));
-  $("#back").onclick = () => { bookSel = null; renderHome(); };
-  $$("[data-b]").forEach(x => x.onchange = () => bookSel[+x.dataset.b] = x.checked);
+    <button class="btn wide" id="save">Übernehmen</button>`));
+  $("#back").onclick = () => renderHome();
   $("#save").onclick = () => {
     const lang = L(); let added = 0;
-    lang.paused = (lang.paused || []).filter(u => !p.units.some(x => x.name === u));
-    p.units.forEach((u, i) => { added += addCards(u.name, u.rows); if (!bookSel[i]) lang.paused.push(u.name); });
-    bookSel = null; save();
+    lang.paused = lang.paused || [];
+    p.units.forEach(u => { added += addCards(u.name, u.rows, p.title); if (!have.has(u.name)) lang.paused.push(u.name); });
+    save();
     toast(added ? `${added} Vokabeln übernommen` : "Diese Vokabeln sind schon in deinem Kasten");
-    renderHome();
+    renderPos(p.units[0].name);
   };
   window.scrollTo(0, 0);
 }
@@ -1479,15 +1724,25 @@ function gStore() { return S.gram[S.cur] || (S.gram[S.cur] = {}); }
 function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>"); }
 function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
 // Grammatik-Kasten: Geübte Themen bekommen ein Fach und melden sich in wachsenden Abständen in der Tagesrunde.
+// Haken für „Wir sind bei“ (Lernlogik): gesperrte Themen kommen nicht in die Tagesrunde.
+// Grammatik aus Camden Town 5 (band ct-N) kommt erst, wenn Theme N im Buch erreicht ist („Wir sind bei“).
+function gUnlocked(t) {
+  const m = /^ct-(\d+)$/.exec(t.band || ""); if (!m) return true;
+  const re = new RegExp(`^Theme ${m[1]}\\b`), cs = cardsL().filter(c => /^Camden Town 5/.test(c.book || "") && re.test(c.unit));
+  return !cs.length || cs.some(c => !isPaused(c));
+}
 function gDue() {
   const d = gData(); if (!d) return [];
   const st = gStore(), now = Date.now();
-  return d.topics.filter(t => gReady(t) && st[t.id] && st[t.id].box && st[t.id].due <= now).sort((a, b) => st[a.id].due - st[b.id].due);
+  return d.topics.filter(t => gReady(t) && gUnlocked(t) && st[t.id] && st[t.id].box && st[t.id].due <= now).sort((a, b) => st[a.id].due - st[b.id].due);
 }
+// Ein fälliges Thema kommt immer ganz (alle Aufgaben) ans Ende der Tagesrunde.
 function grammarItems() {
   const t = gDue()[0]; if (!t) return [];
-  return shuffle(t.tasks.map((_, i) => i)).slice(0, 3).map(i => `g|${t.id}|${i}`);
+  return shuffle(t.tasks.map((_, i) => i)).map(i => `g|${t.id}|${i}`);
 }
+// Ins nächste Fach geht es erst nach der ganzen Runde, mit höchstens einem Fehler beim ersten Versuch.
+const G_MAX_ERR = 1;
 function gMove(id, ok) {
   const d = gData(), t = d && d.topics.find(x => x.id === id), st = gStore()[id]; if (!t || !st) return "";
   const b0 = st.box || 1;
@@ -1626,11 +1881,36 @@ function startGrammar(t) {
 function gnorm(s) { return norm(s).replace(/[,!?.]/g, "").replace(/\s+/g, " ").trim(); }
 function taskQuestion(task) {
   return task[0] === "order" ? "Bring die Wörter in die richtige Reihenfolge."
-    : esc(task[1]).replace(/___/g, '<span class="gapline" aria-label="Lücke">&nbsp;</span>');
+    : tapWords(task[1]).replace(/___/g, '<span class="gapline" aria-label="Lücke">&nbsp;</span>');
 }
+// Antippen übersetzt ein Wort für TAP_MS. Quelle: eigene Wortkarten, dann die Grundwörter aus grammar.js.
+const TAP_MS = 2000;
+function tapWords(s) { return esc(s).replace(/\p{L}[\p{L}'’]*/gu, w => `<span class="tw" data-w="${w}">${w}</span>`); }
+let glossMap = null, glossLang = null;
+function glossOf(w) {
+  if (glossLang !== S.cur || !glossMap) {
+    glossLang = S.cur; glossMap = new Map(Object.entries((gData() || {}).gloss || {}));
+    cardsL().forEach(c => String(c.en).split(/[,/;]/).forEach(e => {
+      const k = e.replace(/\([^)]*\)/g, "").replace(/^\s*to\s+/i, "").trim().toLowerCase();
+      if (k && !k.includes(" ") && !glossMap.has(k)) glossMap.set(k, c.de);
+    }));
+  }
+  const l = w.toLowerCase().replace(/’/g, "'"), b = l.replace(/'s$/, "");
+  const tries = [l, b, b.replace(/s$/, ""), b.replace(/es$/, ""), b.replace(/ies$/, "y"), b.replace(/ied$/, "y"), b.replace(/ed$/, ""), b.replace(/d$/, ""),
+    b.replace(/ing$/, ""), b.replace(/ing$/, "e"), b.replace(/(.)\1(ing|ed)$/, "$1"), b.replace(/(er|est)$/, ""), b.replace(/i(er|est)$/, "y"), b.replace(/(.)\1(er|est)$/, "$1")];
+  for (const k of tries) if (glossMap.has(k)) return glossMap.get(k);
+  return "";
+}
+document.addEventListener("click", e => {
+  const el = e.target.closest(".tw"); if (!el) return;
+  const old = $(".twpop"); if (old) old.remove();
+  const pop = h(`<span class="twpop" role="status">${esc(glossOf(el.dataset.w) || "nicht in deinen Karten")}</span>`).firstElementChild;
+  el.append(pop); setTimeout(() => pop.remove(), TAP_MS);
+});
 // Zeichnet eine Aufgabe (auswählen, Lücke, Reihenfolge) und meldet done(richtig, ganzer Satz, Begründung).
 function drawTask(task, area, done) {
   const [type, q] = task;
+  if (type === "gap" && task[4]) return drawTask(["pick", q, [task[2].split("|")[0], ...task[4]], task[3]], area, done);
   if (type === "pick") {
     const right = task[2][0], opts = shuffle([...task[2]]);
     area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}">${esc(o)}</button>`).join("")}</div>`));
@@ -1638,7 +1918,7 @@ function drawTask(task, area, done) {
       const ok = opts[+b.dataset.k] === right;
       $$(".choice", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
       if (!ok) b.classList.add("wrong");
-      done(ok, q.includes("___") ? q.replace("___", right) : right, task[3]);
+      done(ok, q.includes("___") ? q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", right) : right, task[3]);
     });
   } else if (type === "gap") {
     const sols = task[2].split("|");
@@ -1715,7 +1995,7 @@ function gAnswered(ok, full, why) {
 }
 function renderGSummary() {
   tick();
-  const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id], ok = g / n >= .75;
+  const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id], ok = n - g <= G_MAX_ERR;
   st[t.id] = { best: Math.max(old ? old.best : 0, g / n), last: dayKey(), n: (old ? old.n : 0) + 1, box: old && old.box || 0, due: old ? old.due : 0 };
   if (!old || !old.box) { st[t.id].box = ok ? 2 : 1; st[t.id].due = today() + INTERVAL[st[t.id].box] * DAY; }
   else gMove(t.id, ok);
@@ -1752,13 +2032,13 @@ function renderCalendar() {
   const [y, m] = calMonth;
   const first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
   const maxSec = Math.max(600, ...Object.values(S.log).map(d => d.sec));
-  const cells = [];
+  const cells = [], pauses = streakInfo().pauses;
   for (let i = 0; i < lead; i++) cells.push(`<span></span>`);
   for (let d = 1; d <= days; d++) {
     const k = dayKey(new Date(y, m, d).getTime()), e = S.log[k];
     const lvl = practiced(k) ? Math.min(4, 1 + Math.floor(e.sec / maxSec * 3.99)) : 0;
-    cells.push(`<button class="day lv${lvl}${k === tk ? " today" : ""}" data-day="${k}" aria-pressed="${k === calSel}"
-      aria-label="${d}. ${MONTHS[m]}${practiced(k) ? ", " + fmtMin(e.sec) + " geübt" : ""}">${d}${e && e.added ? '<i class="dot"></i>' : ""}</button>`);
+    cells.push(`<button class="day lv${lvl}${k === tk ? " today" : ""}${pauses.has(k) ? " pause" : ""}" data-day="${k}" aria-pressed="${k === calSel}"
+      aria-label="${d}. ${MONTHS[m]}${practiced(k) ? ", " + fmtMin(e.sec) + " geübt" : pauses.has(k) ? ", Pausentag" : ""}">${d}${e && e.added ? '<i class="dot"></i>' : ""}</button>`);
   }
   const ws = weekStart(tk), weekSec = sumDays(ws, 7, "sec");
   const weekDays = [...Array(7)].filter((_, i) => practiced(shiftDay(ws, i))).length;
@@ -1782,7 +2062,8 @@ function renderCalendar() {
         <h3>${MONTHS[m]} ${y}</h3>
         <button class="iconbtn" id="nextM" aria-label="Nächster Monat" style="transform:scaleX(-1)">${ICON.back}</button></div>
       <div class="cal">${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map(d => `<span class="wd">${d}</span>`).join("")}${cells.join("")}</div>
-      <p class="muted small legend"><span class="day lv2 sw"></span> geübt, je dunkler, desto länger · <span class="dot" style="position:static;display:inline-block"></span> neue Wörter dazu</p>
+      <p class="muted small legend"><span class="day lv2 sw"></span> geübt, je dunkler, desto länger · <span class="dot" style="position:static;display:inline-block"></span> neue Wörter dazu · 💤 Pausentag</p>
+      <p class="muted small">Pro Woche darf ein Tag ausfallen, ohne dass deine Serie reißt. Das ist dein Pausentag.</p>
     </section>
     <section class="panel">
       <h3>${selDate}</h3>
@@ -1793,7 +2074,7 @@ function renderCalendar() {
         <div><dt>Zum ersten Mal geübt</dt><dd>${sel.learned}</dd></div>
         <div><dt>Neu hinzugefügt</dt><dd>${sel.added}</dd></div>
         ${sel.gram ? `<div><dt>Grammatik</dt><dd>${sel.gram} ${sel.gram === 1 ? "Aufgabe" : "Aufgaben"}</dd></div>` : ""}
-      </dl>` : `<p class="muted small">An diesem Tag wurde nicht geübt.</p>`}
+      </dl>` : `<p class="muted small">${pauses.has(calSel) ? "Pausentag. Deine Serie lief trotzdem weiter." : "An diesem Tag wurde nicht geübt."}</p>`}
     </section>
     <section class="panel">
       <h3>Letzte Wochen</h3>
@@ -1903,6 +2184,343 @@ function renderSettings(msg) {
 }
 
 // ---------- Start ----------
+// ---------- Pausentag: Hinweis, wenn gestern einer gebraucht wurde ----------
+function pauseNotice() {
+  const y = shiftDay(dayKey(), -1);
+  if (S.pauseNote === y || !streakInfo().pauses.has(y)) return;
+  S.pauseNote = y; save();
+  setTimeout(() => toast("💤 Gestern war dein Pausentag. Deine Serie läuft weiter!"), 700);
+}
+
+// ---------- Wortzähler: „Ich kann schon … Wörter“, mit großem Fest bei jedem Meilenstein ----------
+const MILES = [10, 25, 50, 100, 150, 200, 300, 400, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000];
+const MILE_TXT = {
+  10: "Die ersten zehn sitzen. So fängt jeder Wortschatz an!", 25: "25 Wörter! Das ist schon eine ganze Buchseite.",
+  50: "50 Wörter! Damit kannst du dich schon vorstellen und von dir erzählen.", 100: "100 Wörter! Jetzt verstehst du schon viele Sätze im Buch.",
+  150: "150 Wörter! Du wirst richtig schnell.", 200: "200 Wörter! Das ist so viel wie ein halbes Schuljahr.",
+  300: "300 Wörter! Damit kommst du in London durch einen ganzen Tag.", 400: "400 Wörter! Englische Lieder ergeben langsam Sinn.",
+  500: "500 Wörter! Das ist ungefähr ein ganzes Schuljahr.", 750: "750 Wörter! Du kannst dich schon über fast alles unterhalten.",
+  1000: "1000 Wörter! Mit so vielen versteht man die meisten Alltagsgespräche.", 1500: "1500 Wörter! Jetzt kannst du einfache Bücher lesen.",
+  2000: "2000 Wörter! Damit verstehst du schon die meisten Wörter in einem Film.", 3000: "3000 Wörter! Das ist ein riesiger Wortschatz.",
+  4000: "4000 Wörter! Kaum jemand in deinem Alter kann so viele.", 5000: "5000 Wörter! Unglaublich."
+};
+function sitCount() { return cardsL().filter(c => c.level >= 3).length; }
+function mileSt() { S.miles = S.miles || {}; return S.miles[S.cur] || (S.miles[S.cur] = {}); }
+function counterCard() {
+  if (!cardsL().length) return "";
+  const n = sitCount(), st = mileSt(), from = Math.min(st.shown ?? n, n);
+  const next = MILES.find(m => m > n), prev = [...MILES].reverse().find(m => m <= n) || 0;
+  return `<section class="panel wcount">
+    <div class="wc-row"><b class="wc-num" id="wcN" data-from="${from}" data-to="${n}">${from}</b>
+      <span class="wc-txt"><b>${n === 1 ? "Wort" : "Wörter"} kannst du schon</b><span class="muted small">Alle, die ab Fach 3 sitzen</span></span></div>
+    ${next ? `<div class="bar gold"><i style="width:${Math.round((n - prev) / (next - prev) * 100)}%"></i></div>
+      <p class="muted small">Noch ${next - n} ${next - n === 1 ? "Wort" : "Wörter"} bis zur ${next}!</p>` : ""}
+  </section>`;
+}
+function animateCounter() {
+  const el = $("#wcN"); if (!el) return;
+  const a = +el.dataset.from, b = +el.dataset.to; mileSt().shown = b; save();
+  if (a === b || reduced()) { el.textContent = b; return; }
+  const t0 = performance.now(), dur = Math.min(1800, 500 + (b - a) * 70);
+  (function f(t) {
+    const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(a + (b - a) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(f); else { el.classList.add("bump"); sound("land"); }
+  })(t0);
+}
+// Ein Meilenstein wird nur einmal gefeiert; liefert true, wenn gerade gefeiert wird.
+function checkMilestone() {
+  const n = sitCount(), st = mileSt(), hit = [...MILES].reverse().find(m => m <= n);
+  if (!hit || (st.best || 0) >= hit) return false;
+  st.best = hit; save(); showMilestone(hit); return true;
+}
+function showMilestone(m) {
+  const lang = L().name, d = document.createElement("div");
+  d.className = "mile"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", `Meilenstein: ${m} Wörter`);
+  d.innerHTML = `<div class="mile-rays" aria-hidden="true"></div><div class="mile-box">
+    <p class="eyebrow">Meilenstein</p><div class="mile-n" id="mileN">0</div>
+    <p class="mile-sub">${lang === "Englisch" ? "englische " : ""}Wörter kannst du jetzt${S.name ? `, ${esc(S.name)}` : ""}!</p>
+    <p class="muted">${esc(MILE_TXT[m] || "")}</p><button class="btn big" id="mileOk">Weiter</button></div>`;
+  document.body.append(d); sound("up");
+  const el = d.querySelector("#mileN"), t0 = performance.now();
+  if (reduced()) el.textContent = m;
+  else (function f(t) { const k = Math.min(1, (t - t0) / 1400); el.textContent = Math.round(m * (1 - Math.pow(1 - k, 4))); if (k < 1) requestAnimationFrame(f); else { confetti(); sound("up"); } })(t0);
+  setTimeout(() => d.classList.add("on"), 20);
+  d.querySelector("#mileOk").onclick = () => { d.classList.remove("on"); setTimeout(() => d.remove(), 300); };
+}
+
+// ---------- Wortmonster: Wörter, die oft danebengehen, werden zu kleinen Monstern ----------
+// Jedes Fach weiter kostet das Monster ein Herz, in Fach 3 ist es besiegt und es gibt ein goldenes Päckchen.
+const MONSTER_MISS = 3;
+function monsters() { return S.monsters || (S.monsters = {}); }        // Karten-id: { b: Tag geboren, s: Tag besiegt }
+function isMonster(c) { const m = monsters()[c.id]; return !!m && !m.s; }
+function wakeMonster(c) {
+  if ((c.miss || 0) < MONSTER_MISS || c.level >= 3 || monsters()[c.id]) return false;
+  monsters()[c.id] = { b: dayKey(), s: 0 }; return true;
+}
+// aus answered(): merkt sich, was in dieser Runde mit Monstern passiert ist
+function monsterHit(card, from, to, result, moved) {
+  if (!R) return;
+  R.mon = R.mon || [];
+  if (result === "bad") { if (wakeMonster(card)) R.mon.push({ id: card.id, born: true }); return; }
+  const m = monsters()[card.id];
+  if (!m || m.s || !moved || to <= from) return;
+  const slain = to >= 3;
+  if (slain) { m.s = dayKey(); S.packQ.push(makePack({ up: 6, sat: 2 }, true)); }
+  R.mon = R.mon.filter(x => x.id !== card.id); R.mon.push({ id: card.id, from, to, slain });
+}
+function monsterSvg(id) {
+  let h = 7; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const r = () => (h = (h * 1103515245 + 12345) >>> 0) / 4294967296;
+  const COLS = [["#9B5DE5", "#C9A6F5"], ["#F15BB5", "#F9A8D8"], ["#00A8E8", "#8FDBFA"], ["#00B386", "#8EE6C9"], ["#FF9F1C", "#FFD08A"], ["#FF6B6B", "#FFB3B3"], ["#7DBA2F", "#C4E59A"], ["#4D7CFE", "#A9BFFF"]];
+  const [c, light] = COLS[Math.floor(r() * COLS.length)], eyes = 1 + Math.floor(r() * 3), top = Math.floor(r() * 3), teeth = r() < .6, spots = r() < .5, wide = r() < .5;
+  const body = wide ? "M50 22C82 22 94 46 92 68C90 88 72 94 50 94C28 94 10 88 8 68C6 46 18 22 50 22Z" : "M50 12C76 12 86 38 85 64C84 88 70 95 50 95C30 95 16 88 15 64C14 38 24 12 50 12Z";
+  const ey = wide ? 50 : 44, E = eyes === 1 ? [[50, ey, 13]] : eyes === 2 ? [[36, ey, 10], [64, ey, 10]] : [[31, ey + 3, 8], [50, ey - 7, 8], [69, ey + 3, 8]];
+  const hy = wide ? 24 : 15;
+  return `<svg viewBox="0 0 100 110" aria-hidden="true"><g class="mb">
+    ${top === 1 ? `<path d="M30 ${hy + 6}L24 ${hy - 12}L40 ${hy}Z M70 ${hy + 6}L76 ${hy - 12}L60 ${hy}Z" fill="${light}"/>` : top === 2 ? `<circle cx="28" cy="${hy + 4}" r="9" fill="${c}"/><circle cx="72" cy="${hy + 4}" r="9" fill="${c}"/>` : `<path d="M50 ${hy}Q52 ${hy - 14} 60 ${hy - 14}" stroke="${c}" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="61" cy="${hy - 14}" r="4" fill="${light}"/>`}
+    <ellipse cx="34" cy="98" rx="11" ry="6" fill="${c}" filter="brightness(.8)"/><ellipse cx="66" cy="98" rx="11" ry="6" fill="${c}"/>
+    <path d="${body}" fill="${c}"/>
+    <ellipse cx="50" cy="${wide ? 74 : 72}" rx="${wide ? 28 : 22}" ry="16" fill="${light}" opacity=".7"/>
+    ${spots ? `<circle cx="22" cy="66" r="4" fill="${light}"/><circle cx="80" cy="60" r="3" fill="${light}"/><circle cx="76" cy="76" r="2.5" fill="${light}"/>` : ""}
+    ${E.map(([x, y, s]) => `<circle cx="${x}" cy="${y}" r="${s}" fill="#fff"/><circle class="pu" cx="${x + s * .2}" cy="${y + s * .15}" r="${s * .5}" fill="#1D2A36"/><circle cx="${x + s * .4}" cy="${y - s * .25}" r="${s * .18}" fill="#fff"/>`).join("")}
+    <path d="M38 ${ey + 22}Q50 ${ey + 32} 62 ${ey + 22}" stroke="#1D2A36" stroke-width="3" fill="${teeth ? "#7A2E3A" : "none"}" stroke-linecap="round"/>
+    ${teeth ? `<path d="M43 ${ey + 24.5}l3 4 3-3.5Z M53 ${ey + 25}l3 3.5 3-4.5Z" fill="#fff"/>` : ""}
+    <path d="M12 60Q2 56 4 46" stroke="${c}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M88 60Q98 56 96 46" stroke="${c}" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g></svg>`;
+}
+function monsterHtml(c, cls = "", lv = c.level) {
+  const hearts = Math.max(0, 3 - lv);
+  return `<div class="mon ${cls}" aria-label="Wortmonster ${esc(c.en)}, noch ${hearts} ${hearts === 1 ? "Herz" : "Herzen"}">
+    ${monsterSvg(c.id)}<span class="mon-hp" aria-hidden="true">${"♥".repeat(hearts)}<i>${"♥".repeat(3 - hearts)}</i></span><b class="mon-w">${esc(c.en)}</b></div>`;
+}
+function monsterCard() {
+  const all = cardsL(); all.forEach(wakeMonster);
+  const act = all.filter(isMonster), slain = all.filter(c => monsters()[c.id] && monsters()[c.id].s).length;
+  if (!act.length && !slain) return "";
+  return `<section class="panel moncard">
+    <div class="spread"><h2>Wortmonster</h2><span class="muted small">${slain} besiegt</span></div>
+    ${act.length ? `<div class="monrow">${act.slice(0, 6).map((c, i) => monsterHtml(c, "", c.level).replace('class="mon ', `style="--d:${i * .37}s" class="mon `)).join("")}</div>
+      ${act.length > 6 ? `<p class="muted small">… und noch ${act.length - 6} weitere.</p>` : ""}` : `<p class="moncheer">🏆 Alle Monster besiegt!</p>`}
+    <p class="muted small">Diese Wörter gehen oft daneben. Jedes Mal, wenn eins ein Fach weiterkommt, verliert sein Monster ein Herz. In Fach 3 ist es besiegt, dafür gibt es ein goldenes Päckchen.</p>
+  </section>`;
+}
+function monsterSummary() {
+  if (!R || !R.mon || !R.mon.length) return "";
+  return `<div class="monsum">${R.mon.map(x => { const c = S.cards.find(k => k.id === x.id); if (!c) return "";
+    if (x.born) return `<div class="monline">${monsterHtml(c, "born")}<span><b>Ein Wortmonster ist aufgetaucht!</b><span class="small">„${esc(c.en)}“ ging oft daneben. Bring es bis Fach 3, dann besiegst du es.</span></span></div>`;
+    if (x.slain) return `<div class="monline">${monsterHtml(c, "slain", x.from)}<span><b>Monster besiegt!</b><span class="small">„${esc(c.en)}“ sitzt jetzt. Dafür gibt es ein goldenes Päckchen.</span></span></div>`;
+    return `<div class="monline">${monsterHtml(c, "hit", x.from).replace(/<span class="mon-hp"[^]*?<\/span>/, `<span class="mon-hp" aria-hidden="true">${"♥".repeat(3 - x.to)}<i class="lost">${"♥".repeat(x.to - x.from)}</i><i>${"♥".repeat(x.from)}</i></span>`)}<span><b>Treffer!</b><span class="small">„${esc(c.en)}“ ist jetzt in Fach ${x.to}. Noch ${3 - x.to} ${3 - x.to === 1 ? "Herz" : "Herzen"}.</span></span></div>`;
+  }).join("")}</div>`;
+}
+
+// ---------- Zeit-Training und Duell: Auswahl aus vier, am selben Handy ----------
+// Duell: zwei spielen nacheinander dieselben 10 Wörter; mehr richtig gewinnt, bei Gleichstand die schnellere Zeit.
+// Zeit-Training: 15 Wörter aus einer Unit bis zu einem Teil (1, 2, A1 … wie im Buch); jeder Fehler kostet 3 Strafsekunden.
+// Jede Auswahl hat ihren eigenen Rekord. Danach kann man jemanden mit denselben Wörtern herausfordern. Die Fächer ändern sich nie.
+const DUEL_N = 10, SPRINT_N = 15, PENALTY = 3000;
+let D = null;
+function duelsWeek(ws = weekStart(dayKey())) { return (S.duels || []).filter(d => d.w === ws); }
+const penTime = p => p.t + ((p.c ?? (p.a || []).length) - p.s) * PENALTY;
+function duelWinner(d) {
+  const [a, b] = d.p; if (!b) return -1;
+  if (d.m === "sprint") { const x = penTime(a), y = penTime(b); return x === y ? -1 : x < y ? 0 : 1; }
+  return a.s !== b.s ? (a.s > b.s ? 0 : 1) : a.t !== b.t ? (a.t < b.t ? 0 : 1) : -1;
+}
+function duelTally(list) {
+  const t = {}; list.forEach(d => { const w = duelWinner(d); d.p.forEach((p, i) => { t[p.n] = t[p.n] || 0; if (w === i) t[p.n]++; }); });
+  return Object.entries(t).sort((a, b) => b[1] - a[1]);
+}
+const secTxt = t => (t / 1000).toFixed(1).replace(".", ",") + " s";
+function medal(t, n, s = n) { if (s < n * 0.8) return ""; const per = t / n / 1000; return per <= 2 ? "🥇" : per <= 3.5 ? "🥈" : per <= 5 ? "🥉" : ""; }
+// Zeit-Training (Davids Wunsch): erst die Unit wählen, dann die Teile aus dem Buch (blaue Marker 1, 2, A1 …) anhaken.
+// Die Häkchen bleiben gespeichert. Es zählen nur freigeschaltete Wörter, und gestartet wird erst ab SPRINT_N Wörtern.
+function unitPartList(u) {
+  const cs = cardsL().filter(c => c.unit === u && c.en && c.de && !isPaused(c)), groups = [], seen = new Set();
+  let last = cs.some(c => c.part) ? "1" : "alle";
+  // Wörter, die im Buch zweimal vorkommen, tragen ihren ersten Teil: sie zählen zum aktuellen Abschnitt
+  cs.forEach(c => { if (c.part && !seen.has(c.part)) { last = c.part; seen.add(last); } let g = groups.find(x => x.p === last); if (!g) groups.push(g = { p: last, l: [] }); g.l.push(c); });
+  return groups;
+}
+function makeQuestions(cards) {
+  const all = cardsL().filter(c => c.en && c.de);
+  return cards.map(c => {
+    const opts = choiceOpts(c, c.en, "de-en", all.filter(x => x.id !== c.id));
+    // sehr ähnliche Kästen liefern manchmal zu wenig Fallen: dann mit zufälligen Wörtern auffüllen
+    for (const x of shuffle(all.filter(x => x.id !== c.id))) { if (opts.length >= 4) break; if (!opts.some(o => norm(o) === norm(x.en))) opts.splice(Math.floor(Math.random() * (opts.length + 1)), 0, x.en); }
+    return { id: c.id, de: c.de, sol: c.en, opts };
+  });
+}
+const newPlayer = n => ({ n, s: 0, t: 0, a: [] });
+function duelCard() {
+  if (cardsL().length < DUEL_N) return "";
+  const ws = weekStart(dayKey()), week = duelsWeek(ws), tally = duelTally(week), prev = duelTally(duelsWeek(shiftDay(ws, -7)));
+  const recs = Object.keys(S.records || {}).filter(k => k.startsWith(S.cur + "|")).length, max = Math.max(1, ...tally.map(t => t[1]));
+  return `<section class="panel duel">
+    <div class="spread"><h2>Rekorde und Duelle</h2><span class="muted small">${recs ? `${recs} ${recs === 1 ? "Rekord" : "Rekorde"}` : ""}</span></div>
+    ${tally.length ? tally.map(([n, w], i) => `<div class="duelrow${n === (S.name || "Ich") ? " me" : ""}"><span class="duelname">${i === 0 && w > 0 && w > (tally[1] || [0, 0])[1] ? "👑 " : ""}${esc(n)}</span>
+      <span class="bar"><i style="width:${Math.round(w / max * 100)}%"></i></span><b>${w}</b></div>`).join("") + `<p class="muted small">Siege diese Woche</p>`
+      : `<p class="muted small">Üb eine Unit bis zu einem Teil auf Zeit und jag deinen Rekord. Wenn du richtig schnell warst, fordere jemanden heraus! Oder spielt ein Duell: beide bekommen dieselben ${DUEL_N} Wörter.</p>`}
+    ${prev.length && prev[0][1] > (prev[1] || [0, 0])[1] ? `<p class="small">🏆 Letzte Woche hat ${esc(prev[0][0])} gewonnen (${prev.map(([n, w]) => `${esc(n)} ${w}`).join(" : ")}).</p>` : ""}
+    <div class="row"><button class="btn" id="sprintGo">⏱️ Auf Zeit üben</button><button class="btn ghost" id="duelGo">Duell starten</button></div>
+  </section>`;
+}
+function renderSprint() {
+  const units = [...new Set(cardsL().map(c => c.unit))].filter(u => unitPartList(u).length), R2 = S.records || {};
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Auf Zeit üben</h2></div>
+    <p class="muted small">Wähl eine Unit und hak die Teile an, die du üben willst. Du bekommst ${SPRINT_N} Wörter daraus und tippst so schnell wie möglich die richtige Antwort an. Jeder Fehler kostet ${PENALTY / 1000} Strafsekunden.</p>
+    <div class="sprintparts">${units.map((u, i) => { const n = Object.keys(R2).filter(k => k.startsWith(`${S.cur}|${u}|`)).length;
+      return `<button class="sprintpart${n ? " done" : ""}" data-i="${i}"><b style="overflow-wrap:anywhere">${esc(u)}</b><span class="rec">${n ? `${n} ${n === 1 ? "Rekord" : "Rekorde"}` : "–"}</span></button>`; }).join("")
+      || `<p class="muted">Noch keine freigeschalteten Wörter.</p>`}</div>`));
+  $("#back").onclick = renderHome;
+  $$(".sprintpart").forEach(b => b.onclick = () => renderSprintUnit(units[+b.dataset.i]));
+  window.scrollTo(0, 0);
+}
+function renderSprintUnit(u) {
+  const groups = unitPartList(u), selAll = S.sprintSel = S.sprintSel || {}, k0 = S.cur + "|" + u;
+  if (!selAll[k0]) selAll[k0] = groups.map(g => g.p);
+  const draw = () => {
+    const sel = selAll[k0].filter(p => groups.some(g => g.p === p)), pick = groups.filter(g => sel.includes(g.p)), n = pick.reduce((a, g) => a + g.l.length, 0);
+    const key = `${k0}|${pick.map(g => g.p).join(",")}`, r = (S.records || {})[key];
+    app.replaceChildren(h(`
+      <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2 style="overflow-wrap:anywhere">${esc(u)}</h2></div>
+      ${groups.length > 1 ? `<div class="row"><button class="btn ghost small" id="pAll">Alle</button><button class="btn ghost small" id="pNone">Keine</button></div>
+      <div class="partchecks">${groups.map(g => `<label class="partcheck${sel.includes(g.p) ? " on" : ""}"><input type="checkbox" data-p="${esc(g.p)}"${sel.includes(g.p) ? " checked" : ""}><b>${esc(g.p)}</b><span class="small muted">${g.l.length}</span></label>`).join("")}</div>` : ""}
+      <section class="panel"><div class="spread"><b>${n} Wörter ausgewählt</b><span class="rec">${r ? `Rekord ${medal(r.t, r.n, r.s)} ${secTxt(r.t)}` : ""}</span></div>
+        ${n < SPRINT_N ? `<p class="muted small">Hak noch mehr Teile an: Für ein Zeit-Training brauchst du mindestens ${SPRINT_N} Wörter.</p>` : ""}
+        <button class="btn big wide" id="spGo"${n < SPRINT_N ? " disabled" : ""}>⏱️ Los</button></section>`));
+    $("#back").onclick = renderSprint;
+    const set = l => { selAll[k0] = l; save(); keepScroll(draw); };
+    if ($("#pAll")) { $("#pAll").onclick = () => set(groups.map(g => g.p)); $("#pNone").onclick = () => set([]); }
+    $$(".partcheck input").forEach(c => c.onchange = () => set(c.checked ? [...sel, c.dataset.p] : sel.filter(p => p !== c.dataset.p)));
+    $("#spGo").onclick = () => startSprint(u, { key, name: groups.length > 1 && pick.length < groups.length ? `Teil ${pick.map(g => g.p).join(", ")}` : "ganze Unit", cards: pick.flatMap(g => g.l) });
+  };
+  draw(); window.scrollTo(0, 0);
+}
+function startSprint(u, p, name = S.name || "Ich") {
+  D = { m: "sprint", unit: u, pool: p, key: p.key, label: `${u} · ${p.name}`, p: [newPlayer(name)], cur: 0, i: 0, q: makeQuestions(shuffle([...p.cards]).slice(0, SPRINT_N)) };
+  duelHandover();
+}
+function renderDuelSetup() {
+  const me = S.name || "Ich", other = S.duelOther || "Papa";
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Duell</h2></div>
+    <section class="hero duelhero">
+      <div class="duelvs"><span class="dv a">${esc(me)}</span><b>gegen</b><input class="dv b" id="duelOther" value="${esc(other)}" maxlength="16" aria-label="Name des Gegners"></div>
+      <p class="muted small">Beide bekommen dieselben ${DUEL_N} Wörter aus deinem Kasten und tippen jeweils die richtige von vier Antworten an. Erst spielst du, dann gibst du das Handy weiter. Nicht spicken!</p>
+      <button class="btn big wide" id="duelStart">Los geht's</button>
+    </section>`));
+  $("#back").onclick = renderHome;
+  $("#duelStart").onclick = () => {
+    const o = $("#duelOther").value.trim() || "Papa"; S.duelOther = o; save();
+    const all = cardsL().filter(c => c.en && c.de);
+    const pick = [...shuffle(all.filter(c => c.level > 0)), ...shuffle(all.filter(c => !c.level))].slice(0, DUEL_N);
+    D = { m: "duel", p: [newPlayer(me), newPlayer(o === me ? o + " 2" : o)], cur: 0, i: 0, q: makeQuestions(pick) };
+    duelHandover();
+  };
+  window.scrollTo(0, 0);
+}
+// Herausforderung nach dem Zeit-Training: jemand anderes spielt dieselben Wörter in derselben Reihenfolge
+function renderChallenge() {
+  const other = S.duelOther || "Papa", me = D.p[0];
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Herausforderung</h2></div>
+    <section class="hero duelhero">
+      <p class="eyebrow">${esc(D.label)}</p>
+      <h1 style="text-align:center">${esc(me.n)} hat ${secTxt(penTime(me))} vorgelegt</h1>
+      <div class="duelvs"><b>Wer traut sich?</b><input class="dv b" id="duelOther" value="${esc(other)}" maxlength="16" aria-label="Name des Gegners"></div>
+      <p class="muted small">Dieselben ${D.q.length} Wörter in derselben Reihenfolge. Jeder Fehler kostet ${PENALTY / 1000} Strafsekunden. Wer insgesamt schneller ist, gewinnt.</p>
+      <button class="btn big wide" id="chGo">Handy weitergeben</button>
+    </section>`));
+  $("#back").onclick = sprintResult;
+  $("#chGo").onclick = () => { const o = $("#duelOther").value.trim() || "Papa"; S.duelOther = o; save(); D.p = [D.p[0], newPlayer(o === me.n ? o + " 2" : o)]; D.cur = 1; duelHandover(); };
+  window.scrollTo(0, 0);
+}
+function duelHandover() {
+  const p = D.p[D.cur], sprint = D.m === "sprint", rec = sprint && S.records && S.records[D.key];
+  app.replaceChildren(h(`<div class="done duelhand">
+    <p class="eyebrow">${D.cur ? "Handy weitergeben" : sprint ? esc(D.label) : "Spieler 1"}</p>
+    <div class="duelbig" aria-hidden="true">${D.cur ? "🤝" : sprint ? "⏱️" : "🎯"}</div>
+    <h1>${esc(p.n)} ist dran!</h1>
+    <p class="muted">${D.cur ? (sprint ? `Die Zeit, die du schlagen musst: ${secTxt(penTime(D.p[0]))}.` : `${esc(D.p[0].n)} ist fertig. Das Ergebnis bleibt geheim, bis ${esc(p.n)} auch gespielt hat.`)
+      : sprint ? `${D.q.length} Wörter. Die Uhr läuft ab dem ersten Wort.${rec ? ` Dein Rekord: ${secTxt(rec.t)}.` : ""}` : `${DUEL_N} Wörter, so schnell und richtig wie möglich.`}</p>
+    <button class="btn big" id="dReady">Bereit</button></div>`));
+  sound("tap");
+  $("#dReady").onclick = () => { D.i = 0; duelQuestion(); };
+  window.scrollTo(0, 0);
+}
+function duelQuestion() {
+  const p = D.p[D.cur], q = D.q[D.i], N = D.q.length, sprint = D.m === "sprint";
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="dQuit" aria-label="Abbrechen">✕</button>
+      <div class="bar" style="flex:1"><i style="width:${Math.round(D.i / N * 100)}%"></i></div><b class="small">${esc(p.n)} · ${D.i + 1}/${N}</b></div>
+    <div class="icard"><div class="spread"><span class="eyebrow">Deutsch → ${esc(L().name)}</span>${sprint ? `<b class="dclock" id="dClock">${secTxt(penTime(p))}</b>` : ""}</div>
+      <div class="q">${esc(q.de)}</div>
+      <div class="choices">${q.opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div></div>`));
+  const t0 = performance.now(), base = penTime(p);
+  const tick2 = sprint ? setInterval(() => { const c = $("#dClock"); if (c) c.textContent = secTxt(base + performance.now() - t0); }, 100) : 0;
+  $("#dQuit").onclick = () => { clearInterval(tick2); D = null; renderHome(); };
+  $$(".choice").forEach(b => b.onclick = () => {
+    clearInterval(tick2);
+    const ok = q.opts[+b.dataset.i] === q.sol;
+    p.t += performance.now() - t0; p.a.push(ok); if (ok) p.s++;
+    $$(".choice").forEach(x => { x.disabled = true; if (q.opts[+x.dataset.i] === q.sol) x.classList.add("right"); });
+    if (!ok) { b.classList.add("wrong"); const c = $("#dClock"); if (c) { c.textContent = secTxt(penTime(p)); c.classList.add("pen"); } }
+    sound(ok ? "good" : "bad");
+    setTimeout(() => {
+      if (++D.i < N) return duelQuestion();
+      if (D.cur === 0) return sprint && !D.rev ? sprintResult(true) : (D.cur = 1, duelHandover());
+      duelResult();
+    }, ok ? 350 : 1100);
+  });
+  window.scrollTo(0, 0);
+}
+function sprintResult(fresh) {
+  const p = D.p[0], t = Math.round(penTime(p)), n = p.a.length, R2 = S.records = S.records || {};
+  if (fresh) { D.old = R2[D.key]; D.best = !D.old || t < D.old.t; if (D.best) R2[D.key] = { t, s: p.s, n, d: dayKey() }; save(); }
+  const old = D.old, best = D.best;
+  app.replaceChildren(h(`<div class="done sprintres">
+    <p class="eyebrow">${esc(D.label)}</p>
+    ${best ? `<div class="newrec">${old ? "Neuer Rekord!" : "Erster Rekord!"}</div>` : ""}
+    <div class="score">${secTxt(t)}</div>
+    <p>${p.s} von ${n} richtig${n - p.s ? ` · ${n - p.s} × ${PENALTY / 1000} Strafsekunden` : ", ohne Strafsekunden"} ${medal(t, n, p.s)}</p>
+    ${old ? `<p class="muted small">${best ? `Alter Rekord: ${secTxt(old.t)}. Du warst ${secTxt(old.t - t)} schneller!` : `Dein Rekord: ${secTxt(old.t)}. Noch ${secTxt(t - old.t)} schneller, dann knackst du ihn.`}</p>` : ""}
+    <div class="duelwords">${D.q.map((q, k) => `<div class="dw"><span>${esc(q.de)} = <b>${esc(q.sol)}</b></span><span>${p.a[k] ? "✅" : "❌"}</span></div>`).join("")}</div>
+    <div class="row" style="justify-content:center"><button class="btn${best ? "" : " ghost"}" id="chal">🤺 Jemanden herausfordern</button><button class="btn${best ? " ghost" : ""}" id="sAgain">Nochmal</button><button class="btn ghost" id="sHome">Fertig</button></div></div>`));
+  if (fresh && best) { confetti(); sound("up"); }
+  $("#chal").onclick = renderChallenge;
+  $("#sAgain").onclick = () => { startSprint(D.unit, D.pool, p.n); };
+  $("#sHome").onclick = () => { const u = D.unit; D = null; renderSprintUnit(u); };
+  window.scrollTo(0, 0);
+}
+function duelResult() {
+  const sprint = D.m === "sprint";
+  const rec = { m: D.m, w: weekStart(dayKey()), day: dayKey(), p: D.p.map(x => ({ n: x.n, s: x.s, t: Math.round(x.t), c: x.a.length })) };
+  S.duels = [...(S.duels || []), rec].slice(-200); save();
+  const win = duelWinner(rec), shown = p => sprint ? secTxt(penTime(p)) : `${p.s}/${p.a.length}`;
+  app.replaceChildren(h(`<div class="done duelres">
+    <p class="eyebrow">${sprint ? "Herausforderung · " + esc(D.label) : "Duell"}</p>
+    <h1>${win < 0 ? "Unentschieden!" : `${esc(D.p[win].n)} gewinnt!`}</h1>
+    <div class="duelpods">${D.p.map((p, i) => `<div class="pod${i === win ? " win" : ""}" style="--h:${30 + p.s * (sprint ? 5 : 7)}px"><span class="crown" aria-hidden="true">${i === win ? "👑" : ""}</span>
+      <b>${esc(p.n)}</b><span class="podbar"><span class="podn">${shown(p)}</span></span><span class="small muted">${sprint ? `${p.s}/${p.a.length} richtig` : secTxt(p.t)}</span></div>`).join("")}</div>
+    ${!sprint && win >= 0 && D.p[0].s === D.p[1].s ? `<p class="muted small">Gleich viele richtig, ${esc(D.p[win].n)} war schneller.</p>` : ""}
+    <div class="duelwords">${D.q.map((q, k) => `<div class="dw"><span>${esc(q.de)} = <b>${esc(q.sol)}</b></span><span>${D.p.map(p => p.a[k] ? "✅" : "❌").join(" ")}</span></div>`).join("")}</div>
+    <p class="muted small">Diese Woche: ${duelTally(duelsWeek()).map(([n, w]) => `${esc(n)} ${w} ${w === 1 ? "Sieg" : "Siege"}`).join(", ")}</p>
+    <div class="row" style="justify-content:center"><button class="btn" id="dAgain">Revanche</button><button class="btn ghost" id="dHome">Fertig</button></div></div>`));
+  if (win >= 0) { confetti(); sound("up"); }
+  $("#dAgain").onclick = () => { if (sprint) { D.p = D.p.map(x => newPlayer(x.n)); D.cur = 0; D.rev = true; duelHandover(); } else { D = null; renderDuelSetup(); } };
+  $("#dHome").onclick = () => { D = null; renderHome(); };
+  window.scrollTo(0, 0);
+}
+// ---------- Camden-Welt: Viertel und Schatz (die 3D-Seite liegt in welt/welt.js) ----------
+function weltUnits() {
+  const g = {};
+  S.cards.forEach(c => { if (c.unit === SAMPLE_UNIT) return; const k = c.lang + "|" + c.unit; const u = g[k] || (g[k] = { key: k, name: c.unit, n: 0, sit: 0 }); u.n++; if (c.level >= 3) u.sit++; });
+  return Object.values(g).map(u => ({ ...u, pct: u.sit / u.n, done: u.n >= 8 && u.sit / u.n >= .8 }));
+}
+function weltDistrictNew() { const have = new Set(S.welt.dist || []); return (S.welt.dist || []).length < 6 && weltUnits().some(u => u.done && !have.has(u.key)); }
+function treasureReady() { return !!S.cards.length && goalCount() >= Math.min(S.goal, ROUND_SIZE) && !dayLog().treasure && (S.welt.built || []).length >= 3; }
+
 async function boot() {
   const m = location.hash.match(/^#pack=([zj][A-Za-z0-9_-]+)$/);
   if (m) {
@@ -1914,7 +2532,7 @@ async function boot() {
         const ex = S.langs.find(l => l.name.toLowerCase() === p.lang.toLowerCase());
         if (ex) S.cur = ex.id; else addLang(p.lang, p.code);
         save();
-        if (p.units.length === 1) renderImport({ name: p.units[0].name, rows: p.units[0].rows }); else renderBook(p);
+        if (p.units.length === 1 && !p.isBook) renderImport({ name: p.units[0].name, rows: p.units[0].rows }); else renderBook(p);
         return;
       }
     } catch (e) {}

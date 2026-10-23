@@ -7,6 +7,7 @@ Die App läuft im Handy-Browser, lässt sich auf den Startbildschirm legen und f
 ## Was die App kann
 
 - **Persönlich:** Beim ersten Start fragt die App nach dem Namen und der ersten Sprache. Jede Sprache hat ihren eigenen Kasten und erscheint oben als Fahne. Weitere Sprachen kommen über das + dazu.
+- **Motivation:** Wortzähler mit Meilensteinen, ein Pausentag pro Woche schützt die Serie, Wortmonster für Wörter, die oft danebengehen, ein Wochen-Duell zu zweit am selben Handy und in der Camden-Welt Häuser, die mit dem Fach strahlender werden, Viertel im Nebel und ein täglicher Schatz.
 - **Übungskalender:** Tage am Stück, Übungszeit heute und diese Woche, ein Monatskalender (Tag antippen zeigt Übungszeit, abgefragte Wörter, Trefferquote und neue Wörter) und die letzten Wochen im Vergleich.
 - **Karteikasten mit 7 Fächern.** Ein Wort kommt nach 1, 2, 4, 8 und 16 Tagen, nach einem Monat und nach einem halben Jahr wieder dran. Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück.
 - **Kurze Runden** mit 10 Wörtern. Neue Wörter kommen zuerst als Auswahl aus vier Antworten, danach zum Eintippen. Falsche Wörter kommen in derselben Runde noch einmal. Bei kleinen Tippfehlern zeigt die App die richtige Schreibweise.
@@ -46,5 +47,12 @@ Reines HTML, CSS und JavaScript ohne Build-Schritt:
 - `sw.js`, `manifest.webmanifest`, `icons/`: Offline-Betrieb und Installation
 - `fonts/`: Bricolage Grotesque, Kalam und Atkinson Hyperlegible (SIL Open Font License), lokal eingebunden
 - `vendor/qrcode.js`: QR-Code-Generator von Kazuhiko Arase (MIT-Lizenz)
+- `welt/welt.js`, `welt/camden.json`: die Camden-Welt in 3D. Jedes Wort, das sitzt (ab Fach 3), baut ein echtes Haus in Camden Town. three.js wird erst beim Öffnen geladen.
+- `vendor/three.module.min.js`, `vendor/OrbitControls.js`, `vendor/MapControls.js`: three.js 0.170 (MIT-Lizenz, `vendor/LICENSE-three.txt`)
+- `tools/osm-welt.mjs`, `tools/camden.overpassql`: bauen `welt/camden.json` aus einer Overpass-Abfrage (`node tools/osm-welt.mjs osm-camden.json`)
+
+Kartendaten der Camden-Welt: © [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende, verfügbar unter der Open Database License (ODbL 1.0). `welt/camden.json` ist eine aus diesen Daten abgeleitete Datenbank und steht ebenfalls unter der ODbL.
+
+Fotos der Wahrzeichen in `welt/fotos/`: von Wikimedia Commons unter freien Lizenzen (CC0, CC BY, CC BY-SA). Fotograf, Lizenz und Quelle stehen je Bild in `welt/fotos/credits.json` und werden in der App unter dem Foto angezeigt. Die Bilder wurden nur verkleinert.
 
 Zum lokalen Testen reicht ein einfacher Webserver, zum Beispiel `python3 -m http.server` im Projektordner.
