@@ -3,10 +3,14 @@
 
 // ---------- Einstellungen des Kastens ----------
 const DAY = 864e5;
-const INTERVAL = [0, 1, 2, 4, 8, 16, 30, 180];          // Tage bis zur nächsten Abfrage, je Fach
-const FACH_LABEL = ["neu", "1 Tag", "2 Tage", "4 Tage", "8 Tage", "16 Tage", "1 Monat", "½ Jahr"];
+const INTERVAL = [0, 1, 2, 4, 8, 16, 30, 180];          // Grammatik-Kasten: Tage bis zur nächsten Abfrage, je Fach
+// Vokabeln: FSRS rechnet für jedes Wort einzeln, wann es wiederkommt. Das Fach zeigt grob, wie weit der Abstand schon ist.
+const FACH_MAX = [0, 2, 5, 10, 21, 45, 120, Infinity];  // Abstand in Tagen bis einschließlich dieses Fachs
+const FACH_LABEL = ["neu", "1–2 Tage", "3–5 Tage", "1 Woche", "2–3 Wochen", "1 Monat", "2–4 Monate", "½ Jahr"];
 const FACH_IN = ["", "morgen", "in 2 Tagen", "in 4 Tagen", "in 8 Tagen", "in 16 Tagen", "in 1 Monat", "in ½ Jahr"];
-const PLACE_LEVEL = 6;                                 // Schnelltest: "Kann ich" legt das Wort direkt in Fach 6
+const DUE_SHOW = 30;                                   // höchstens so viele Wiederholungen pro Tag, der Rest wartet unsichtbar
+const NEW_GATE = 20;                                   // neue Wörter nur, solange weniger Wiederholungen offen sind
+const DAY_BUDGET = 15 * 60;                            // nach 15 Minuten Übungszeit kommen heute keine neuen Wörter mehr
 const ROUND_SIZE = 10;
 const KEY = "vokabelkasten.v1";
 
@@ -141,20 +145,64 @@ function check(input, solution) {
 }
 
 // ---------- Kasten ----------
-function dueCards() { const now = Date.now(); return cardsL().filter(c => c.level > 0 && c.due <= now).sort((a, b) => a.due - b.due); }
+// Fällig, niedrigste Fächer zuerst, dann die am längsten wartenden
+function dueCards() { const now = Date.now(); return cardsL().filter(c => c.level > 0 && c.due <= now).sort((a, b) => a.level - b.level || a.due - b.due); }
+// Tagesbudget: höchstens DUE_SHOW Wiederholungen am Tag; was darüber liegt, wartet unsichtbar auf morgen
+function dueLeft() { return Math.max(0, DUE_SHOW - (dayLog().rev || 0)); }
+function dueToday() { return dueCards().slice(0, dueLeft()); }
+// Neue Wörter nur, wenn kein Stau da ist und die 15 Minuten noch nicht um sind
+function newAllowed() { return dueCards().length < NEW_GATE && dayLog().sec < DAY_BUDGET ? newLeft() : 0; }
 function newLeft() { const l = L(); if (l.newDay !== today()) { l.newDay = today(); l.newCount = 0; } return Math.max(0, S.newPerDay - l.newCount); }
-// Pausierte Units (zum Beispiel Themes, die in der Schule noch nicht dran sind) liefern keine neuen Wörter.
-function isPaused(c) { const p = L().paused; return !!p && p.includes(c.unit); }
-function newCards() { return cardsL().filter(c => c.level === 0 && !isPaused(c)); }
 function levelCounts() { const n = Array(8).fill(0); cardsL().forEach(c => { if (c.level || !isPaused(c)) n[c.level]++; }); return n; }
+// ---------- FSRS (Free Spaced Repetition Scheduler, Version 5, Standardgewichte) ----------
+const FW = [0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621];
+const F_DECAY = -0.5, F_FACTOR = 19 / 81, F_RETAIN = 0.9, F_MAXIVL = 365;
+const fClampD = d => Math.min(10, Math.max(1, d));
+const fInitD = g => fClampD(FW[4] - Math.exp(FW[5] * (g - 1)) + 1);
+function fRecall(t, st) { return Math.pow(1 + F_FACTOR * t / st, F_DECAY); }
+function fIvl(st) { return Math.min(F_MAXIVL, Math.max(1, Math.round(st / F_FACTOR * (Math.pow(F_RETAIN, 1 / F_DECAY) - 1)))); }
+// Ältere Karten ohne FSRS-Werte: Stabilität aus dem bisherigen Fach schätzen
+function fInit(card) {
+  if (card.st) return;
+  if (!card.level) return;
+  const iv = INTERVAL[card.level] || 1;
+  card.st = iv; card.df = 5; card.seen = card.due ? card.due - iv * DAY : Date.now();
+}
+// g: 1 = falsch, 2 = fast (Tippfehler), 3 = richtig
+function fsrs(card, g) {
+  fInit(card);
+  const now = Date.now();
+  if (!card.st) { card.st = FW[g - 1]; card.df = fInitD(g); }
+  else {
+    const t = Math.max(0, (now - (card.seen || now)) / DAY), r = fRecall(t, card.st), d = card.df;
+    if (t < 1) card.st = Math.max(0.1, card.st * Math.exp(FW[17] * (g - 3 + FW[18])));
+    else if (g === 1) card.st = Math.min(card.st, FW[11] * Math.pow(d, -FW[12]) * (Math.pow(card.st + 1, FW[13]) - 1) * Math.exp(FW[14] * (1 - r)));
+    else card.st = card.st * (Math.exp(FW[8]) * (11 - d) * Math.pow(card.st, -FW[9]) * (Math.exp(FW[10] * (1 - r)) - 1) * (g === 2 ? FW[15] : 1) + 1);
+    const d1 = d - FW[6] * (g - 3) * (10 - d) / 9;
+    card.df = fClampD(FW[7] * fInitD(4) + (1 - FW[7]) * d1);
+  }
+  card.seen = now;
+  card.ivl = g === 1 ? 1 : fIvl(card.st);
+  return card.ivl;
+}
+function fachFor(days) { let f = 1; while (days > FACH_MAX[f]) f++; return f; }
+// Wann kommt die Karte wieder, in Worten
+function whenText(card) {
+  const n = Math.round((card.due - today()) / DAY);
+  return n <= 1 ? "morgen" : n < 14 ? `in ${n} Tagen` : n < 60 ? `in ${Math.round(n / 7)} Wochen` : n < 330 ? `in ${Math.round(n / 30)} Monaten` : "in einem Jahr";
+}
+// Richtig: mindestens ein Fach weiter (leichte Wörter springen weiter). Fast: bleibt. Falsch: zwei Fächer zurück, kommt morgen.
 function grade(card, result) {
   const wasNew = card.level === 0;
-  if (result === "good") card.level = Math.min(7, card.level + 1);
+  const iv = fsrs(card, result === "good" ? 3 : result === "near" ? 2 : 1);
+  if (result === "good") card.level = Math.min(7, Math.max(card.level + 1, fachFor(iv)));
   else if (result === "bad") card.level = Math.max(1, card.level - 2);
   else card.level = Math.max(1, card.level);
-  card.due = today() + INTERVAL[result === "good" ? card.level : 1] * DAY;
-  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++; }
+  card.due = today() + iv * DAY;
+  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++; } else { const dl = dayLog(); dl.rev = (dl.rev || 0) + 1; }
 }
+// Freies Üben, richtig: Wort bleibt im Fach, seine Wartezeit beginnt von vorn
+function rest(card) { fInit(card); card.due = today() + (card.ivl || INTERVAL[card.level] || 1) * DAY; card.seen = Date.now(); }
 
 // ---------- Übungstagebuch: pro Tag Übungszeit, Antworten und neue Wörter ----------
 function dayKey(t = Date.now()) { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
@@ -300,7 +348,7 @@ async function decodePack(code) {
   const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined, part: r[6] ? String(r[6]).slice(0, 8) : undefined }));
   const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
     .filter(u => u.rows.length);
-  return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, paused: (obj.p || []).map(String) };
+  return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, isBook: Array.isArray(obj.u), paused: (obj.p || []).map(String) };
 }
 function appUrl() { return location.origin + location.pathname.replace(/index\.html$/, ""); }
 
@@ -427,7 +475,7 @@ function ringHtml(n, goal) {
 function renderHomeView() {
   const qd = checkQuests(); if (qd.length) setTimeout(() => celebrate(`Tagesaufgabe geschafft: ${qd[0]}`), 400);
   const lang = L(), all = cardsL(), paused = lang.paused || [];
-  const due = dueCards().length, nl = Math.min(newLeft(), newCards().length), gd = gDue().length;
+  const due = dueToday().length, nl = Math.min(newAllowed(), newCards().length), gd = gDue().length;
   const units = [...new Set(all.map(c => c.unit))];
   const dirs = [["de-en", `Deutsch → ${lang.name}`], ["en-de", `${lang.name} → Deutsch`], ["mix", "gemischt"]];
   const inputs = [["tiles", "Buchstaben und Sprechen"], ["keyboard", "Tastatur"]];
@@ -457,15 +505,16 @@ function renderHomeView() {
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
       ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
+    ${posCard()}
     ${counterCard()}
     ${placeU ? `<section class="panel place">
       <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
-      <p class="muted small">Im Schnelltest kommt jedes Wort genau einmal. Was du schon kannst, fliegt gleich nach hinten in Fach ${PLACE_LEVEL}. So lernst du nur, was wirklich neu ist.</p>
-      <button class="btn ghost" data-place="${esc(placeU)}">Schnelltest starten</button></section>` : ""}
+      <p class="muted small">Beim Sortieren tippst du nur die richtige Bedeutung an. Was du schon kannst, fliegt gleich nach hinten. So lernst du nur, was wirklich neu ist.</p>
+      <button class="btn ghost" data-place="${esc(placeU)}">Sortieren starten</button></section>` : ""}
     ${all.length ? `<section>
       <div class="spread"><h2>Dein Kasten</h2><span class="muted small">${all.length} Wörter</span></div>
       ${kastenHtml(levelCounts())}
-      <p class="muted small">Richtig heißt ein Fach weiter, falsch heißt zwei Fächer zurück. Unter jedem Fach steht, wann ein Wort daraus wieder drankommt.</p>
+      <p class="muted small">Richtig heißt mindestens ein Fach weiter, leichte Wörter springen auch weiter. Falsch heißt zwei Fächer zurück. Unter jedem Fach steht ungefähr, wann ein Wort daraus wieder drankommt.</p>
     </section>` : ""}
     ${monsterCard()}
     ${grammarCard()}
@@ -490,7 +539,7 @@ function renderHomeView() {
           ${isP ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}
           <div class="row">
             ${isP ? `<button class="btn small" data-unpause="${esc(u)}">Freischalten</button>`
-              : `<button class="btn ghost small" data-test="${esc(u)}">Für den Test üben</button>${canPlace(u) ? `<button class="link" data-place="${esc(u)}">Schnelltest</button>` : ""}`}
+              : `<button class="btn ghost small" data-test="${esc(u)}">Für den Test üben</button>${canPlace(u) ? `<button class="link" data-place="${esc(u)}">Sortieren</button>` : ""}`}
             <button class="link" data-share="${esc(u)}">Teilen</button>
             ${!isP && fresh ? `<button class="link" data-pause="${esc(u)}">Pausieren</button>` : ""}
             ${confirmDelete === u
@@ -526,6 +575,7 @@ function renderHomeView() {
   $("#welt").onclick = () => renderWelt();
   if ($("#duelGo")) $("#duelGo").onclick = renderDuelSetup;
   if ($("#sprintGo")) $("#sprintGo").onclick = renderSprint;
+  bindPos();
   save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
   if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
@@ -537,7 +587,7 @@ function renderHomeView() {
   $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   $$("[data-share]").forEach(b => b.onclick = () => renderShare(b.dataset.share));
   $$("[data-pause]").forEach(b => b.onclick = () => { lang.paused = [...paused, b.dataset.pause]; save(); keepScroll(renderHome); });
-  $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
+  $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); if (lang.upto) delete lang.upto[b.dataset.unpause]; save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
   $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderHome); });
   $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderHome); });
   $$("[data-del-yes]").forEach(b => b.onclick = () => {
@@ -565,8 +615,8 @@ function startRound(unit) {
   } else if (unit) {
     pick = shuffle(cardsL().filter(c => c.unit === unit)).slice(0, 20);
   } else {
-    pick = dueCards().slice(0, ROUND_SIZE);
-    if (pick.length < ROUND_SIZE) pick = pick.concat(newCards().slice(0, Math.min(newLeft(), ROUND_SIZE - pick.length)));
+    pick = dueToday().slice(0, ROUND_SIZE);
+    if (pick.length < ROUND_SIZE) pick = pick.concat(newCards().slice(0, Math.min(newAllowed(), ROUND_SIZE - pick.length)));
     pick = shuffle(pick);
   }
   const items = pick.map(c => c.id);
@@ -593,7 +643,7 @@ function renderCard() {
   if (R.queue[0].startsWith("g|")) return renderRoundTask();
   const card = S.cards.find(c => c.id === R.queue[0]);
   if (!card) { R.queue.shift(); return renderCard(); }
-  const dir = dirFor();
+  const dir = card.chk && !R.practice ? "de-en" : dirFor();   // Gekonnt einsortiert: einmal in die schwere Richtung prüfen
   const q = dir === "de-en" ? card.de : card.en;
   const sol = dir === "de-en" ? card.en : card.de;
   const lname = L().name;
@@ -834,7 +884,8 @@ function answered(card, result, sol, dir, typed) {
   $$("#answerArea button, #answerArea input").forEach(x => x.disabled = true);
   const firstTime = !(card.id in R.first), from = card.level;
   const dl = dayLog(); dl.ans++; if (result !== "bad") dl.right++;
-  if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); else if (card.level > 0) { if (result === "bad") grade(card, "bad"); else if (result === "good") card.due = today() + INTERVAL[card.level] * DAY; } }
+  if (firstTime && !R.practice) delete card.chk;
+  if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); else if (card.level > 0) { if (result === "bad") grade(card, "bad"); else if (result === "good") rest(card); } }
   // Beim freien Üben: falsch rutscht zwei Fächer zurück, richtig bleibt im Fach und die Wartezeit beginnt von vorn.
   const to = card.level, moved = firstTime && !R.practice, slipped = firstTime && R.practice && to < from, rested = firstTime && R.practice && result === "good" && to > 0;
   R.queue.shift();
@@ -848,8 +899,8 @@ function answered(card, result, sol, dir, typed) {
   if (result !== "bad" && firstTime) dl.combo = Math.max(dl.combo || 0, R.combo);
   if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
   sound(result === "bad" ? "bad" : "good");
-  const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : rested ? `Bleibt in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : !moved ? "" : from === 0 ? "Ab in Fach 1, kommt morgen wieder."
-    : to > from ? `Weiter in Fach ${to}, kommt ${FACH_IN[to]} wieder.` : to < from ? `Zurück in Fach ${to}, kommt morgen wieder.` : `Bleibt in Fach ${to}, kommt morgen wieder.`;
+  const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : rested ? `Bleibt in Fach ${to}, kommt ${whenText(card)} wieder.` : !moved ? "" : from === 0 ? `Ab in Fach ${to}, kommt ${whenText(card)} wieder.`
+    : to > from ? `Weiter in Fach ${to}, kommt ${whenText(card)} wieder.` : to < from ? `Zurück in Fach ${to}, kommt morgen wieder.` : `Bleibt in Fach ${to}, kommt ${whenText(card)} wieder.`;
   const msg = result === "good" ? ["good", pick(["Richtig!", "Super!", "Genau!", "Stark!"]), ""]
     : result === "near" ? ["near", "Fast!", `Achte auf die Schreibweise: <span class="sol">${typed ? markDiff(typed, sol) : esc(sol)}</span>`]
     : ["bad", "Noch nicht.", `Richtig ist: <span class="sol">${esc(sol)}</span><span class="small">Das Wort kommt in dieser Runde gleich noch einmal.</span>`];
@@ -935,7 +986,7 @@ function renderSummary() {
   if ((g === n && n >= 5) || R.newBadges.length || (R.mon || []).some(x => x.slain)) confetti();
   setTimeout(checkMilestone, 1200);
   const unit = R.practice ? R.unit : null;
-  $("#again").onclick = () => startRound(unit === null && !dueCards().length && !Math.min(newLeft(), newCards().length) && !gDue().length ? FREE : unit);
+  $("#again").onclick = () => startRound(unit === null && !dueToday().length && !Math.min(newAllowed(), newCards().length) && !gDue().length ? FREE : unit);
   $("#home").onclick = () => { R = null; renderHome(); };
   if ($("#openPack")) $("#openPack").onclick = () => { R = null; openPack(); };
   if ($("#toWelt")) $("#toWelt").onclick = () => { R = null; renderWelt(); };
@@ -943,61 +994,188 @@ function renderSummary() {
   window.scrollTo(0, 0);
 }
 
-// ---------- Schnelltest: Was schon sitzt, fliegt gleich nach hinten ----------
+// ---------- Wie weit seid ihr im Buch? Nur was schon dran war, wird abgefragt ----------
+// L().pos = { u, n }: In Unit u sind die ersten n Wörter frei, alle Units davor auch (außer übersprungene), alle danach warten.
+// L().paused: gesperrte Units, L().upto[u]: Anzahl freier Wörter in einer halb freien Unit, L().skip: Units, die die Lehrerin auslässt.
+let ordCache = null;
+function unitList() { return [...new Set(cardsL().map(c => c.unit))]; }
+function unitCards(u) { return cardsL().filter(c => c.unit === u); }
+function ordOf(c) {
+  const key = S.cur + ":" + S.cards.length;
+  if (!ordCache || ordCache.key !== key) { const m = new Map(), n = {}; cardsL().forEach(x => { n[x.unit] = n[x.unit] || 0; m.set(x.id, n[x.unit]++); }); ordCache = { key, m }; }
+  return ordCache.m.get(c.id) ?? 0;
+}
+function isPaused(c) {
+  const l = L(); if ((l.paused || []).includes(c.unit)) return true;
+  const n = l.upto && l.upto[c.unit];
+  return n != null && ordOf(c) >= n;
+}
+// Neue Wörter: zuerst aus der Unit, die in der Schule gerade dran ist, dann der Rest der Reihe nach
+function newCards() {
+  const cs = cardsL().filter(c => c.level === 0 && !isPaused(c)), u = L().pos && L().pos.u;
+  return u ? cs.filter(c => c.unit === u).concat(cs.filter(c => c.unit !== u)) : cs;
+}
+function setPos(u, n) {
+  const l = L(), us = unitList(), i = us.indexOf(u), len = unitCards(u).length, before = newCards().length;
+  n = Math.max(0, Math.min(n, len));
+  l.skip = (l.skip || []).filter(x => x !== u);
+  l.pos = { u, n }; l.upto = {}; l.paused = [];
+  us.forEach((x, j) => { if (j > i || (j < i && l.skip.includes(x))) l.paused.push(x); });
+  if (n < len) l.upto[u] = n;
+  save();
+  return newCards().length - before;
+}
+function posLabel() {
+  const p = L().pos; if (!p) return "";
+  const cs = unitCards(p.u); if (!cs.length) return "";
+  if (p.n >= cs.length) return `${p.u}, ganz`;
+  if (!p.n) return `${p.u}, noch nichts`;
+  const c = cs[p.n - 1];
+  return c.part ? `${p.u}, Teil ${c.part}` : `${p.u}, bis „${c.en}“`;
+}
+// Ein Teil weiter: bis zum Ende des nächsten Buch-Teils, ohne Teile zehn Wörter weiter, am Ende in die nächste Unit
+function stepPos() {
+  const l = L(), p = l.pos; if (!p) return 0;
+  let u = p.u, n = p.n, cs = unitCards(u);
+  if (n >= cs.length) {
+    const us = unitList(), nx = us.slice(us.indexOf(u) + 1).find(x => !(l.skip || []).includes(x));
+    if (!nx) { toast("Das war die letzte Unit."); return 0; }
+    u = nx; n = 0; cs = unitCards(u);
+  }
+  if (cs[n] && cs[n].part) { const pt = cs[n].part; while (n < cs.length && cs[n].part === pt) n++; }
+  else n = Math.min(cs.length, n + 10);
+  return setPos(u, n);
+}
+function posCard() {
+  if (!cardsL().length) return "";
+  const lbl = posLabel();
+  return `<section class="panel pos"><div class="spread"><div><span class="eyebrow">Wir sind bei</span><br><b>${lbl ? esc(lbl) : "Noch nicht eingestellt"}</b></div>
+      <button class="link" id="posEdit">${lbl ? "ändern" : "einstellen"}</button></div>
+    ${lbl ? `<button class="btn ghost small" id="posStep">Ein Teil weiter</button>` : ""}
+    <p class="muted small">Abgefragt wird nur, was in der Schule schon dran war.</p></section>`;
+}
+function bindPos() {
+  if ($("#posEdit")) $("#posEdit").onclick = () => renderPos(L().pos && L().pos.u);
+  if ($("#posStep")) $("#posStep").onclick = () => { const k = stepPos(); toast(`${posLabel()} ist frei${k > 0 ? `, ${k} neue Wörter` : ""}.`); keepScroll(renderHome); };
+}
+function renderPos(openU) {
+  const l = L(), us = unitList(), p = l.pos;
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Wie weit seid ihr?</h2></div>
+    <p class="muted">Tipp an, was in der Schule zuletzt dran war: eine ganze Unit, einen Teil oder ein einzelnes Wort. Alles davor wird frei, alles danach wartet.</p>
+    ${us.map(u => {
+      const cs = unitCards(u), sk = (l.skip || []).includes(u), lock = (l.paused || []).includes(u);
+      const n = lock ? 0 : l.upto && l.upto[u] != null ? l.upto[u] : cs.length;
+      const parts = [...new Set(cs.map(c => c.part).filter(Boolean))];
+      return `<details class="panel posunit"${u === openU ? " open" : ""}><summary><b>${esc(u)}</b>
+          <span class="tag${n && !sk ? "" : " soft"}">${sk ? "fällt aus" : n >= cs.length ? "frei" : n ? `${n} von ${cs.length}` : "noch nicht"}</span>${p && p.u === u ? ' <span class="tag">hier seid ihr</span>' : ""}</summary>
+        <div class="row"><button class="btn small" data-pall="${esc(u)}">Ganze Unit war dran</button>
+          <button class="link" data-pskip="${esc(u)}">${sk ? "Kommt doch dran" : "Lässt die Lehrerin aus"}</button></div>
+        ${parts.length > 1 ? `<h3>Bis zu diesem Teil</h3><div class="chips">${parts.map(pt => `<button class="chip" data-ppart="${esc(pt)}" data-u="${esc(u)}">${esc(pt)}</button>`).join("")}</div>` : ""}
+        <h3>Bis zu diesem Wort</h3>
+        <div class="poswords">${cs.map((c, i) => `${c.part && (!i || cs[i - 1].part !== c.part) ? `<span class="pwpart">${esc(c.part)}</span>` : ""}<button class="pw${i < n && !sk ? " on" : ""}" data-pw="${i}" data-u="${esc(u)}">${esc(c.en)}</button>`).join("")}</div>
+      </details>`; }).join("")}
+    <button class="btn wide" id="done">Fertig</button>`));
+  const after = (u, k) => { toast(`${posLabel()} ist frei${k > 0 ? `, ${k} neue Wörter` : ""}.`); keepScroll(() => renderPos(u)); };
+  $("#back").onclick = $("#done").onclick = () => renderHome();
+  $$("[data-pall]").forEach(b => b.onclick = () => { const u = b.dataset.pall; after(u, setPos(u, unitCards(u).length)); });
+  $$("[data-ppart]").forEach(b => b.onclick = () => { const u = b.dataset.u, cs = unitCards(u); let i = cs.length; while (i > 0 && cs[i - 1].part !== b.dataset.ppart) i--; after(u, setPos(u, i)); });
+  $$("[data-pw]").forEach(b => b.onclick = () => { const u = b.dataset.u; after(u, setPos(u, +b.dataset.pw + 1)); });
+  $$("[data-pskip]").forEach(b => b.onclick = () => {
+    const u = b.dataset.pskip, sk = new Set(l.skip || []);
+    sk.has(u) ? sk.delete(u) : sk.add(u); l.skip = [...sk];
+    if (l.pos && l.pos.u !== u) { const s2 = l.skip; setPos(l.pos.u, l.pos.n); l.skip = s2; save(); }
+    keepScroll(() => renderPos(u));
+  });
+  if (!keepScroll.on) window.scrollTo(0, 0);
+}
+
+// ---------- Schnell-Sortieren: Was schon sitzt, wird nicht neu gelernt ----------
+// Englisches Wort, vier deutsche Antworten. Schnell richtig = kann ich, langsam richtig = unsicher, sonst neu lernen.
+// Erst eine Stichprobe von 20 Wörtern: Sitzt fast alles, gilt die ganze Unit als gekonnt.
 let P = null;
-function placeable(u) { return cardsL().filter(c => c.unit === u && c.level === 0 && !c.pl); }
+const PLACE_FAST = 4000, PLACE_SAMPLE = 20;
+function placeable(u) { return cardsL().filter(c => c.unit === u && c.level === 0 && !c.pl && !isPaused(c)); }
 function canPlace(u) { return placeable(u).length >= 5; }
 function startPlace(u) {
-  const ids = placeable(u).map(c => c.id);
-  P = { unit: u, queue: ids, total: ids.length, known: 0, unknown: 0, last: Date.now(), newBadges: [] };
+  const ids = shuffle(placeable(u).map(c => c.id));
+  P = { unit: u, queue: ids, total: ids.length, known: 0, unsure: 0, unknown: 0, sample: ids.length > PLACE_SAMPLE + 10 ? PLACE_SAMPLE : 0,
+        sk: 0, bulk: "", last: Date.now(), newBadges: [] };
   renderPlace();
+}
+// Fälligkeit verteilen: der Tag im Fenster, an dem bisher am wenigsten fällig ist. So kommt nie eine Welle.
+function spreadDue(minD, maxD) {
+  const t0 = today(), load = new Map();
+  cardsL().forEach(c => { if (c.level) { const d = Math.round((c.due - t0) / DAY); if (d >= minD && d <= maxD) load.set(d, (load.get(d) || 0) + 1); } });
+  let best = minD; for (let d = minD; d <= maxD; d++) if ((load.get(d) || 0) < (load.get(best) || 0)) best = d;
+  return t0 + best * DAY;
+}
+function placeCard(card, how) {
+  if (how === "known") { card.level = 5; card.st = 30; card.df = 5; card.seen = Date.now(); card.ivl = 30; card.due = spreadDue(7, 56); card.chk = 1; P.known++; }
+  else if (how === "unsure") { card.level = 2; card.st = 4; card.df = 6; card.seen = Date.now(); card.ivl = 4; card.due = spreadDue(1, 14); P.unsure++; }
+  else { card.pl = 1; P.unknown++; }
 }
 function renderPlace() {
   tick();
+  if (P.sample && P.total - P.queue.length === P.sample) {
+    const rate = P.sk / P.sample; P.sample = 0;
+    const bulk = rate >= 0.9 ? "known" : rate < 0.6 ? "unknown" : "";
+    if (bulk) { P.bulk = bulk; P.queue.splice(0).forEach(id => { const c = S.cards.find(x => x.id === id); if (c) placeCard(c, bulk); }); save(); }
+  }
   if (!P.queue.length) return renderPlaceDone();
   const card = S.cards.find(c => c.id === P.queue[0]);
   if (!card) { P.queue.shift(); return renderPlace(); }
-  const k = P.total - P.queue.length;
+  const k = P.total - P.queue.length, n = P.sample || P.total;
+  const opts = choiceOpts(card, card.de, "en-de", cardsL().filter(c => c.id !== card.id));
   app.replaceChildren(h(`
-    <div class="progress"><button class="iconbtn" id="quit" aria-label="Schnelltest beenden">${ICON.x}</button>
-      <div class="bar"><i style="width:${Math.round(k / P.total * 100)}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${k}/${P.total}</span></div>
+    <div class="progress"><button class="iconbtn" id="quit" aria-label="Sortieren beenden">${ICON.x}</button>
+      <div class="bar"><i style="width:${Math.round(k / n * 100)}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${k}/${n}</span></div>
     ${kastenHtml(levelCounts(), true)}
     <div class="icard" id="icard">
-      <div class="spread"><span class="eyebrow">Schnelltest</span>${canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
-      <div class="flip" id="flip"><div class="face front"><div class="q">${esc(card.en)}</div></div><div class="face back"><div class="q">${esc(card.de)}</div></div></div>
-      <p class="muted small">Weißt du, was das heißt? Tipp auf die Karte, wenn du nachsehen willst.</p>
-      <div class="choices"><button class="choice yes" id="yes">✓ Kann ich</button><button class="choice no" id="no">Noch nicht</button></div>
+      <div class="spread"><span class="eyebrow">${P.sample ? "Stichprobe" : "Sortieren"}</span>${canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
+      <div class="q">${esc(card.en)}</div>
+      <p class="muted small">Was heißt das? Tipp an${SR ? " oder sag es auf Deutsch" : ""}.</p>
+      <div class="choices">${opts.map(o => `<button class="choice" data-o="${esc(o)}">${esc(o)}</button>`).join("")}</div>
+      <div class="row" style="justify-content:center">${SR ? `<button class="speak" id="bigmic">${ICON.mic || "🎤"}Sagen</button>` : ""}<button class="choice no" id="no">Weiß ich nicht</button></div>
     </div>
-    <button class="link" id="stop" style="align-self:center">Rest später testen</button>`));
-  $("#quit").onclick = $("#stop").onclick = () => { tick(); save(); P = null; renderHome(); };
+    <button class="link" id="stop" style="align-self:center">Rest später sortieren</button>`));
+  const t0 = Date.now();
+  $("#quit").onclick = $("#stop").onclick = () => { stopListening(); tick(); save(); P = null; renderHome(); };
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
-  $("#flip").onclick = () => { $("#flip").classList.toggle("turned"); sound("flip"); };
   liftCard(0);
-  const go = known => {
-    $$("#icard button").forEach(b => b.disabled = true); tick();
-    if (known) { card.level = PLACE_LEVEL; card.due = today() + INTERVAL[PLACE_LEVEL] * DAY; P.known++; }
-    else { card.pl = 1; P.unknown++; }
+  const go = (how, btn) => {
+    stopListening(); $$("#icard button").forEach(b => b.disabled = true); tick();
+    $$("[data-o]").forEach(b => { if (b.dataset.o === card.de) b.classList.add("right"); });
+    if (btn && how === "unknown") btn.classList.add("wrong");
+    if (how !== "unknown") P.sk++;
+    placeCard(card, how);
     P.queue.shift(); S.xp++; save();
-    flyCard(0, known ? PLACE_LEVEL : 0, known, card.en);
-    sound(known ? "good" : "tap");
-    setTimeout(renderPlace, reduced() ? 150 : 720);
+    flyCard(0, card.level, how !== "unknown", card.en);
+    sound(how === "unknown" ? "tap" : "good");
+    setTimeout(renderPlace, reduced() ? 150 : how === "unknown" ? 1100 : 720);
   };
-  $("#yes").onclick = () => go(true);
-  $("#no").onclick = () => go(false);
+  $$("[data-o]").forEach(b => b.onclick = () => go(b.dataset.o === card.de ? (Date.now() - t0 <= PLACE_FAST ? "known" : "unsure") : "unknown", b));
+  $("#no").onclick = () => go("unknown");
+  // Sprechen: Deutsch versteht die Erkennung gut. Nicht verstanden heißt nicht falsch, dann einfach antippen.
+  if ($("#bigmic")) $("#bigmic").onclick = () => listenDe(card.de, (hit, heard) => {
+    if (hit) go(Date.now() - t0 <= PLACE_FAST + 2000 ? "known" : "unsure");
+    else toast(heard ? `Verstanden: „${heard}“. Tipp die Antwort lieber an.` : "Nichts gehört. Tipp die Antwort an.");
+  }, () => {});
 }
 function renderPlaceDone() {
   P.finished = true; checkBadges(); save();
-  const nextU = [...new Set(cardsL().map(c => c.unit))].find(u => u !== P.unit && !(L().paused || []).includes(u) && canPlace(u));
+  const nextU = [...new Set(cardsL().map(c => c.unit))].find(u => u !== P.unit && canPlace(u));
   app.replaceChildren(h(`<div class="done">
-    <p class="eyebrow">Schnelltest geschafft</p>
-    <div class="score">${P.known}</div>
-    <p>${P.known === 1 ? "Wort kannst" : "Wörter kannst"} du schon. Sie liegen jetzt in Fach ${PLACE_LEVEL} und kommen in einem Monat zur Kontrolle.</p>
-    ${P.unknown ? `<p class="muted">${P.unknown} ${P.unknown === 1 ? "Wort lernst" : "Wörter lernst"} du neu, ${S.newPerDay} am Tag.</p>` : ""}
+    <p class="eyebrow">„${esc(P.unit)}“ sortiert</p>
+    <div class="score">${P.known + P.unsure}</div>
+    <p>${P.known + P.unsure === 1 ? "Wort kennst" : "Wörter kennst"} du schon.${P.bulk === "known" ? " Die Stichprobe saß fast komplett, darum gilt die ganze Unit als gekonnt." : P.bulk ? " Die Stichprobe war noch wackelig, darum lernst du den Rest der Unit nach und nach neu." : ""}</p>
+    <p class="muted small">${P.known} sitzen und kommen verteilt über die nächsten Wochen zur Kontrolle, ${P.unsure} unsicher kommen in den nächsten Tagen.</p>
+    ${P.unknown ? `<p class="muted">${P.unknown} ${P.unknown === 1 ? "Wort lernst" : "Wörter lernst"} du neu, nach und nach, wenn Platz ist.</p>` : ""}
     ${kastenHtml(levelCounts())}
     ${P.newBadges.length ? `<div class="newbadges">${P.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
-    <div class="row" style="justify-content:center">${nextU ? `<button class="btn" id="nextU">Nächste Unit testen</button>` : ""}<button class="btn ${nextU ? "ghost" : ""}" id="home">Fertig</button></div>
+    <div class="row" style="justify-content:center">${nextU ? `<button class="btn" id="nextU">Nächste Unit sortieren</button>` : ""}<button class="btn ${nextU ? "ghost" : ""}" id="home">Fertig</button></div>
   </div>`));
-  if (P.known) confetti();
+  if (P.known + P.unsure) confetti();
   if (nextU) $("#nextU").onclick = () => startPlace(nextU);
   $("#home").onclick = () => { P = null; renderHome(); };
   window.scrollTo(0, 0);
@@ -1343,6 +1521,17 @@ function parseList(text) {
   }
   return { name, rows: out };
 }
+// Zurück aus dem KI-Chat: Liegt eine Vokabelliste in der Zwischenablage, wird sie gleich geprüft (ein Tipp weniger).
+let clipWatch = false;
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden || !clipWatch || !$("#paste") || !navigator.clipboard || !navigator.clipboard.readText) return;
+  try {
+    const t = await navigator.clipboard.readText();
+    if (!t || t === photoPrompt() || !parseList(t).rows.length) return;
+    clipWatch = false; $("#paste").value = t; addParsed(t);
+    toast(`${parseList(t).rows.length} Wörter gefunden. Prüfen und übernehmen.`);
+  } catch (e) {}
+});
 function renderImport(prefill) {
   if (prefill) { rows = prefill.rows; importName = prefill.name; }
   const shareFiles = !!(navigator.canShare && window.File);
@@ -1352,16 +1541,16 @@ function renderImport(prefill) {
     <p class="muted small">Für deinen Kasten <b>${esc(L().name)}</b></p>
     <label class="f">Name der Unit<input class="input" id="unitName" placeholder="z. B. Unit 2" value="${esc(importName)}"></label>
     ${prefill ? "" : `
-    <section class="panel">
-      <h3>1. Foto oder Datei an deinen KI-Chat</h3>
-      <p class="muted small">Die App schickt nichts selbst weg. Du entscheidest, an welchen Chat das Foto oder die Datei geht. Der Auftrag bittet den Chat auch um Tags wie #tiere oder #verb.</p>
+    <details class="panel" id="parents">
+      <summary><b>Für Eltern: Buchseite mit einem KI-Chat umwandeln</b></summary>
+      <p class="muted small">Über dein eigenes Konto, nicht das deines Kindes. Die App schickt nichts selbst weg. Du entscheidest, an welchen Chat das Foto oder die Datei geht. Der Auftrag bittet den Chat auch um Tags wie #tiere oder #verb.</p>
       <label class="btn wide" for="photo">${ICON.camera}<span id="photoLabel">Foto aufnehmen oder wählen</span></label>
       <input type="file" id="photo" accept="image/*" capture="environment" hidden>
       <label class="btn ghost wide" for="srcFile"><span id="fileLabel">Datei wählen (PDF, Word, Excel …)</span></label>
       <input type="file" id="srcFile" accept="image/*,application/pdf,.pdf,.doc,.docx,.odt,.xls,.xlsx,.ods,.csv,.txt" hidden>
       <button class="btn ghost wide" id="sharePhoto" hidden>${ICON.share}Datei und Auftrag an KI-Chat senden</button>
       <p class="muted small" id="shareHint" hidden>Im Teilen-Menü wählst du ChatGPT, Claude oder Gemini. Der Auftrag liegt außerdem in der Zwischenablage, falls die Chat-App nur das Bild übernimmt.</p>
-      <details>
+      <details id="selfOpen">
         <summary class="small" style="cursor:pointer">Ohne Teilen-Menü: Chat selbst öffnen</summary>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
           <p class="muted small">Öffne den Chat mit dem Auftrag und häng dort das Foto oder die Datei an.</p>
@@ -1370,9 +1559,10 @@ function renderImport(prefill) {
           <button class="btn ghost small" id="copy">Auftrag kopieren</button>
         </div>
       </details>
-    </section>
+      <p class="muted small">Kopier danach die Antwort im Chat und komm zurück. Die App holt sie sich selbst aus der Zwischenablage.</p>
+    </details>
     <section class="panel">
-      <h3>2. Antwort hier einfügen</h3>
+      <h3>Eigene Liste</h3>
       <p class="muted small">Kopiere die Liste aus dem Chat oder lade die Datei, die der Chat dir gibt. Du kannst auch selbst tippen: eine Vokabel pro Zeile, <b>${esc(L().name.toLowerCase())} ; deutsch ; Beispielsatz ; #tag</b>.</p>
       <textarea id="paste" placeholder="${isEn() ? "mother ; Mutter&#10;brother ; Bruder ; I have got a brother." : "Wort ; deutsche Bedeutung"}"></textarea>
       <div class="row">
@@ -1383,7 +1573,7 @@ function renderImport(prefill) {
       </div>
     </section>`}
     <section class="panel" id="reviewPanel" hidden>
-      <div class="spread"><h3>${prefill ? "Vokabeln der Unit" : "3. Erkannte Vokabeln"}</h3><span class="small muted" id="rcount"></span></div>
+      <div class="spread"><h3>${prefill ? "Vokabeln der Unit" : "Erkannte Vokabeln"}</h3><span class="small muted" id="rcount"></span></div>
       <div class="review" id="review"></div>
       <button class="btn wide" id="save">Übernehmen</button>
     </section>
@@ -1398,16 +1588,18 @@ function renderImport(prefill) {
       $("#fileLabel").textContent = photo.type.startsWith("image/") ? "Datei wählen (PDF, Word, Excel …)" : "Gewählt: " + photo.name;
       const can = shareFiles && navigator.canShare({ files: [photo] });
       $("#sharePhoto").hidden = !can; $("#shareHint").hidden = !can;
-      if (!can) { $("details").open = true; toast("Teilen geht hier nicht. Öffne den Chat und häng die Datei an."); }
+      if (!can) { $("#selfOpen").open = true; toast("Teilen geht hier nicht. Öffne den Chat und häng die Datei an."); }
     };
     $("#sharePhoto").onclick = async () => {
       if (!photo) return;
+      clipWatch = true;
       await copyText(photoPrompt());
       try { await navigator.share({ files: [photo], text: photoPrompt() }); }
-      catch (err) { if (err && err.name !== "AbortError") { $("details").open = true; toast("Teilen hat nicht geklappt. Öffne den Chat selbst."); } }
+      catch (err) { if (err && err.name !== "AbortError") { $("#selfOpen").open = true; toast("Teilen hat nicht geklappt. Öffne den Chat selbst."); } }
     };
-    $$("[data-bot]").forEach(a => a.onclick = () => { copyText(photoPrompt()); if (BOTS[a.dataset.bot].copyFirst) toast("Auftrag kopiert. Füge ihn im Chat ein."); });
+    $$("[data-bot]").forEach(a => a.onclick = () => { clipWatch = true; copyText(photoPrompt()); if (BOTS[a.dataset.bot].copyFirst) toast("Auftrag kopiert. Füge ihn im Chat ein."); });
     $("#copy").onclick = async () => {
+      clipWatch = true;
       if (await copyText(photoPrompt())) toast("Auftrag kopiert");
       else { const r = document.createRange(); r.selectNodeContents($("#promptText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Text markiert. Bitte kopieren."); }
     };
@@ -1430,50 +1622,46 @@ function renderImport(prefill) {
 }
 // Übernimmt Zeilen in eine Unit; doppelte Wörter in derselben Unit behalten ihren Lernstand,
 // bekommen aber neue Eselsbrücken und Beispielsätze aus dem Link.
-function addCards(unit, list) {
+function addCards(unit, list, book) {
   const existing = new Map(cardsL().filter(c => c.unit === unit).map(c => [norm(c.en) + "|" + norm(c.de), c]));
   let added = 0;
   list.forEach(r => {
     const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
-    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; if (r.part) old.part = r.part; } return; }
+    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; if (r.part) old.part = r.part; if (book) old.book = book; } return; }
     existing.set(k, null);
     const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
     if (r.mn) c.mn = r.mn;
     if (r.dx) c.dx = r.dx;
     if (r.tags && r.tags.length) c.tags = r.tags;
     if (r.part) c.part = r.part;
+    if (book) c.book = book;
     S.cards.push(c); added++;
   });
   dayLog().added += added;
   return added;
 }
 // Ein Link mit einem ganzen Buch: Jede Unit lässt sich gleich lernen oder erst einmal pausieren.
-let bookSel = null;
 function renderBook(p) {
-  if (!bookSel) bookSel = p.units.map(u => !p.paused.includes(u.name));
   const have = new Set(cardsL().map(c => c.unit)), total = p.units.reduce((n, u) => n + u.rows.length, 0);
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Vokabeln übernehmen</h2></div>
     <section class="hero">
       <b class="herotitle">${esc(p.title || "Vokabelpaket")}</b>
-      <span class="muted small">${esc(p.lang)} · ${p.units.length} Units · ${total} Wörter</span>
+      <span class="muted small">${esc(p.lang)} · ${p.units.length === 1 ? esc(p.units[0].name) : p.units.length + " Units"} · ${total} Wörter</span>
     </section>
     <section class="panel">
-      <h3>Was soll gleich drankommen?</h3>
-      ${p.units.map((u, i) => `<label class="toggle bookrow"><span><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></span>
-        <input type="checkbox" data-b="${i}" ${bookSel[i] ? "checked" : ""}></label>`).join("")}
-      <p class="muted small">Mit Haken kommen die Wörter gleich dran. Ohne Haken liegen sie pausiert im Kasten, bis du sie freischaltest.</p>
+      ${p.units.map(u => `<p><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></p>`).join("")}
+      <p class="muted small">Gleich danach tippst du an, wie weit ihr in der Schule seid. Nur das wird abgefragt.</p>
     </section>
-    <button class="btn wide" id="save">Alle übernehmen</button>`));
-  $("#back").onclick = () => { bookSel = null; renderHome(); };
-  $$("[data-b]").forEach(x => x.onchange = () => bookSel[+x.dataset.b] = x.checked);
+    <button class="btn wide" id="save">Übernehmen</button>`));
+  $("#back").onclick = () => renderHome();
   $("#save").onclick = () => {
     const lang = L(); let added = 0;
-    lang.paused = (lang.paused || []).filter(u => !p.units.some(x => x.name === u));
-    p.units.forEach((u, i) => { added += addCards(u.name, u.rows); if (!bookSel[i]) lang.paused.push(u.name); });
-    bookSel = null; save();
+    lang.paused = lang.paused || [];
+    p.units.forEach(u => { added += addCards(u.name, u.rows, p.title); if (!have.has(u.name)) lang.paused.push(u.name); });
+    save();
     toast(added ? `${added} Vokabeln übernommen` : "Diese Vokabeln sind schon in deinem Kasten");
-    renderHome();
+    renderPos(p.units[0].name);
   };
   window.scrollTo(0, 0);
 }
@@ -1536,7 +1724,12 @@ function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>"); 
 function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
 // Grammatik-Kasten: Geübte Themen bekommen ein Fach und melden sich in wachsenden Abständen in der Tagesrunde.
 // Haken für „Wir sind bei“ (Lernlogik): gesperrte Themen kommen nicht in die Tagesrunde.
-function gUnlocked(t) { return true; }
+// Grammatik aus Camden Town 5 (band ct-N) kommt erst, wenn Theme N im Buch erreicht ist („Wir sind bei“).
+function gUnlocked(t) {
+  const m = /^ct-(\d+)$/.exec(t.band || ""); if (!m) return true;
+  const re = new RegExp(`^Theme ${m[1]}\\b`), cs = cardsL().filter(c => /^Camden Town 5/.test(c.book || "") && re.test(c.unit));
+  return !cs.length || cs.some(c => !isPaused(c));
+}
 function gDue() {
   const d = gData(); if (!d) return [];
   const st = gStore(), now = Date.now();
@@ -2338,7 +2531,7 @@ async function boot() {
         const ex = S.langs.find(l => l.name.toLowerCase() === p.lang.toLowerCase());
         if (ex) S.cur = ex.id; else addLang(p.lang, p.code);
         save();
-        if (p.units.length === 1) renderImport({ name: p.units[0].name, rows: p.units[0].rows }); else renderBook(p);
+        if (p.units.length === 1 && !p.isBook) renderImport({ name: p.units[0].name, rows: p.units[0].rows }); else renderBook(p);
         return;
       }
     } catch (e) {}

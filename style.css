@@ -532,3 +532,10 @@ body.weltopen .confetti{z-index:60}
 .tw:active{background:var(--accent-soft, rgba(127,127,255,.2))}
 .twpop{position:absolute;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%);white-space:nowrap;background:var(--ink, #222);color:var(--bg, #fff);font:600 .85rem/1.2 system-ui, sans-serif;padding:5px 9px;border-radius:8px;z-index:5;pointer-events:none;animation:twin .15s ease-out}
 @keyframes twin{from{opacity:0;transform:translate(-50%,4px)}}
+/* Wie weit seid ihr? */
+.pos .eyebrow{margin:0}
+.posunit summary .tag{margin-left:6px}
+.poswords{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pw{border:1.5px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 10px;font:inherit;font-size:.9rem}
+.pw.on{border-color:var(--good);color:var(--ink);background:var(--good-bg)}
+.pwpart{font-weight:700;font-size:.8rem;color:var(--accent,#1F4E5F);margin-left:4px}
