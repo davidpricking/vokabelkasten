@@ -253,7 +253,7 @@ async function packCode(obj) {
   return "j" + b64u(bytes);
 }
 function packRows(cards) {
-  return cards.map(c => { const r = [c.en, c.de, c.ex || "", c.mn || 0, c.dx || 0, c.tags && c.tags.length ? c.tags : 0]; while (r.length > 2 && !r[r.length - 1]) r.pop(); return r; });
+  return cards.map(c => { const r = [c.en, c.de, c.ex || "", c.mn || 0, c.dx || 0, c.tags && c.tags.length ? c.tags : 0, c.part || 0]; while (r.length > 2 && !r[r.length - 1]) r.pop(); return r; });
 }
 // Fallen: falsche, aber leicht verwechselbare Antworten für die Auswahl, {en: [...], de: [...]}.
 function dxList(d) {
@@ -297,7 +297,7 @@ async function decodePack(code) {
   let bytes = unb64u(code.slice(1));
   if (code[0] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined }));
+  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined, part: r[6] ? String(r[6]).slice(0, 8) : undefined }));
   const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
     .filter(u => u.rows.length);
   return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, paused: (obj.p || []).map(String) };
@@ -525,6 +525,7 @@ function renderHomeView() {
   if ($("#album")) $("#album").onclick = () => renderAlbum();
   $("#welt").onclick = () => renderWelt();
   if ($("#duelGo")) $("#duelGo").onclick = renderDuelSetup;
+  if ($("#sprintGo")) $("#sprintGo").onclick = renderSprint;
   save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
   if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
@@ -1434,12 +1435,13 @@ function addCards(unit, list) {
   let added = 0;
   list.forEach(r => {
     const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
-    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; } return; }
+    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; if (r.part) old.part = r.part; } return; }
     existing.set(k, null);
     const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
     if (r.mn) c.mn = r.mn;
     if (r.dx) c.dx = r.dx;
     if (r.tags && r.tags.length) c.tags = r.tags;
+    if (r.part) c.part = r.part;
     S.cards.push(c); added++;
   });
   dayLog().added += added;
@@ -2087,35 +2089,85 @@ function monsterSummary() {
   }).join("")}</div>`;
 }
 
-// ---------- Wochen-Duell: Kind und Elternteil lösen am selben Handy nacheinander dieselben 10 Wörter (Auswahl aus vier) ----------
-// Gewertet wird: mehr richtig gewinnt, bei Gleichstand die schnellere Zeit. Die Fächer ändern sich dabei nicht.
-const DUEL_N = 10;
+// ---------- Zeit-Training und Duell: Auswahl aus vier, am selben Handy ----------
+// Duell: zwei spielen nacheinander dieselben 10 Wörter; mehr richtig gewinnt, bei Gleichstand die schnellere Zeit.
+// Zeit-Training: 15 Wörter aus einer Unit bis zu einem Teil (1, 2, A1 … wie im Buch); jeder Fehler kostet 3 Strafsekunden.
+// Jede Auswahl hat ihren eigenen Rekord. Danach kann man jemanden mit denselben Wörtern herausfordern. Die Fächer ändern sich nie.
+const DUEL_N = 10, SPRINT_N = 15, PENALTY = 3000;
 let D = null;
 function duelsWeek(ws = weekStart(dayKey())) { return (S.duels || []).filter(d => d.w === ws); }
-function duelWinner(d) { const [a, b] = d.p; return a.s !== b.s ? (a.s > b.s ? 0 : 1) : a.t !== b.t ? (a.t < b.t ? 0 : 1) : -1; }
+const penTime = p => p.t + ((p.c ?? (p.a || []).length) - p.s) * PENALTY;
+function duelWinner(d) {
+  const [a, b] = d.p; if (!b) return -1;
+  if (d.m === "sprint") { const x = penTime(a), y = penTime(b); return x === y ? -1 : x < y ? 0 : 1; }
+  return a.s !== b.s ? (a.s > b.s ? 0 : 1) : a.t !== b.t ? (a.t < b.t ? 0 : 1) : -1;
+}
 function duelTally(list) {
   const t = {}; list.forEach(d => { const w = duelWinner(d); d.p.forEach((p, i) => { t[p.n] = t[p.n] || 0; if (w === i) t[p.n]++; }); });
   return Object.entries(t).sort((a, b) => b[1] - a[1]);
 }
+const secTxt = t => (t / 1000).toFixed(1).replace(".", ",") + " s";
+function medal(t, n) { const per = t / n / 1000; return per <= 2 ? "🥇" : per <= 3.5 ? "🥈" : per <= 5 ? "🥉" : ""; }
+// Teile einer Unit in Buchreihenfolge: eigene Abschnitte aus dem Buch-Link (card.part), sonst Päckchen zu 15 Wörtern.
+// Jeder Teil umfasst alle Wörter bis einschließlich dieses Teils.
+function unitParts(u) {
+  const cs = cardsL().filter(c => c.unit === u && c.en && c.de), out = [];
+  if (cs.some(c => c.part)) {
+    let last = null;
+    cs.forEach(c => { const p = c.part || last || "1"; last = p; let g = out.find(x => x.name === p); if (!g) out.push(g = { name: p, n: 0 }); g.n++; });
+    let sum = 0; out.forEach(g => { sum += g.n; g.upto = sum; });
+    const pool = i => { const names = out.slice(0, i + 1).map(g => g.name); let l2 = null; return cs.filter(c => { const p = c.part || l2 || "1"; l2 = p; return names.includes(p); }); };
+    return out.map((g, i) => ({ key: `${S.cur}|${u}|bis ${g.name}`, name: g.name, count: g.upto, cards: () => pool(i) })).filter(p => p.count >= 5);
+  }
+  for (let i = 0; i < cs.length; i += SPRINT_N) out.push(i);
+  if (out.length > 1 && cs.length - out[out.length - 1] < 8) out.pop();
+  return out.map((s, i) => { const end = i === out.length - 1 ? cs.length : out[i + 1];
+    return { key: `${S.cur}|${u}|bis ${i + 1}`, name: String(i + 1), count: end, cards: () => cs.slice(0, end) }; }).filter(p => p.count >= 5);
+}
+function makeQuestions(cards) {
+  const all = cardsL().filter(c => c.en && c.de);
+  return cards.map(c => {
+    const opts = choiceOpts(c, c.en, "de-en", all.filter(x => x.id !== c.id));
+    // sehr ähnliche Kästen liefern manchmal zu wenig Fallen: dann mit zufälligen Wörtern auffüllen
+    for (const x of shuffle(all.filter(x => x.id !== c.id))) { if (opts.length >= 4) break; if (!opts.some(o => norm(o) === norm(x.en))) opts.splice(Math.floor(Math.random() * (opts.length + 1)), 0, x.en); }
+    return { id: c.id, de: c.de, sol: c.en, opts };
+  });
+}
+const newPlayer = n => ({ n, s: 0, t: 0, a: [] });
 function duelCard() {
   if (cardsL().length < DUEL_N) return "";
-  const ws = weekStart(dayKey()), week = duelsWeek(ws), tally = duelTally(week), last = (S.duels || []).slice(-1)[0];
-  const prev = duelTally(duelsWeek(shiftDay(ws, -7)));
-  const max = Math.max(1, ...tally.map(t => t[1]));
+  const ws = weekStart(dayKey()), week = duelsWeek(ws), tally = duelTally(week), prev = duelTally(duelsWeek(shiftDay(ws, -7)));
+  const recs = Object.keys(S.records || {}).filter(k => k.startsWith(S.cur + "|")).length, max = Math.max(1, ...tally.map(t => t[1]));
   return `<section class="panel duel">
-    <div class="spread"><h2>Wochen-Duell</h2><span class="muted small">${week.length} ${week.length === 1 ? "Duell" : "Duelle"} diese Woche</span></div>
+    <div class="spread"><h2>Rekorde und Duelle</h2><span class="muted small">${recs ? `${recs} ${recs === 1 ? "Rekord" : "Rekorde"}` : ""}</span></div>
     ${tally.length ? tally.map(([n, w], i) => `<div class="duelrow${n === (S.name || "Ich") ? " me" : ""}"><span class="duelname">${i === 0 && w > 0 && w > (tally[1] || [0, 0])[1] ? "👑 " : ""}${esc(n)}</span>
-      <span class="bar"><i style="width:${Math.round(w / max * 100)}%"></i></span><b>${w}</b></div>`).join("")
-      : `<p class="muted small">Gib das Handy einem Elternteil: Ihr löst nacheinander dieselben ${DUEL_N} Wörter. Wer mehr richtig hat, gewinnt. Bei Gleichstand gewinnt, wer schneller war.</p>`}
+      <span class="bar"><i style="width:${Math.round(w / max * 100)}%"></i></span><b>${w}</b></div>`).join("") + `<p class="muted small">Siege diese Woche</p>`
+      : `<p class="muted small">Üb eine Unit bis zu einem Teil auf Zeit und jag deinen Rekord. Wenn du richtig schnell warst, fordere jemanden heraus! Oder spielt ein Duell: beide bekommen dieselben ${DUEL_N} Wörter.</p>`}
     ${prev.length && prev[0][1] > (prev[1] || [0, 0])[1] ? `<p class="small">🏆 Letzte Woche hat ${esc(prev[0][0])} gewonnen (${prev.map(([n, w]) => `${esc(n)} ${w}`).join(" : ")}).</p>` : ""}
-    ${last && last.w === ws ? `<p class="muted small">Letztes Duell: ${last.p.map(p => `${esc(p.n)} ${p.s}/${DUEL_N}`).join(" gegen ")}</p>` : ""}
-    <button class="btn" id="duelGo">Duell starten</button>
+    <div class="row"><button class="btn" id="sprintGo">⏱️ Auf Zeit üben</button><button class="btn ghost" id="duelGo">Duell starten</button></div>
   </section>`;
+}
+function renderSprint() {
+  const units = [...new Set(cardsL().map(c => c.unit))], R2 = S.records || {};
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Auf Zeit üben</h2></div>
+    <p class="muted small">Wähl, bis zu welchem Teil ihr seid. Du bekommst ${SPRINT_N} Wörter daraus und tippst so schnell wie möglich die richtige Antwort an. Jeder Fehler kostet ${PENALTY / 1000} Strafsekunden.</p>
+    ${units.map(u => { const parts = unitParts(u); if (!parts.length) return "";
+      return `<section class="panel"><h3 style="overflow-wrap:anywhere">${esc(u)}</h3><p class="muted small">bis Teil …</p><div class="sprintparts">${parts.map((p, i) => { const r = R2[p.key];
+        return `<button class="sprintpart${r ? " done" : ""}" data-u="${esc(u)}" data-p="${i}"><b>${esc(p.name)}</b><span class="small muted">${p.count} Wörter</span>
+          <span class="rec">${r ? `${medal(r.t, r.n)} ${secTxt(r.t)}` : "–"}</span></button>`; }).join("")}</div></section>`; }).join("")}`));
+  $("#back").onclick = renderHome;
+  $$("[data-u]").forEach(b => b.onclick = () => {
+    const part = unitParts(b.dataset.u)[+b.dataset.p];
+    D = { m: "sprint", key: part.key, label: `${b.dataset.u} · bis Teil ${part.name}`, p: [newPlayer(S.name || "Ich")], cur: 0, i: 0, q: makeQuestions(shuffle(part.cards()).slice(0, SPRINT_N)) };
+    duelHandover();
+  });
+  window.scrollTo(0, 0);
 }
 function renderDuelSetup() {
   const me = S.name || "Ich", other = S.duelOther || "Papa";
   app.replaceChildren(h(`
-    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Wochen-Duell</h2></div>
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Duell</h2></div>
     <section class="hero duelhero">
       <div class="duelvs"><span class="dv a">${esc(me)}</span><b>gegen</b><input class="dv b" id="duelOther" value="${esc(other)}" maxlength="16" aria-label="Name des Gegners"></div>
       <p class="muted small">Beide bekommen dieselben ${DUEL_N} Wörter aus deinem Kasten und tippen jeweils die richtige von vier Antworten an. Erst spielst du, dann gibst du das Handy weiter. Nicht spicken!</p>
@@ -2124,69 +2176,106 @@ function renderDuelSetup() {
   $("#back").onclick = renderHome;
   $("#duelStart").onclick = () => {
     const o = $("#duelOther").value.trim() || "Papa"; S.duelOther = o; save();
-    const all = cardsL().filter(c => c.en && c.de), seen = shuffle(all.filter(c => c.level > 0));
-    const pick = [...seen, ...shuffle(all.filter(c => !c.level))].slice(0, DUEL_N);
-    D = { p: [{ n: me, s: 0, t: 0, a: [] }, { n: o === me ? o + " 2" : o, s: 0, t: 0, a: [] }], cur: 0, i: 0,
-      q: pick.map(c => {
-        const opts = choiceOpts(c, c.en, "de-en", all.filter(x => x.id !== c.id));
-        // sehr ähnliche Kästen liefern manchmal zu wenig Fallen: dann mit zufälligen Wörtern auffüllen
-        for (const x of shuffle(all.filter(x => x.id !== c.id))) { if (opts.length >= 4) break; if (!opts.some(o => norm(o) === norm(x.en))) opts.splice(Math.floor(Math.random() * (opts.length + 1)), 0, x.en); }
-        return { id: c.id, de: c.de, sol: c.en, opts };
-      }) };
+    const all = cardsL().filter(c => c.en && c.de);
+    const pick = [...shuffle(all.filter(c => c.level > 0)), ...shuffle(all.filter(c => !c.level))].slice(0, DUEL_N);
+    D = { m: "duel", p: [newPlayer(me), newPlayer(o === me ? o + " 2" : o)], cur: 0, i: 0, q: makeQuestions(pick) };
     duelHandover();
   };
   window.scrollTo(0, 0);
 }
+// Herausforderung nach dem Zeit-Training: jemand anderes spielt dieselben Wörter in derselben Reihenfolge
+function renderChallenge() {
+  const other = S.duelOther || "Papa", me = D.p[0];
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Herausforderung</h2></div>
+    <section class="hero duelhero">
+      <p class="eyebrow">${esc(D.label)}</p>
+      <h1 style="text-align:center">${esc(me.n)} hat ${secTxt(penTime(me))} vorgelegt</h1>
+      <div class="duelvs"><b>Wer traut sich?</b><input class="dv b" id="duelOther" value="${esc(other)}" maxlength="16" aria-label="Name des Gegners"></div>
+      <p class="muted small">Dieselben ${D.q.length} Wörter in derselben Reihenfolge. Jeder Fehler kostet ${PENALTY / 1000} Strafsekunden. Wer insgesamt schneller ist, gewinnt.</p>
+      <button class="btn big wide" id="chGo">Handy weitergeben</button>
+    </section>`));
+  $("#back").onclick = sprintResult;
+  $("#chGo").onclick = () => { const o = $("#duelOther").value.trim() || "Papa"; S.duelOther = o; save(); D.p = [D.p[0], newPlayer(o === me.n ? o + " 2" : o)]; D.cur = 1; duelHandover(); };
+  window.scrollTo(0, 0);
+}
 function duelHandover() {
-  const p = D.p[D.cur];
+  const p = D.p[D.cur], sprint = D.m === "sprint", rec = sprint && S.records && S.records[D.key];
   app.replaceChildren(h(`<div class="done duelhand">
-    <p class="eyebrow">${D.cur ? "Handy weitergeben" : "Spieler 1"}</p>
-    <div class="duelbig" aria-hidden="true">${D.cur ? "🤝" : "🎯"}</div>
+    <p class="eyebrow">${D.cur ? "Handy weitergeben" : sprint ? esc(D.label) : "Spieler 1"}</p>
+    <div class="duelbig" aria-hidden="true">${D.cur ? "🤝" : sprint ? "⏱️" : "🎯"}</div>
     <h1>${esc(p.n)} ist dran!</h1>
-    <p class="muted">${D.cur ? `${esc(D.p[0].n)} ist fertig. Das Ergebnis bleibt geheim, bis ${esc(p.n)} auch gespielt hat.` : `${DUEL_N} Wörter, so schnell und richtig wie möglich.`}</p>
+    <p class="muted">${D.cur ? (sprint ? `Die Zeit, die du schlagen musst: ${secTxt(penTime(D.p[0]))}.` : `${esc(D.p[0].n)} ist fertig. Das Ergebnis bleibt geheim, bis ${esc(p.n)} auch gespielt hat.`)
+      : sprint ? `${D.q.length} Wörter. Die Uhr läuft ab dem ersten Wort.${rec ? ` Dein Rekord: ${secTxt(rec.t)}.` : ""}` : `${DUEL_N} Wörter, so schnell und richtig wie möglich.`}</p>
     <button class="btn big" id="dReady">Bereit</button></div>`));
   sound("tap");
   $("#dReady").onclick = () => { D.i = 0; duelQuestion(); };
   window.scrollTo(0, 0);
 }
 function duelQuestion() {
-  const p = D.p[D.cur], q = D.q[D.i];
+  const p = D.p[D.cur], q = D.q[D.i], N = D.q.length, sprint = D.m === "sprint";
   app.replaceChildren(h(`
-    <div class="progress"><button class="iconbtn" id="dQuit" aria-label="Duell abbrechen">✕</button>
-      <div class="bar" style="flex:1"><i style="width:${Math.round(D.i / DUEL_N * 100)}%"></i></div><b class="small">${esc(p.n)} · ${D.i + 1}/${DUEL_N}</b></div>
-    <div class="icard"><span class="eyebrow">Deutsch → ${esc(L().name)}</span><div class="q">${esc(q.de)}</div>
+    <div class="progress"><button class="iconbtn" id="dQuit" aria-label="Abbrechen">✕</button>
+      <div class="bar" style="flex:1"><i style="width:${Math.round(D.i / N * 100)}%"></i></div><b class="small">${esc(p.n)} · ${D.i + 1}/${N}</b></div>
+    <div class="icard"><div class="spread"><span class="eyebrow">Deutsch → ${esc(L().name)}</span>${sprint ? `<b class="dclock" id="dClock">${secTxt(penTime(p))}</b>` : ""}</div>
+      <div class="q">${esc(q.de)}</div>
       <div class="choices">${q.opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div></div>`));
-  $("#dQuit").onclick = () => { D = null; renderHome(); };
-  const t0 = performance.now();
+  const t0 = performance.now(), base = penTime(p);
+  const tick2 = sprint ? setInterval(() => { const c = $("#dClock"); if (c) c.textContent = secTxt(base + performance.now() - t0); }, 100) : 0;
+  $("#dQuit").onclick = () => { clearInterval(tick2); D = null; renderHome(); };
   $$(".choice").forEach(b => b.onclick = () => {
+    clearInterval(tick2);
     const ok = q.opts[+b.dataset.i] === q.sol;
     p.t += performance.now() - t0; p.a.push(ok); if (ok) p.s++;
     $$(".choice").forEach(x => { x.disabled = true; if (q.opts[+x.dataset.i] === q.sol) x.classList.add("right"); });
-    if (!ok) b.classList.add("wrong");
+    if (!ok) { b.classList.add("wrong"); const c = $("#dClock"); if (c) { c.textContent = secTxt(penTime(p)); c.classList.add("pen"); } }
     sound(ok ? "good" : "bad");
-    setTimeout(() => { if (++D.i < DUEL_N) duelQuestion(); else if (D.cur === 0) { D.cur = 1; duelHandover(); } else duelResult(); }, ok ? 450 : 1100);
+    setTimeout(() => {
+      if (++D.i < N) return duelQuestion();
+      if (D.cur === 0) return sprint && !D.rev ? sprintResult(true) : (D.cur = 1, duelHandover());
+      duelResult();
+    }, ok ? 350 : 1100);
   });
   window.scrollTo(0, 0);
 }
+function sprintResult(fresh) {
+  const p = D.p[0], t = Math.round(penTime(p)), n = p.a.length, R2 = S.records = S.records || {};
+  if (fresh) { D.old = R2[D.key]; D.best = !D.old || t < D.old.t; if (D.best) R2[D.key] = { t, s: p.s, n, d: dayKey() }; save(); }
+  const old = D.old, best = D.best;
+  app.replaceChildren(h(`<div class="done sprintres">
+    <p class="eyebrow">${esc(D.label)}</p>
+    ${best ? `<div class="newrec">${old ? "Neuer Rekord!" : "Erster Rekord!"}</div>` : ""}
+    <div class="score">${secTxt(t)}</div>
+    <p>${p.s} von ${n} richtig${n - p.s ? ` · ${n - p.s} × ${PENALTY / 1000} Strafsekunden` : ", ohne Strafsekunden"} ${medal(t, n)}</p>
+    ${old ? `<p class="muted small">${best ? `Alter Rekord: ${secTxt(old.t)}. Du warst ${secTxt(old.t - t)} schneller!` : `Dein Rekord: ${secTxt(old.t)}. Noch ${secTxt(t - old.t)} schneller, dann knackst du ihn.`}</p>` : ""}
+    <div class="duelwords">${D.q.map((q, k) => `<div class="dw"><span>${esc(q.de)} = <b>${esc(q.sol)}</b></span><span>${p.a[k] ? "✅" : "❌"}</span></div>`).join("")}</div>
+    <div class="row" style="justify-content:center"><button class="btn${best ? "" : " ghost"}" id="chal">🤺 Jemanden herausfordern</button><button class="btn${best ? " ghost" : ""}" id="sAgain">Nochmal</button><button class="btn ghost" id="sHome">Fertig</button></div></div>`));
+  if (fresh && best) { confetti(); sound("up"); }
+  $("#chal").onclick = renderChallenge;
+  $("#sAgain").onclick = () => { const part = (S.cards.find(c => c.id === D.q[0].id) || {}).unit, pp = unitParts(part).find(x => x.key === D.key);
+    D = { m: "sprint", key: D.key, label: D.label, p: [newPlayer(p.n)], cur: 0, i: 0, q: makeQuestions(shuffle(pp ? pp.cards() : D.q.map(q => S.cards.find(c => c.id === q.id)).filter(Boolean)).slice(0, SPRINT_N)) }; duelHandover(); };
+  $("#sHome").onclick = () => { D = null; renderSprint(); };
+  window.scrollTo(0, 0);
+}
 function duelResult() {
-  const rec = { w: weekStart(dayKey()), day: dayKey(), p: D.p.map(({ n, s, t }) => ({ n, s, t: Math.round(t) })) };
+  const sprint = D.m === "sprint";
+  const rec = { m: D.m, w: weekStart(dayKey()), day: dayKey(), p: D.p.map(x => ({ n: x.n, s: x.s, t: Math.round(x.t), c: x.a.length })) };
   S.duels = [...(S.duels || []), rec].slice(-200); save();
-  const win = duelWinner(rec), sec = t => (t / 1000).toFixed(1).replace(".", ",") + " s";
+  const win = duelWinner(rec), shown = p => sprint ? secTxt(penTime(p)) : `${p.s}/${p.a.length}`;
   app.replaceChildren(h(`<div class="done duelres">
-    <p class="eyebrow">Wochen-Duell</p>
+    <p class="eyebrow">${sprint ? "Herausforderung · " + esc(D.label) : "Duell"}</p>
     <h1>${win < 0 ? "Unentschieden!" : `${esc(D.p[win].n)} gewinnt!`}</h1>
-    <div class="duelpods">${D.p.map((p, i) => `<div class="pod${i === win ? " win" : ""}" style="--h:${30 + p.s * 7}px"><span class="crown" aria-hidden="true">${i === win ? "👑" : ""}</span>
-      <b>${esc(p.n)}</b><span class="podbar"><span class="podn">${p.s}/${DUEL_N}</span></span><span class="small muted">${sec(p.t)}</span></div>`).join("")}</div>
-    ${win >= 0 && D.p[0].s === D.p[1].s ? `<p class="muted small">Gleich viele richtig, ${esc(D.p[win].n)} war schneller.</p>` : ""}
+    <div class="duelpods">${D.p.map((p, i) => `<div class="pod${i === win ? " win" : ""}" style="--h:${30 + p.s * (sprint ? 5 : 7)}px"><span class="crown" aria-hidden="true">${i === win ? "👑" : ""}</span>
+      <b>${esc(p.n)}</b><span class="podbar"><span class="podn">${shown(p)}</span></span><span class="small muted">${sprint ? `${p.s}/${p.a.length} richtig` : secTxt(p.t)}</span></div>`).join("")}</div>
+    ${!sprint && win >= 0 && D.p[0].s === D.p[1].s ? `<p class="muted small">Gleich viele richtig, ${esc(D.p[win].n)} war schneller.</p>` : ""}
     <div class="duelwords">${D.q.map((q, k) => `<div class="dw"><span>${esc(q.de)} = <b>${esc(q.sol)}</b></span><span>${D.p.map(p => p.a[k] ? "✅" : "❌").join(" ")}</span></div>`).join("")}</div>
     <p class="muted small">Diese Woche: ${duelTally(duelsWeek()).map(([n, w]) => `${esc(n)} ${w} ${w === 1 ? "Sieg" : "Siege"}`).join(", ")}</p>
     <div class="row" style="justify-content:center"><button class="btn" id="dAgain">Revanche</button><button class="btn ghost" id="dHome">Fertig</button></div></div>`));
   if (win >= 0) { confetti(); sound("up"); }
-  $("#dAgain").onclick = () => { D = null; renderDuelSetup(); };
+  $("#dAgain").onclick = () => { if (sprint) { D.p = D.p.map(x => newPlayer(x.n)); D.cur = 0; D.rev = true; duelHandover(); } else { D = null; renderDuelSetup(); } };
   $("#dHome").onclick = () => { D = null; renderHome(); };
   window.scrollTo(0, 0);
 }
-
 // ---------- Camden-Welt: Viertel und Schatz (die 3D-Seite liegt in welt/welt.js) ----------
 function weltUnits() {
   const g = {};
