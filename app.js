@@ -1926,13 +1926,26 @@ function drawTask(task, area, done) {
   if (type === "gap" && task[4]) return drawTask(["pick", q, [task[2].split("|")[0], ...task[4]], task[3]], area, done);
   if (type === "pick") {
     const right = task[2][0], opts = shuffle([...task[2]]);
-    area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}">${esc(o)}</button>`).join("")}</div>`));
+    // Antippen setzt die Wahl nur in die Lücke; bewertet wird erst mit „Prüfen“.
+    area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}" aria-pressed="false">${esc(o)}</button>`).join("")}</div>
+      <button class="btn wide" id="chk" style="margin-top:12px" disabled>Prüfen</button>`));
+    const gap = area.closest(".icard") && area.closest(".icard").querySelector(".gapline");
+    let sel = null;
     $$(".choice", area).forEach(b => b.onclick = () => {
-      const ok = opts[+b.dataset.k] === right;
-      $$(".choice", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
-      if (!ok) b.classList.add("wrong");
-      done(ok, q.includes("___") ? q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", right) : right, task[3]);
+      sel = b; sound("tap");
+      $$(".choice", area).forEach(x => { x.classList.toggle("sel", x === b); x.setAttribute("aria-pressed", x === b); });
+      if (gap) { gap.textContent = opts[+b.dataset.k]; gap.classList.add("filled"); }
+      $("#chk", area).disabled = false;
     });
+    $("#chk", area).onclick = () => {
+      if (!sel) return;
+      const ok = opts[+sel.dataset.k] === right;
+      $$(".choice, #chk", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
+      sel.classList.remove("sel"); if (!ok) sel.classList.add("wrong");
+      $("#chk", area).hidden = true;
+      if (gap) gap.classList.add(ok ? "ok" : "bad");
+      done(ok, q.includes("___") ? q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", right) : right, task[3]);
+    };
   } else if (type === "gap") {
     const sols = task[2].split("|");
     area.replaceChildren(h(`<form id="f" autocomplete="off">

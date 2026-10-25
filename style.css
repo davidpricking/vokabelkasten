@@ -539,3 +539,7 @@ body.weltopen .confetti{z-index:60}
 .pw{border:1.5px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 10px;font:inherit;font-size:.9rem}
 .pw.on{border-color:var(--good);color:var(--ink);background:var(--good-bg)}
 .pwpart{font-weight:700;font-size:.8rem;color:var(--accent,#1F4E5F);margin-left:4px}
+.choice.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.gapline.filled{min-width:0;padding:0 4px;color:var(--accent);font-family:var(--hand)}
+.gapline.ok{color:var(--good);border-color:var(--good)}
+.gapline.bad{color:var(--bad);border-color:var(--bad);text-decoration:line-through}
