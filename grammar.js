@@ -761,17 +761,17 @@ window.GRAMMAR = {
     will: [{ a: "It rains.", b: "It will rain tomorrow.", hint: "Vorhersage: **will** + Verb ohne -s." }],
     comparison: [{ a: "Tom is tall.", b: "Tom is taller than Ben.", hint: "Vergleich: **-er** + **than**." }],
     if12: [
-      { a: "If it rains, I will stay home.", b: "If it rained, I would stay home.", hint: "Typ 1 wird zu Typ 2: **eine Zeit zurück**, aus will wird **would**." },
+      { a: "If it rains, I will stay at home.", b: "If it rained, I would stay at home.", hint: "Typ 1 wird zu Typ 2: **eine Zeit zurück**, aus will wird **would**." },
       { a: "If I am rich,", b: "If I were rich,", hint: "Unwirklich? Dann **If I were**, auch bei I und he/she/it." }
     ],
-    if3: [{ a: "If it rained, I would stay home.", b: "If it had rained, I would have stayed home.", hint: "Typ 3 geht noch eine Zeit zurück: **had** + 3. Form, **would have** + 3. Form." }]
+    if3: [{ a: "If it rained, I would stay at home.", b: "If it had rained, I would have stayed at home.", hint: "Typ 3 geht noch eine Zeit zurück: **had** + 3. Form, **would have** + 3. Form." }]
   };
   const topics = window.GRAMMAR.Englisch.topics;
   topics.forEach(t => { if (A[t.id]) t.anim = A[t.id]; });
   const put = (id, extra) => Object.assign(topics.find(t => t.id === id), extra);
   put("if12", {
     explain: [
-      "**Typ 1 – wirklich möglich:** If + simple present, dann **will** + Verb. If it rains, I will stay home.",
+      "**Typ 1 – wirklich möglich:** If + simple present, dann **will** + Verb. If it rains, I will stay at home.",
       "**Typ 2 – unwahrscheinlich oder ausgedacht:** If + simple past, dann **would** + Verb. If I had a million euros, I would buy an island.",
       "Merksatz: **Im if-Teil steht nie will oder would.**",
       "Bei Typ 2 sagt man oft **If I were** statt If I was, besonders in „If I were you, …“ (An deiner Stelle …)."
