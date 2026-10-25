@@ -47,11 +47,11 @@ window.GRAMMAR = {
       "worst": "am schlechtesten", "children": "Kinder", "child": "Kind", "women": "Frauen", "feet": "Füße", "baby": "Baby",
       "elephant": "Elefant", "germany": "Deutschland", "team": "Mannschaft", "ball": "Ball", "colour": "Farbe", "touch": "berühren",
       "toilet": "Toilette", "basketball": "Basketball", "ill": "krank", "dishes": "Geschirr", "spider": "Spinne", "milk": "Milch",
-      "meat": "Fleisch", "breakfast": "Frühstück", "film": "Film", "bark": "bellen", "song": "Lied", "cookie": "Keks",
+      "meat": "Fleisch", "breakfast": "Frühstück", "film": "Film", "bark": "bellen", "song": "Lied", "biscuit": "Keks",
       "fridge": "Kühlschrank", "egg": "Ei", "bread": "Brot", "pizza": "Pizza", "tea": "Tee", "vet": "Tierarzt, Tierärztin",
       "rabbit": "Kaninchen", "pair": "Paar", "feed": "füttern", "cinema": "Kino", "key": "Schlüssel", "fox": "Fuchs",
       "catch": "fangen", "sugar": "Zucker", "advice": "Rat, Ratschlag", "furniture": "Möbel", "snow": "schneien, Schnee", "anyone": "irgendjemand",
-      "mountain": "Berg", "high": "hoch", "driver": "Fahrer", "slow": "langsam", "fast": "schnell", "happily": "fröhlich",
+      "mountain": "Berg", "high": "hoch", "driver": "Fahrer", "slow": "langsam", "slowly": "langsam (Adverb)", "fast": "schnell", "happily": "fröhlich",
       "beautifully": "wunderschön", "quietly": "leise", "carefully": "vorsichtig", "hard": "hart, fleißig", "hardly": "kaum", "cancel": "absagen",
       "apologise": "sich entschuldigen", "novel": "Roman", "heat": "erhitzen, Hitze", "melt": "schmelzen", "pass": "bestehen", "study": "lernen", "tall": "groß (Körper)",
       "travel": "reisen", "lottery": "Lotterie", "earlier": "früher", "hurt": "weh tun", "match": "Spiel", "parent": "Elternteil",
@@ -104,8 +104,8 @@ window.GRAMMAR = {
           ["pick", "___ banana", ["a", "an"], "banana fängt mit einem Konsonanten-Laut an."],
           ["pick", "___ hour", ["an", "a"], "Das h in hour hört man nicht, man spricht „auer“."],
           ["pick", "___ uniform", ["a", "an"], "uniform spricht man „junifórm“, also mit Konsonanten-Laut."],
-          ["pick", "My mum is ___ doctor.", ["a", "the", "–"], "Bei Berufen steht im Englischen a oder an."],
-          ["pick", "Can you open ___ window, please? It's hot in here.", ["the", "a", "an"], "Es ist klar, welches Fenster gemeint ist."],
+          ["pick", "My mum is ___ doctor.", ["a", "an", "–"], "Bei Berufen steht im Englischen a oder an."],
+          ["pick", "I've got a cat and a dog. ___ cat is black.", ["The", "A", "An"], "Die Katze kennt man schon, also the."],
           ["pick", "I've got ___ idea!", ["an", "a"], "idea fängt mit einem Vokal-Laut an."],
           ["pick", "There's ___ elephant in the zoo.", ["an", "a"], "elephant fängt mit einem Vokal-Laut an."]
         ] },
@@ -209,7 +209,7 @@ window.GRAMMAR = {
         ex: [["**Close** the door, please.", "Mach bitte die Tür zu."], ["**Don't** touch that!", "Fass das nicht an!"], ["**Let's** play a game!", "Lass uns ein Spiel spielen!"]],
         tasks: [
           ["pick", "___ the window, please.", ["Open", "Opens", "You open"], "Aufforderungen beginnen mit der Grundform."],
-          ["pick", "___ talk in the library!", ["Don't", "Not", "No"], "Verneint: Don't + Verb."],
+          ["pick", "___ talk in the library!", ["Don't", "Not", "Doesn't"], "Verneint: Don't + Verb."],
           ["gap", "___ late! (nicht + sein)", "Don't be|Do not be", "", ["Not be", "Don't"]],
           ["order", "Please close the door."],
           ["pick", "___ play a game!", ["Let's", "Lets us", "Let"], "Vorschläge mit Let's."],
@@ -282,7 +282,7 @@ window.GRAMMAR = {
         ex: [["I **play** football every Friday.", "Ich spiele jeden Freitag Fußball."], ["My sister **watches** TV after school.", "Meine Schwester sieht nach der Schule fern."], ["Tom **has** a dog.", "Tom hat einen Hund."]],
         tasks: [
           ["gap", "She ___ to school by bus. (go)", "goes", "she → -s, und nach o kommt -es.", ["go", "gos"]],
-          ["gap", "My dad ___ the dishes every evening. (wash)", "washes", "Nach sh kommt -es.", ["washs", "wash"]],
+          ["gap", "My dad ___ the car every Saturday. (wash)", "washes", "Nach sh kommt -es.", ["washs", "wash"]],
           ["gap", "We ___ English on Mondays. (have)", "have", "Bei we bleibt das Verb ohne -s.", ["has", "haves"]],
           ["gap", "Emma ___ a cat. (have)", "has", "Emma = she, und have wird zu has.", ["have", "haves"]],
           ["gap", "The baby ___ a lot. (cry)", "cries", "Konsonant + y wird zu -ies.", ["crys", "cry"]],
@@ -387,9 +387,9 @@ window.GRAMMAR = {
           "Bei Angeboten und Bitten nimmst du **some**, auch in Fragen: Would you like **some** tea? Can I have **some** water?",
           "Genauso: something/anything, somebody/anybody."
         ],
-        ex: [["There are **some** cookies.", "Da sind ein paar Kekse."], ["Is there **any** milk?", "Gibt es Milch?"], ["Would you like **some** juice?", "Möchtest du etwas Saft?"]],
+        ex: [["There are **some** biscuits.", "Da sind ein paar Kekse."], ["Is there **any** milk?", "Gibt es Milch?"], ["Would you like **some** juice?", "Möchtest du etwas Saft?"]],
         tasks: [
-          ["pick", "There are ___ cookies on the table.", ["some", "any"], "Bejahter Satz: some."],
+          ["pick", "There are ___ biscuits on the table.", ["some", "any"], "Bejahter Satz: some."],
           ["pick", "Is there ___ milk in the fridge?", ["any", "some"], "Frage: any."],
           ["pick", "I haven't got ___ money.", ["any", "some"], "Verneinter Satz: any."],
           ["pick", "Would you like ___ juice?", ["some", "any"], "Angebot: some, auch in der Frage."],
@@ -410,7 +410,7 @@ window.GRAMMAR = {
           ["pick", "I like pizza ___ chips.", ["and", "but", "so"]],
           ["pick", "I'm tired, ___ I go to bed.", ["so", "because", "but"], "Die Folge: so."],
           ["pick", "Tom is sad ___ his cat is ill.", ["because", "so", "or"], "Der Grund: because."],
-          ["pick", "Do you want tea ___ juice?", ["or", "and", "but"]],
+          ["pick", "Do you want tea ___ juice?", ["or", "but", "because"], "oder = or."],
           ["pick", "Emma likes maths, ___ she doesn't like art.", ["but", "so", "or"]],
           ["gap", "We stay at home ___ it's raining. (weil)", "because", "", ["but", "so"]],
           ["order", "I'm happy because it's my birthday."],
@@ -609,10 +609,10 @@ window.GRAMMAR = {
           ["gap", "This is the ___ day of my life! (happy)", "happiest", "y wird zu i: happiest.", ["happyest", "most happy"]],
           ["gap", "Maths is ___ than art. (difficult)", "more difficult", "Lange Adjektive: more.", ["difficulter", "most difficult"]],
           ["gap", "My cake is ___ than yours. (good)", "better", "good – better – best.", ["gooder", "best"]],
-          ["gap", "This is the ___ film I know. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
-          ["pick", "Lisa is older ___ her mum.", ["than", "as", "then"], "als = than."],
+          ["gap", "This is the ___ film I've ever seen. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
+          ["pick", "Lisa is older ___ her brother.", ["than", "as", "then"], "als = than."],
           ["pick", "My bike is as fast ___ yours.", ["as", "than"], "as … as."],
-          ["gap", "This is the ___ tower in London. (high)", "highest", "", ["higher", "most high"]]
+          ["gap", "This is the ___ mountain in England. (high)", "highest", "", ["higher", "most high"]]
         ] },
       { id: "adverbsmanner", band: "6", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
         explain: [
@@ -752,7 +752,7 @@ window.GRAMMAR = {
     adverbsfreq: [{ a: "She plays tennis.", b: "She often plays tennis.", hint: "Häufigkeitswörter stehen **vor** dem Verb." }],
     questions: [{ a: "He plays football.", b: "Does he play football?", hint: "**Does** holt sich das s vom Verb." }],
     presentprog: [{ a: "I read a book.", b: "I am reading a book now.", hint: "Gerade jetzt: **am/is/are** + Verb mit **-ing**." }],
-    someany: [{ a: "I have some apples.", b: "I don't have any apples.", hint: "Bei Verneinung wird **some** zu **any**." }],
+    someany: [{ a: "I've got some apples.", b: "I haven't got any apples.", hint: "Bei Verneinung wird **some** zu **any**." }],
     objectpronouns: [{ a: "I like Tom.", b: "I like him.", hint: "Nach dem Verb: **me, you, him, her, it, us, them**." }],
     wordorder: [{ a: "On Saturday I play football.", b: "I play football on Saturday.", hint: "**S – V – O**: Subjekt, Verb, Objekt. Ort und Zeit kommen ans Ende." }],
     simplepast: [{ a: "I play football.", b: "Yesterday I played football.", hint: "Vorbei? Dann kommt **-ed** dran." }],
@@ -800,7 +800,7 @@ window.GRAMMAR = {
       ["pick", "If they had trained more, they ___ the match.", ["would have won", "would win", "had won"], "Typ 3 im Hauptsatz: would have + 3. Form."],
       ["pick", "If I had gone to bed earlier, I ___ so tired now.", ["wouldn't be", "wouldn't have been", "won't be"], "Gemischt: früher (Typ 3) mit Folge jetzt (now), also would be."],
       ["gap", "She would have called if she ___ your number. (have)", "had had", "had + 3. Form von have = had had.", ["would have", "has had"]],
-      ["order", "If you had asked me I would have helped you.", "Typ 3: had asked, would have helped."]
+      ["order", "If you had asked me, I would have helped you.", "Typ 3: had asked, would have helped."]
     ]
   });
 })();
