@@ -398,6 +398,9 @@ button.streak{color:var(--ink);cursor:pointer}
 .gsoon summary{cursor:pointer}
 .gsoon ul{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:4px;font-size:.92rem}
 .gexplain{display:flex;flex-direction:column;gap:10px}
+.gvgl{display:flex;flex-direction:column;gap:8px;background:rgba(127,127,127,.08);border-left:4px solid var(--marker);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.gvgl p{margin:0}.gvgl mark{background:var(--marker);color:#2A2200;border-radius:3px;padding:0 2px}
+.gwrong{color:#C0392B;text-decoration-thickness:2px}
 .gexplain mark,.gex mark{background:var(--marker);color:#2A2200;border-radius:3px;padding:0 2px}
 .gexamples{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:12px;margin-top:4px}
 .gex{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700}

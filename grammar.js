@@ -804,3 +804,176 @@ window.GRAMMAR = {
     ]
   });
 })();
+
+// Vergleich mit dem Deutschen: steht vor der Erklärung. Wie sagen wir es? Wo ist Englisch anders? Typischer Fehler.
+(function () {
+  const V = {
+    plural: [
+      "Im Deutschen gibt es viele Arten, die Mehrzahl zu bilden: Buch → Büch**er**, Katze → Katze**n**, Tisch → Tisch**e**, Auto → Auto**s**.",
+      "Im Englischen ist es viel einfacher: Fast immer kommt nur **-s** dazu. book → book**s**, cat → cat**s**.",
+      "Aufpassen bei Wörtern, die schon unregelmäßig sind: Wie bei uns Mann → **Männer** gibt es man → **men**. Falsch ist ~~mans~~."
+    ],
+    articles: [
+      "Im Deutschen gibt es drei Artikel für „der, die, das“ und viele Formen (den, dem, des …). Im Englischen gibt es nur **the**, für alles.",
+      "Für „ein, eine“ gibt es nur **a**, und **an** vor einem Vokal-Laut: a dog, an apple. Das hängt vom Klang ab, nicht vom Wort.",
+      "Anders als im Deutschen steht bei Berufen **a**: Meine Mutter ist Ärztin. → My mum is **a** doctor. Falsch ist ~~My mum is doctor.~~"
+    ],
+    tobe: [
+      "Das Verb „sein“ heißt **to be**. Wie bei uns (ich bin, du bist, er ist) ändert es sich je nach Person: I **am**, you **are**, he/she/it **is**.",
+      "Englisch hat nur **you** für „du“ und „ihr“ und auch für „Sie“. Es gibt keinen Unterschied zwischen du und Sie.",
+      "**it** benutzt man für Dinge und Tiere, auch wenn es im Deutschen „der“ oder „die“ heißt: Der Tisch ist groß. → **It** is big. Falsch ist ~~He is big.~~"
+    ],
+    bequestions: [
+      "Wie im Deutschen tauschen bei der Frage Verb und Person die Plätze: Du bist zwölf. → **Bist du** zwölf? / You are twelve. → **Are you** twelve?",
+      "Das funktioniert im Englischen nur mit am, is, are (und can, have got). Bei anderen Verben braucht man do/does, das kommt später.",
+      "Fragewörter stehen wie bei uns vorne: **Wo** bist du? → **Where** are you?"
+    ],
+    thereis: [
+      "„Es gibt“ heißt nicht ~~It gives~~! Englisch sagt **there is** (eins) und **there are** (mehrere).",
+      "Im Deutschen ist „es gibt“ immer gleich: Es gibt einen Hund. Es gibt zwei Hunde. Im Englischen ändert sich das Verb: There **is** a dog. There **are** two dogs.",
+      "Frage: Gibt es …? → **Is there** …? / **Are there** …?"
+    ],
+    prepositions: [
+      "Viele Ortswörter passen eins zu eins: in → **in**, auf → **on**, unter → **under**, hinter → **behind**, neben → **next to**.",
+      "Aber: „zwischen“ heißt **between**, „vor“ heißt **in front of**, und „gegenüber“ heißt **opposite**.",
+      "Falsche Freunde: „bei“ ist nicht ~~by~~, sondern oft **at**: bei Oma → **at** Grandma's. Und **at** home heißt zu Hause."
+    ],
+    possessives: [
+      "„sein“ und „ihr“ heißen wie im Deutschen je nach Besitzer verschieden: Tom und **sein** Hund → Tom and **his** dog, Lisa und **ihr** Hund → Lisa and **her** dog.",
+      "Aber das Englische ändert sich **nicht** nach dem Ding, das man besitzt: mein Hund, meine Katze, meine Bücher → **my** dog, **my** cat, **my** books.",
+      "Achtung bei „ihr“: ihr (Lisas) → **her**, ihr (von mehreren) → **their**, Ihr (höflich) → **your**."
+    ],
+    commands: [
+      "Bei uns sagt man „Mach die Tür zu!“ oder „Macht die Tür zu!“. Im Englischen gibt es nur eine Form: **Close** the door! Das Verb steht ohne Person vorne.",
+      "Verbot: Im Deutschen „Fass das nicht an!“, das „nicht“ steht hinten. Im Englischen steht **Don't** vorne: **Don't** touch it! Falsch ist ~~Touch it not!~~",
+      "Höflich wird es mit **please**: Please sit down. (Setz dich bitte.)"
+    ],
+    can: [
+      "**can** heißt „können“ und manchmal auch „dürfen“: Can I go out? (Darf ich rausgehen?)",
+      "Anders als im Deutschen ändert sich can nie: ich kann, er kann → I **can**, he **can**. Falsch ist ~~he cans~~.",
+      "Das Verb danach steht ohne to und ohne -s, gleich nach can: She can **swim**. Im Deutschen steht es am Ende: Sie kann **schwimmen**."
+    ],
+    havegot: [
+      "„Ich habe einen Hund“ heißt in Großbritannien meist **I have got** a dog (kurz: I've got).",
+      "Wie bei „ich habe, er hat“ ändert sich die Form: I **have got**, he/she/it **has got**.",
+      "Frage und Verneinung gehen mit have selbst, nicht mit do: **Have** you **got** a pet? I **haven't got** a pet."
+    ],
+    genitive: [
+      "Wir sagen „Toms Fahrrad“ oder „das Fahrrad von Tom“. Englisch sagt fast immer **Tom's** bike, mit Apostroph vor dem s.",
+      "Im Deutschen schreibt man „Toms“ ohne Apostroph. Im Englischen gehört er dazu: Tom**'s**.",
+      "Mehrere Besitzer mit -s: Der Apostroph kommt hinten dran: my parents**'** car (das Auto meiner Eltern)."
+    ],
+    simplepresent: [
+      "Im Deutschen ändert sich das Verb bei fast jeder Person: ich spiele, du spielst, er spielt. Im Englischen fast nie: I play, you play, we play.",
+      "Nur bei **he, she, it** kommt ein **-s** dazu: he play**s**. Das vergisst man leicht, weil es so selten ist.",
+      "Das Deutsche „ich spiele“ kann „gerade jetzt“ oder „immer wieder“ heißen. Englisch unterscheidet: Das simple present heißt **immer wieder, normalerweise**: I play football **every Saturday**."
+    ],
+    negations: [
+      "Im Deutschen hängt man einfach „nicht“ an: Ich spiele **nicht**. Im Englischen braucht man ein Hilfsverb: I **don't** play. Falsch ist ~~I play not.~~",
+      "Bei he, she, it heißt es **doesn't**, und das Verb verliert sein -s: He **doesn't** play. Falsch ist ~~He doesn't plays.~~",
+      "Bei am, is, are und can braucht man kein don't: I'm **not** tired. She **can't** swim."
+    ],
+    adverbsfreq: [
+      "Im Deutschen steht „oft“ meist nach dem Verb: Sie spielt **oft** Tennis. Im Englischen steht es **davor**: She **often** plays tennis.",
+      "Nur bei am, is, are steht es dahinter, fast wie im Deutschen: She is **never** late.",
+      "Orts- und Zeitangaben stehen im Englischen meistens am Satzende: I play football **in the park on Saturday**."
+    ],
+    shortanswers: [
+      "Im Deutschen reicht oft ein „Ja“ oder „Nein“. Im Englischen klingt nur „Yes“ oder „No“ unhöflich kurz.",
+      "Man wiederholt das Hilfsverb aus der Frage: **Are** you ready? – Yes, I **am**. **Can** you swim? – No, I **can't**.",
+      "Falsch ist ~~Yes, I swim.~~ oder ~~Yes, I'm.~~ Bei Ja steht am Ende keine Kurzform."
+    ],
+    questions: [
+      "Im Deutschen tauschen wir einfach: Du spielst. → **Spielst du**? Im Englischen geht das bei normalen Verben nicht. Falsch ist ~~Play you football?~~",
+      "Man braucht **do** oder **does** vorne: **Do** you play football? **Does** he play football?",
+      "Bei does verliert das Verb sein -s: Does he **play**? Fragewörter kommen davor: **Where does** she live?"
+    ],
+    presentprog: [
+      "Im Deutschen sagen wir „Ich lese“ für jetzt und für immer. Wenn wir es betonen wollen, sagen wir „Ich lese **gerade**“.",
+      "Englisch hat dafür eine eigene Form: **I am reading** heißt ich lese gerade, jetzt in diesem Moment.",
+      "Typischer Fehler: ~~I reading~~ ohne am/is/are oder ~~I am read~~ ohne -ing. Man braucht immer beides."
+    ],
+    someany: [
+      "Im Deutschen sagen wir oft gar nichts: Ich habe Äpfel. Haben wir Milch? Im Englischen sagt man meist **some** oder **any** dazu.",
+      "**some** steht in normalen Sätzen und in Bitten: I've got **some** apples. Would you like **some** juice?",
+      "**any** steht in Fragen und mit not: Have you got **any** milk? I haven't got **any** milk. (Ich habe keine Milch.)"
+    ],
+    conjunctions: [
+      "Die Wörter passen gut zum Deutschen: und → **and**, aber → **but**, oder → **or**, weil → **because**, also → **so**.",
+      "Großer Unterschied: Im Deutschen rutscht das Verb nach „weil“ ans Ende (weil ich müde **bin**). Im Englischen bleibt alles normal: because I **am** tired.",
+      "Falscher Freund: Das deutsche „also“ heißt **so**. Das englische also heißt „auch“."
+    ],
+    objectpronouns: [
+      "Im Deutschen gibt es mich und mir, dich und dir, ihn und ihm. Englisch hat nur **eine** Form: me, you, him, her, it, us, them.",
+      "Hilf **mir**! und Sieh **mich** an! → Help **me**! Look at **me**!",
+      "Falsch ist ~~I like he.~~ Nach dem Verb steht die Objektform: I like **him**."
+    ],
+    modals: [
+      "**must** heißt „müssen“: You **must** go now.",
+      "Achtung, falscher Freund: **mustn't** heißt nicht „nicht müssen“, sondern „**nicht dürfen**“: You **mustn't** run here. (Du darfst hier nicht rennen.)",
+      "**should** heißt „sollte“, **shouldn't** heißt „sollte nicht“. Wie bei can steht danach das Verb ohne to und ohne -s."
+    ],
+    wordorder: [
+      "Im Deutschen darf vieles vorne stehen, dann rutscht die Person hinter das Verb: **Heute spiele ich** Fußball.",
+      "Im Englischen bleibt die Reihenfolge immer gleich: **S**ubjekt – **V**erb – **O**bjekt. **Today I play** football. Falsch ist ~~Today play I football.~~",
+      "Auch nach because bleibt es so (deutsch: weil er lustig **ist**, englisch: because he **is** funny). Ort kommt vor Zeit: in the park after school."
+    ],
+    thisthat: [
+      "Im Deutschen sagen wir „dieser hier“ und „der dort“. Englisch hat dafür eigene Wörter: **this** (hier) und **that** (dort).",
+      "Anders als im Deutschen haben sie eine Mehrzahl: this → **these**, that → **those**.",
+      "Typischer Fehler: ~~this shoes~~. Mehrere Dinge, also **these** shoes."
+    ],
+    simplepast: [
+      "Im Deutschen erzählen wir meist mit dem Perfekt: Ich **habe** Fußball **gespielt**. Im Englischen nimmt man dafür das simple past: I **played** football.",
+      "Das englische simple past ist wie unser „ich spielte, ich ging“. Es steht bei einer Zeitangabe in der Vergangenheit (yesterday, last week).",
+      "Typischer Fehler: ~~Yesterday I have played.~~ Mit yesterday, last … oder ago steht immer das simple past."
+    ],
+    countable: [
+      "Manche Wörter haben im Deutschen eine Mehrzahl, im Englischen aber nicht: die Informationen → **information**, die Hausaufgaben → **homework**, Ratschläge → **advice**, Möbel → **furniture**.",
+      "Diese Wörter bekommen kein -s und kein a/an, und das Verb steht in der Einzahl: My homework **is** easy.",
+      "Wenn man doch zählen will, sagt man wie im Deutschen **a piece of** (ein Stück), **a glass of** (ein Glas)."
+    ],
+    quantifiers: [
+      "Im Deutschen sagen wir „viel“ zu allem: viel Geld, viele Freunde. Englisch unterscheidet: **much** money (nicht zählbar), **many** friends (zählbar).",
+      "Genauso bei „ein bisschen“ und „ein paar“: **a little** milk, **a few** friends.",
+      "Ein einfacher Ausweg in normalen Sätzen: **a lot of** passt zu allem."
+    ],
+    presentperfect: [
+      "Im Deutschen sieht das present perfect aus wie unser Perfekt: I **have seen** = ich **habe gesehen**. Aber es wird anders benutzt.",
+      "Englisch nimmt es nur, wenn das **Wann egal ist** und es für jetzt zählt: I have lost my key. (Ich habe ihn jetzt nicht.)",
+      "Sobald eine Zeit genannt wird, nimmt man das simple past. Falsch ist ~~I have seen it yesterday.~~ Richtig: I **saw** it yesterday."
+    ],
+    goingto: [
+      "Im Deutschen sagen wir für die Zukunft meist einfach das Präsens: Morgen **besuche** ich Oma. Das geht im Englischen nicht.",
+      "Für Pläne nimmt man **going to**: I**'m going to** visit Grandma tomorrow. Das ist wie „ich habe vor, …“.",
+      "Auch wenn man es kommen sieht, wie bei „gleich“: Es fängt **gleich** an zu regnen. → It**'s going to** rain."
+    ],
+    will: [
+      "**will** ist wie unser „werden“: Es **wird** regnen. → It **will** rain.",
+      "Achtung, falscher Freund: I will heißt **nicht** „ich will“! Ich will ein Eis. → I **want** an ice cream.",
+      "Im Deutschen sagen wir oft auch ohne „werden“: Ich ruf dich später an. Im Englischen braucht man will: I**'ll** call you later."
+    ],
+    comparison: [
+      "Kurze Wörter steigert man wie im Deutschen mit Endungen: klein, klein**er**, am klein**sten** → small, small**er**, the small**est**.",
+      "Lange Wörter bekommen im Englischen **more** und **most**: interessanter → **more** interesting. Falsch ist ~~interestinger~~.",
+      "„als“ heißt beim Vergleich **than**, nicht ~~as~~ und nicht ~~then~~: größer **als** → bigger **than**. „so groß wie“ → **as** big **as**."
+    ],
+    adverbsmanner: [
+      "Im Deutschen sagt man „Sie ist leise“ und „Sie spricht leise“, beides mit demselben Wort.",
+      "Englisch unterscheidet: She is **quiet**. (wie sie ist) She speaks **quietly**. (wie sie es tut, mit **-ly**)",
+      "Typischer Fehler: ~~He plays good.~~ Wie spielt er? Gut → **well**: He plays **well**."
+    ],
+    if12: [
+      "Im Deutschen beginnen beide mit „wenn“. Typ 1: **Wenn** es regnet, bleibe ich zu Hause. Das kann wirklich passieren.",
+      "Typ 2 ist unser „würde“: **Wenn** ich reich **wäre**, **würde** ich eine Insel kaufen. Es ist nur ausgedacht. → If I **were** rich, I **would** buy an island.",
+      "Typischer Fehler: Wie im Deutschen ein „würde“ in den if-Teil setzen. Falsch ist ~~If I would have money~~. Im if-Teil steht nie will oder would."
+    ],
+    if3: [
+      "Typ 3 ist unser „hätte“ und „wäre“ in der Vergangenheit: **Wenn** ich gelernt **hätte**, **hätte** ich bestanden. → If I **had learned**, I **would have passed**.",
+      "Wann? Wenn etwas **schon vorbei** ist und **nicht passiert ist**. Man stellt sich vor, wie es anders hätte kommen können, oft wenn man etwas bedauert. In echt habe ich nicht gelernt und bin durchgefallen.",
+      "Warum diese Form? Englisch geht beim Unwirklichen immer eine Zeit zurück: Typ 1 if it **rains** → Typ 2 if it **rained** → Typ 3 if it **had rained**.",
+      "Typischer Fehler: Weil im Deutschen zweimal „hätte“ steht, schreiben viele ~~If I would have known~~. Im if-Teil steht nie would: If I **had** known, I **would have** come."
+    ]
+  };
+  window.GRAMMAR.Englisch.topics.forEach(t => { if (V[t.id]) t.vgl = V[t.id]; });
+})();

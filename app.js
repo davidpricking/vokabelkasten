@@ -1734,7 +1734,7 @@ function gData() { return GRAM[L().name]; }
 function gReady(t) { return !!(t.explain && t.tasks); }
 function gStore() { return S.gram[S.cur] || (S.gram[S.cur] = {}); }
 // **fett** in den Texten wird markiert; alles andere wird als Text ausgegeben.
-function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>"); }
+function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>").replace(/~~(.+?)~~/g, "<s class=\"gwrong\">$1</s>"); }
 function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
 // Grammatik-Kasten: Geübte Themen bekommen ein Fach und melden sich in wachsenden Abständen in der Tagesrunde.
 // Haken für „Wir sind bei“ (Lernlogik): gesperrte Themen kommen nicht in die Tagesrunde.
@@ -1808,7 +1808,7 @@ function renderGrammar() {
   window.scrollTo(0, 0);
 }
 function explainHtml(t) {
-  return `${(t.anim || []).map(morphHtml).join("")}<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>
+  return `${t.vgl ? `<div class="gvgl"><p class="eyebrow">Wie im Deutschen?</p>${t.vgl.map(p => `<p>${gmark(p)}</p>`).join("")}</div>` : ""}${(t.anim || []).map(morphHtml).join("")}<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>
     ${t.ex && t.ex.length ? `<div class="gexamples"><p class="eyebrow">Beispiele</p>${t.ex.map(([f, de]) =>
       `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${esc(de)}</span></span>
         ${canHear() ? `<button class="iconbtn gsay" data-say="${esc(f.replace(/\*\*/g, ""))}" aria-label="Vorlesen">${ICON.speaker}</button>` : ""}</div>`).join("")}</div>` : ""}`;
