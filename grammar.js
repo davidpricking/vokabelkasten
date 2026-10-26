@@ -864,9 +864,10 @@ window.GRAMMAR = {
       "Mehrere Besitzer mit -s: Der Apostroph kommt hinten dran: my parents**'** car (das Auto meiner Eltern)."
     ],
     simplepresent: [
-      "Im Deutschen ändert sich das Verb bei fast jeder Person: ich spiele, du spielst, er spielt. Im Englischen fast nie: I play, you play, we play.",
-      "Nur bei **he, she, it** kommt ein **-s** dazu: he play**s**. Das vergisst man leicht, weil es so selten ist.",
-      "Das Deutsche „ich spiele“ kann „gerade jetzt“ oder „immer wieder“ heißen. Englisch unterscheidet: Das simple present heißt **immer wieder, normalerweise**: I play football **every Saturday**."
+      "**Gibt es das im Deutschen?** Ja, das ist unser **Präsens**: ich spiele, du spielst, er spielt. Gebaut wird es wie bei uns aus nur **einem** Wort.",
+      "**Der große Unterschied:** Unser Präsens kann alles. „Ich spiele Fußball“ kann heißen: jeden Samstag, gerade jetzt oder sogar morgen. Englisch teilt das auf. Das simple present steht nur für **immer wieder, normalerweise** und für **Tatsachen**: I play football every Saturday. Cats like milk.",
+      "**Endungen:** Wir haben viele (spiel**e**, spiel**st**, spiel**t**, spiel**en**). Englisch hat nur eine einzige: **-s bei he, she, it**. Wo wir „er spiel**t**“ sagen, sagt Englisch „he play**s**“.",
+      "Typische Fehler: ~~He play football.~~ (das s fehlt) und ~~I am play football every day.~~ (am gehört hier nicht hin)."
     ],
     negations: [
       "Im Deutschen hängt man einfach „nicht“ an: Ich spiele **nicht**. Im Englischen braucht man ein Hilfsverb: I **don't** play. Falsch ist ~~I play not.~~",
@@ -889,9 +890,10 @@ window.GRAMMAR = {
       "Bei does verliert das Verb sein -s: Does he **play**? Fragewörter kommen davor: **Where does** she live?"
     ],
     presentprog: [
-      "Im Deutschen sagen wir „Ich lese“ für jetzt und für immer. Wenn wir es betonen wollen, sagen wir „Ich lese **gerade**“.",
-      "Englisch hat dafür eine eigene Form: **I am reading** heißt ich lese gerade, jetzt in diesem Moment.",
-      "Typischer Fehler: ~~I reading~~ ohne am/is/are oder ~~I am read~~ ohne -ing. Man braucht immer beides."
+      "**Gibt es das im Deutschen?** Nicht als eigene Zeit. Wir sagen „Ich lese“ und hängen höchstens „gerade“ an. Aber in manchen Gegenden sagt man „**Ich bin am Lesen**“, und genau so ist das Englische gebaut!",
+      "**So baust du es mit dem Deutschen:** Ich **bin** am **Lesen** → I **am** read**ing**. „bin“ wird zu **am/is/are**, „am Lesen“ wird zu **Verb + -ing**.",
+      "**Wann?** Nur für das, was **jetzt gerade** läuft oder nur für kurze Zeit so ist. Für „immer wieder“ nimmst du das simple present: I **play** football every Saturday. Look, I**'m playing** football now!",
+      "Typische Fehler: ~~I reading.~~ (am fehlt) und ~~I am read.~~ (-ing fehlt). Du brauchst immer **beides**."
     ],
     someany: [
       "Im Deutschen sagen wir oft gar nichts: Ich habe Äpfel. Haben wir Milch? Im Englischen sagt man meist **some** oder **any** dazu.",
@@ -924,9 +926,11 @@ window.GRAMMAR = {
       "Typischer Fehler: ~~this shoes~~. Mehrere Dinge, also **these** shoes."
     ],
     simplepast: [
-      "Im Deutschen erzählen wir meist mit dem Perfekt: Ich **habe** Fußball **gespielt**. Im Englischen nimmt man dafür das simple past: I **played** football.",
-      "Das englische simple past ist wie unser „ich spielte, ich ging“. Es steht bei einer Zeitangabe in der Vergangenheit (yesterday, last week).",
-      "Typischer Fehler: ~~Yesterday I have played.~~ Mit yesterday, last … oder ago steht immer das simple past."
+      "**Gibt es das im Deutschen?** Ja, das ist unser **Präteritum**: ich spiel**te**, ich **ging**. Gebaut wird es fast wie bei uns, aus einem Wort: Regelmäßig mit Endung (spiel**te** → play**ed**), unregelmäßig mit einem neuen Wort (ging → **went**, sah → **saw**).",
+      "**Der große Unterschied:** Wenn wir erzählen, sagen wir meist das Perfekt: Ich **habe** gestern Fußball **gespielt**. Englisch nimmt dafür das simple past: Yesterday I **played** football.",
+      "**Merke:** Steht eine Zeit in der Vergangenheit dabei (yesterday, last week, two days ago, in 2020), dann nimmst du **immer** das simple past.",
+      "**Fragen und Verneinung:** Wir sagen „Spieltest du?“ und „Ich spielte nicht“. Englisch braucht **did**: **Did** you play? I **didn't** play. Das Verb steht danach in der Grundform, weil did die Vergangenheit schon trägt.",
+      "Typische Fehler: ~~Did you played?~~ und ~~Yesterday I have played.~~"
     ],
     countable: [
       "Manche Wörter haben im Deutschen eine Mehrzahl, im Englischen aber nicht: die Informationen → **information**, die Hausaufgaben → **homework**, Ratschläge → **advice**, Möbel → **furniture**.",
@@ -939,19 +943,23 @@ window.GRAMMAR = {
       "Ein einfacher Ausweg in normalen Sätzen: **a lot of** passt zu allem."
     ],
     presentperfect: [
-      "Im Deutschen sieht das present perfect aus wie unser Perfekt: I **have seen** = ich **habe gesehen**. Aber es wird anders benutzt.",
-      "Englisch nimmt es nur, wenn das **Wann egal ist** und es für jetzt zählt: I have lost my key. (Ich habe ihn jetzt nicht.)",
-      "Sobald eine Zeit genannt wird, nimmt man das simple past. Falsch ist ~~I have seen it yesterday.~~ Richtig: I **saw** it yesterday."
+      "**Gibt es das im Deutschen?** Gebaut ja: Es sieht aus wie unser **Perfekt** mit „haben“ und Partizip. Ich **habe** ge**gessen** → I **have eaten**. Das Partizip (gegessen) ist die **3. Form** in der Verbtabelle.",
+      "**Unterschied beim Bauen:** Wir nehmen „haben“ oder „sein“ (ich habe gegessen, ich **bin** gegangen). Englisch nimmt **immer have**: I **have** gone. Falsch ist ~~I am gone.~~",
+      "**Unterschied bei der Bedeutung, das Wichtigste:** Wir benutzen das Perfekt für fast jede Vergangenheit. Englisch nur, wenn das **Wann egal** ist und es mit **jetzt** zu tun hat: I have lost my key. (Er ist jetzt noch weg.) Sobald eine Zeit dabeisteht, nimmst du das simple past: I **lost** it yesterday.",
+      "**Und bei „seit“:** Wir sagen „Ich **wohne** seit 2020 hier“, also Präsens. Englisch nimmt das present perfect, weil es bis jetzt andauert: I **have lived** here **since** 2020.",
+      "Typische Fehler: ~~I have seen it yesterday.~~ und ~~I live here since 2020.~~"
     ],
     goingto: [
-      "Im Deutschen sagen wir für die Zukunft meist einfach das Präsens: Morgen **besuche** ich Oma. Das geht im Englischen nicht.",
-      "Für Pläne nimmt man **going to**: I**'m going to** visit Grandma tomorrow. Das ist wie „ich habe vor, …“.",
-      "Auch wenn man es kommen sieht, wie bei „gleich“: Es fängt **gleich** an zu regnen. → It**'s going to** rain."
+      "**Gibt es das im Deutschen?** So ähnlich: „Ich **habe vor**, Oma zu besuchen.“ Meistens sagen wir aber einfach das Präsens: Morgen **besuche** ich Oma. Das geht im Englischen nicht, dort braucht die Zukunft eine Zukunftsform.",
+      "**So baust du es:** Für Pläne nimmst du **am/is/are + going to + Grundform**: I**'m going to** visit Grandma. Stell dir vor: Ich bin schon auf dem Weg dahin, ich habe es fest vor.",
+      "**Wie unser „gleich“:** Wenn man etwas schon kommen sieht: Es regnet **gleich**. → It**'s going to** rain.",
+      "Typische Fehler: ~~Tomorrow I visit Grandma.~~ (für einen Plan) und ~~I going to visit …~~ (am fehlt)."
     ],
     will: [
-      "**will** ist wie unser „werden“: Es **wird** regnen. → It **will** rain.",
-      "Achtung, falscher Freund: I will heißt **nicht** „ich will“! Ich will ein Eis. → I **want** an ice cream.",
-      "Im Deutschen sagen wir oft auch ohne „werden“: Ich ruf dich später an. Im Englischen braucht man will: I**'ll** call you later."
+      "**Gibt es das im Deutschen?** Ja, das ist unser **Futur** mit „werden“: Ich **werde** kommen → I **will** come. Gebaut wird es genauso: **will + Grundform**.",
+      "**Unterschiede beim Bauen:** „werden“ ändert sich (werde, wirst, wird), will nie: I will, he will. Und das Verb kommt im Englischen **direkt** nach will, nicht ans Ende: Ich werde morgen **kommen**. → I will **come** tomorrow.",
+      "**Achtung, falscher Freund:** I will heißt **nicht** „ich will“! Ich will ein Eis. → I **want** an ice cream.",
+      "**Unterschied beim Benutzen:** Wir lassen „werden“ oft weg: Ich ruf dich später an. Englisch nicht: I**'ll** call you later."
     ],
     comparison: [
       "Kurze Wörter steigert man wie im Deutschen mit Endungen: klein, klein**er**, am klein**sten** → small, small**er**, the small**est**.",
@@ -964,8 +972,9 @@ window.GRAMMAR = {
       "Typischer Fehler: ~~He plays good.~~ Wie spielt er? Gut → **well**: He plays **well**."
     ],
     if12: [
-      "Im Deutschen beginnen beide mit „wenn“. Typ 1: **Wenn** es regnet, bleibe ich zu Hause. Das kann wirklich passieren.",
-      "Typ 2 ist unser „würde“: **Wenn** ich reich **wäre**, **würde** ich eine Insel kaufen. Es ist nur ausgedacht. → If I **were** rich, I **would** buy an island.",
+      "**Gibt es das im Deutschen?** Ja, beide. Typ 1 ist wie bei uns: **Wenn** es regnet, bleibe ich zu Hause. → If it **rains**, I **will stay** at home. Das kann wirklich passieren.",
+      "Typ 2 ist unser **Konjunktiv** mit „würde“, „wäre“, „hätte“: **Wenn** ich reich **wäre**, **würde** ich eine Insel kaufen. → If I **were** rich, I **would** buy an island. Es ist nur ausgedacht.",
+      "**So baust du Typ 2 mit dem Deutschen:** Unser „hätte“ sieht aus wie „hatte“ (Vergangenheit). Englisch macht es genauso: Im if-Teil steht die **Vergangenheitsform** (If I **had**, If I **were**), im anderen Teil steht **would** (= würde).",
       "Typischer Fehler: Wie im Deutschen ein „würde“ in den if-Teil setzen. Falsch ist ~~If I would have money~~. Im if-Teil steht nie will oder would."
     ],
     if3: [
@@ -973,6 +982,164 @@ window.GRAMMAR = {
       "Wann? Wenn etwas **schon vorbei** ist und **nicht passiert ist**. Man stellt sich vor, wie es anders hätte kommen können, oft wenn man etwas bedauert. In echt habe ich nicht gelernt und bin durchgefallen.",
       "Warum diese Form? Englisch geht beim Unwirklichen immer eine Zeit zurück: Typ 1 if it **rains** → Typ 2 if it **rained** → Typ 3 if it **had rained**.",
       "Typischer Fehler: Weil im Deutschen zweimal „hätte“ steht, schreiben viele ~~If I would have known~~. Im if-Teil steht nie would: If I **had** known, I **would have** come."
+    ]
+  };
+  // Ausnahmen: eigener Kasten nach der Erklärung
+  const AUS = {
+    plural: [
+      "Wörter auf **-f** oder **-fe** werden oft zu **-ves**: knife → kni**ves**, wife → wi**ves**, leaf → lea**ves**, half → hal**ves**. Aber: roof → roof**s**.",
+      "Bei Wörtern auf **-o** gibt es beides: tomato → tomato**es**, potato → potato**es**, aber photo → photo**s**, piano → piano**s**.",
+      "Unregelmäßig, zum Auswendiglernen: man → **men**, woman → **women**, child → **children**, foot → **feet**, tooth → **teeth**, mouse → **mice**, person → **people**.",
+      "In Einzahl und Mehrzahl gleich: one **sheep**, two **sheep**. Genauso: **fish**, **deer**.",
+      "Nur in der Mehrzahl, auch wenn es ein Ding ist: **trousers**, **jeans**, **shorts**, **glasses** (Brille), **scissors** (Schere). My jeans **are** new."
+    ],
+    articles: [
+      "Es zählt der **Laut**, nicht der Buchstabe! **a university** spricht man „ju-ni-wör-si-ti“. Das „ju“ beginnt mit dem j-Laut wie in „Jacke“, und j ist ein Konsonant. Darum **a** university, **a** uniform, **a** European.",
+      "Genauso **a one-way ticket**: one spricht man „wan“, also mit w-Laut.",
+      "Umgekehrt: **an hour**, **an honest** girl. Das h spricht man hier nicht, das Wort beginnt also mit einem Vokal-Laut. Aber: **a h**orse, **a h**ouse, denn dort hört man das h.",
+      "Bei Abkürzungen auch nach dem Laut: **an** MP3 player (gesprochen „em“), aber **a** USB stick (gesprochen „ju“).",
+      "Ohne Artikel, anders als im Deutschen: I go to **school** / to **bed**. I'm at **home**. I play **football**. Aber Instrumente mit the: I play **the** piano."
+    ],
+    tobe: [
+      "**you** ist Einzahl und Mehrzahl, und es heißt immer **are**: You **are** my friend. You **are** my friends.",
+      "Verneint bei I gibt es keine Kurzform mit am: I**'m not** tired. Falsch ist ~~I amn't~~.",
+      "Haustiere nennt man oft **he** oder **she** statt it, wenn man sie kennt: Our dog is great. **He** loves balls."
+    ],
+    bequestions: [
+      "Kurzantwort mit Yes ohne Kurzform: Yes, I **am**. Yes, she **is**. Falsch ist ~~Yes, I'm.~~",
+      "Bei Fragen nach dem Alter: **How old are you?** Antwort: I'm twelve. Nicht ~~I have twelve years.~~"
+    ],
+    thereis: [
+      "Bei einer Aufzählung zählt das **erste** Ding: There **is** a pen and two books on the desk. There **are** two books and a pen on the desk.",
+      "Es gibt die Kurzform **there's**, aber für there are schreibt man meist keine Kurzform."
+    ],
+    prepositions: [
+      "Anders als im Deutschen: **in** the picture (**auf** dem Bild), **on** the bus / **on** the train (**im** Bus), aber **in** the car.",
+      "**at** für feste Orte: **at** school, **at** home, **at** the station, **at** Grandma's.",
+      "**on** the left / **on** the right (links, rechts), **on** the first floor."
+    ],
+    possessives: [
+      "**its** (sein bei Dingen und Tieren) hat **keinen** Apostroph. **it's** heißt it is.",
+      "Bei Körperteilen und Kleidung nimmt Englisch den Possessivbegleiter, wo wir „die“ sagen: Ich wasche mir **die** Hände. → I wash **my** hands. Er zieht **die** Jacke an. → He puts on **his** jacket."
+    ],
+    commands: [
+      "Auch bei be braucht man Don't: **Don't be** sad! Falsch ist ~~Be not sad!~~",
+      "Ein Vorschlag mit **Let's** (lass uns): **Let's** go! Verneint: **Let's not** go."
+    ],
+    can: [
+      "**cannot** schreibt man zusammen, kurz **can't**.",
+      "Vergangenheit von can ist **could**: When I was five, I **could** swim. (konnte)",
+      "can hat keine Zukunft und keine to-Form. Dafür sagt man **be able to**: I**'ll be able to** come."
+    ],
+    havegot: [
+      "have got gibt es nur in der **Gegenwart**. Vergangenheit meist ohne got: I **had** a dog. (Ich hatte einen Hund.)",
+      "Bei Tätigkeiten heißt es **have** ohne got: **have** breakfast, **have** a shower, **have** fun, **have** a party. Falsch ist ~~I've got breakfast at seven.~~"
+    ],
+    genitive: [
+      "Namen auf -s: Beides geht: **James's** bike oder **James'** bike.",
+      "**at Grandma's** heißt „bei Oma zu Hause“, das Wort house fällt weg. Genauso: at the doctor's (beim Arzt).",
+      "Auch bei Zeit: **today's** lesson (die Stunde von heute)."
+    ],
+    simplepresent: [
+      "Nach **s, sh, ch, x** und **o** kommt **-es**: watch → watch**es**, go → go**es**, do → do**es**.",
+      "Konsonant + y wird zu **-ies**: fly → fl**ies**. Aber Vokal + y nur **-s**: play → play**s**.",
+      "Ganz unregelmäßig: have → **has**, be → **am/is/are**.",
+      "Bei can, must, should gibt es **nie** ein -s: She **can** swim."
+    ],
+    negations: [
+      "Bei be, can und have got brauchst du kein do: I'm **not** …, She **can't** …, We **haven't got** …",
+      "Nur **eine** Verneinung pro Satz: I **never** eat fish. Falsch ist ~~I don't never eat fish.~~ Genauso: I've got **no** money = I haven't got **any** money."
+    ],
+    adverbsfreq: [
+      "**sometimes** darf auch ganz vorne oder hinten stehen: **Sometimes** I walk to school.",
+      "Bei Hilfsverb + Verb steht es dazwischen: I **can never** remember it. She **has always** liked cats."
+    ],
+    shortanswers: [
+      "Bei have got: **Have** you got a pet? – Yes, I **have**. / No, I **haven't**. (ohne got)",
+      "Bei Fragen mit Fragewort (Where, What …) gibt es keine Kurzantwort mit Yes/No."
+    ],
+    questions: [
+      "Fragst du nach dem **Subjekt** (wer oder was tut etwas?), brauchst du **kein** do: **Who lives** here? **What happened**? Falsch ist ~~Who does live here?~~",
+      "Bei be, can und have got kein do: **Are** you …? **Can** you …? **Have** you got …?"
+    ],
+    presentprog: [
+      "Manche Verben beschreiben keinen Vorgang, sondern einen **Zustand**. Sie stehen fast nie mit -ing: **like, love, hate, want, need, know, believe, understand**. I **like** this song. Falsch ist ~~I'm liking this song.~~",
+      "Schreibung: **-ie** wird zu **-ying**: lie → l**ying**, die → d**ying**.",
+      "Britisches Englisch verdoppelt das l: travel → trave**ll**ing."
+    ],
+    someany: [
+      "**any** in bejahten Sätzen heißt „egal welche“: You can take **any** book.",
+      "**no** = not any: I've got **no** money = I haven't got **any** money."
+    ],
+    conjunctions: [
+      "Steht der because-Teil vorne, kommt ein Komma: **Because** it was raining, we stayed at home.",
+      "Vor **so** steht meist ein Komma, vor because meist nicht: I'm tired**,** so I go to bed. I go to bed because I'm tired."
+    ],
+    objectpronouns: [
+      "Nach **than** und **as** sagt man meist die Objektform: She is taller **than me**.",
+      "Ich bin's! → **It's me!** (nicht ~~It's I~~)"
+    ],
+    modals: [
+      "must hat **keine Vergangenheit**. Dafür nimmt man **had to**: Yesterday I **had to** go to the dentist.",
+      "„muss nicht“ heißt **don't have to** oder **needn't**: You **don't have to** come. (Du musst nicht kommen.) Nicht verwechseln mit mustn't!"
+    ],
+    wordorder: [
+      "Die Zeitangabe darf auch **ganz vorne** stehen, dann kommt trotzdem zuerst das Subjekt: **On Saturday I play** football.",
+      "In Fragen tauschen sich Hilfsverb und Subjekt: **Do you** like it? **Are you** ready?",
+      "Häufigkeitswörter stehen vor dem Verb in der Mitte: I **always** play."
+    ],
+    thisthat: [
+      "**this morning** = heute Morgen, **this week** = diese Woche.",
+      "Am Telefon: **This is** Tom. (Hier ist Tom.)"
+    ],
+    simplepast: [
+      "Schreibung: **-e** bekommt nur **-d**: live → live**d**. Kurzer Vokal + ein Konsonant: verdoppeln: stop → sto**pp**ed. Konsonant + y: **-ied**: cry → cr**ied**. Aber Vokal + y: play → play**ed**.",
+      "Britisches Englisch verdoppelt das l: travel → trave**ll**ed.",
+      "Manche unregelmäßigen Verben bleiben gleich: put → **put**, cut → **cut**, let → **let**, hit → **hit**.",
+      "Bei be gibt es zwei Formen: I/he/she/it **was**, you/we/they **were**."
+    ],
+    countable: [
+      "**hair** ist nicht zählbar: My hair **is** long. (Meine Haare sind lang.)",
+      "**news** endet auf -s, ist aber Einzahl: The news **is** good.",
+      "Manches geht beides: **coffee** (Kaffee allgemein) und **a coffee** (eine Tasse Kaffee). Genauso: chocolate und **a chocolate** (eine Praline)."
+    ],
+    quantifiers: [
+      "**a few** = ein paar (gut so), **few** ohne a = wenige (zu wenig): I've got **a few** friends. – He has **few** friends. (Er hat kaum Freunde.)",
+      "Genauso **a little** (ein bisschen) und **little** (kaum).",
+      "In bejahten Sätzen klingt **much** oft steif. Man sagt eher **a lot of**: I've got **a lot of** time."
+    ],
+    presentperfect: [
+      "**been** oder **gone**? She has **gone** to London. = Sie ist hingefahren und jetzt noch dort. She has **been** to London. = Sie war schon mal dort und ist wieder da.",
+      "**since** steht vor einem Zeitpunkt (since Monday, since 2020), **for** vor einer Zeitspanne (for two weeks).",
+      "**already** steht in der Mitte, **yet** am Ende: I've **already** finished. Have you finished **yet**?"
+    ],
+    goingto: [
+      "Bei **go** sagt man trotzdem going to **go**: I'm going to go to the cinema. Kürzer geht auch: I'm going to the cinema.",
+      "Für feste Verabredungen nimmt man oft das present progressive: I**'m meeting** Tom tomorrow.",
+      "Für Fahrpläne das simple present: The train **leaves** at eight."
+    ],
+    will: [
+      "Bei Vorschlägen mit I und we sagt man **Shall**: **Shall** we go? **Shall** I help you?",
+      "Nach **when** und **if** steht kein will, auch wenn es um die Zukunft geht: **When** I **am** older, I'll be a vet. Falsch ist ~~When I will be older~~."
+    ],
+    comparison: [
+      "Doppelt bei kurzem Vokal: big → bi**gg**er, hot → ho**tt**er. Stummes e: nice → nice**r**.",
+      "Zweisilbig auf -y mit -er: happy → happ**ier**, easy → eas**ier**. Andere zweisilbige meist mit more: **more** boring, **more** famous.",
+      "Unregelmäßig: good → **better** → **best**, bad → **worse** → **worst**, many/much → **more** → **most**, little → **less** → **least**, far → **further** → **furthest**."
+    ],
+    adverbsmanner: [
+      "Schon auf -ly und doch Adjektive: **friendly, lovely, lonely, silly**. Davon gibt es kein Adverb, man sagt: in a friendly **way**.",
+      "**hard** bleibt hard, **hardly** heißt etwas anderes: kaum. Genauso **late** (spät) und **lately** (in letzter Zeit).",
+      "Nach **be, look, feel, sound, taste** steht das Adjektiv: You **look happy**. It **tastes good**."
+    ],
+    if12: [
+      "Steht der if-Teil **hinten**, gibt es kein Komma: I'll stay at home **if** it rains.",
+      "**unless** = if not: I'll be late **unless** I hurry.",
+      "**if** oder **when**? when = wenn es sicher passiert: **When** I get home, I'll call you. if = falls: **If** I have time, I'll call you."
+    ],
+    if3: [
+      "Kurzform **'d** kann **had** oder **would** sein: If I**'d** (had) known, I**'d** (would) have come.",
+      "Statt would have geht auch **could have** (hätte können) oder **might have** (hätte vielleicht): If you had asked, I **could have** helped."
     ]
   };
   // Beispiele zum Vergleich: [englisch, deutsch]
@@ -1011,5 +1178,5 @@ window.GRAMMAR = {
     if12: [["If it **rains**, I **will stay** at home.", "Wenn es **regnet**, **bleibe** ich zu Hause."], ["If you **hurry**, you **will catch** the bus.", "Wenn du dich **beeilst**, **erwischst** du den Bus."], ["If I **were** rich, I **would buy** an island.", "Wenn ich reich **wäre**, **würde** ich eine Insel **kaufen**."], ["If I **were** you, I **would call** her.", "An deiner Stelle **würde** ich sie **anrufen**."]],
     if3: [["If I **had learned**, I **would have passed**.", "Wenn ich gelernt **hätte**, **hätte** ich bestanden."], ["If we **had left** earlier, we **would have caught** the train.", "Wenn wir früher losgefahren **wären**, **hätten** wir den Zug erwischt."], ["If you **had asked** me, I **would have helped** you.", "Wenn du mich gefragt **hättest**, **hätte** ich dir geholfen."], ["If it **hadn't rained**, we **would have gone** to the beach.", "Wenn es nicht geregnet **hätte**, **wären** wir an den Strand gegangen."]]
   };
-  window.GRAMMAR.Englisch.topics.forEach(t => { if (V[t.id]) { t.vgl = V[t.id]; t.vglEx = E[t.id] || []; } });
+  window.GRAMMAR.Englisch.topics.forEach(t => { if (V[t.id]) { t.vgl = V[t.id]; t.vglEx = E[t.id] || []; } if (AUS[t.id]) t.aus = AUS[t.id]; });
 })();

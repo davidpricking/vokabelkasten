@@ -1808,7 +1808,7 @@ function renderGrammar() {
   window.scrollTo(0, 0);
 }
 function explainHtml(t) {
-  return `${t.vgl ? `<details class="gvgl"><summary><b>Deutsche Erklärung</b> <span class="muted small">· Wie im Deutschen?</span></summary>${t.vgl.map(p => `<p>${gmark(p)}</p>`).join("")}${(t.vglEx || []).length ? `<p class="eyebrow">Beispiele</p>${t.vglEx.map(([f, de]) => `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${gmark(de)}</span></span></div>`).join("")}` : ""}</details>` : ""}${(t.anim || []).map(morphHtml).join("")}<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>
+  return `${t.vgl ? `<details class="gvgl"><summary><b>Deutsche Erklärung</b> <span class="muted small">· Wie im Deutschen?</span></summary>${t.vgl.map(p => `<p>${gmark(p)}</p>`).join("")}${(t.vglEx || []).length ? `<p class="eyebrow">Beispiele</p>${t.vglEx.map(([f, de]) => `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${gmark(de)}</span></span></div>`).join("")}` : ""}</details>` : ""}${(t.anim || []).map(morphHtml).join("")}<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>${t.aus ? `<div class="gaus"><p class="eyebrow">Ausnahmen – aufgepasst!</p>${t.aus.map(p => `<p>${gmark(p)}</p>`).join("")}</div>` : ""}
     ${t.ex && t.ex.length ? `<div class="gexamples"><p class="eyebrow">Beispiele</p>${t.ex.map(([f, de]) =>
       `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${esc(de)}</span></span>
         ${canHear() ? `<button class="iconbtn gsay" data-say="${esc(f.replace(/\*\*/g, ""))}" aria-label="Vorlesen">${ICON.speaker}</button>` : ""}</div>`).join("")}</div>` : ""}`;
