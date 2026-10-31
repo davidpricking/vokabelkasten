@@ -101,8 +101,10 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 function L() { return S.langs.find(l => l.id === S.cur) || S.langs[0]; }
 // Alle Karten der Sprache, auch aus ausgeschalteten Units (L().off). Die Fächer bleiben dabei gespeichert.
 function cardsAll() { return S.cards.filter(c => c.lang === S.cur); }
-// Karten im Kasten: ausgeschaltete Units fehlen überall (Fächer, Wiederholungen, neue Wörter)
-function cardsL() { const off = L().off || []; return off.length ? cardsAll().filter(c => !off.includes(c.unit)) : cardsAll(); }
+// Karten im Kasten: ausgeschaltete Units fehlen überall (Fächer, Wiederholungen, neue Wörter),
+// in Units auf „nur fett“ (L().fat) fehlen die nicht fett gedruckten Wörter. Ihre Fächer bleiben gespeichert.
+function hidden(c, off, fat) { return off.includes(c.unit) || (c.nf && fat.includes(c.unit)); }
+function cardsL() { const l = L(), off = l.off || [], fat = l.fat || []; return off.length || fat.length ? cardsAll().filter(c => !hidden(c, off, fat)) : cardsAll(); }
 function isEn() { return /^en/.test(L().code); }
 function canHear() { return canSpeak && !!L().code; }
 function addLang(name, code, withSample) {
@@ -509,7 +511,7 @@ function ringHtml(n, goal) {
 }
 function renderHomeView() {
   const qd = checkQuests(); if (qd.length) setTimeout(() => celebrate(`Tagesaufgabe geschafft: ${qd[0]}`), 400);
-  const lang = L(), all = cardsL(), every = cardsAll(), paused = lang.paused || [], off = lang.off || [];
+  const lang = L(), all = cardsL(), every = cardsAll(), paused = lang.paused || [], off = lang.off || [], fat = lang.fat || [];
   const due = dueToday().length, nl = Math.min(newAllowed(), newCards().length), gd = gDue().length;
   const units = [...new Set(every.map(c => c.unit))];
   const dirs = [["de-en", `Deutsch → ${lang.name}`], ["en-de", `${lang.name} → Deutsch`], ["mix", "gemischt"]];
@@ -565,13 +567,17 @@ function renderHomeView() {
     <section>
       <div class="spread"><h2>Units</h2><button class="btn small" id="add">+ Vokabeln</button></div>
       <div class="units">${units.length ? units.map(u => {
-        const cs = every.filter(c => c.unit === u); const sit = cs.filter(c => c.level >= 3).length;
+        const ce = every.filter(c => c.unit === u), nfN = ce.filter(c => c.nf).length, isF = nfN > 0 && fat.includes(u);
+        const cs = isF ? ce.filter(c => !c.nf) : ce; const sit = cs.filter(c => c.level >= 3).length;
         const pct = Math.round(sit / cs.length * 100), isO = off.includes(u), isP = !isO && paused.includes(u), learned = cs.filter(c => c.level > 0).length;
         return `<div class="unit${isP || isO ? " paused" : ""}">
           <div class="spread"><div><h3 style="overflow-wrap:anywhere">${esc(u)}</h3>
             <p class="muted small">${cs.length} Wörter · ${isO ? `ausgeschaltet${learned ? `, ${learned} schon gelernt` : ""}` : isP ? "pausiert" : `${pct} % sitzen (ab Fach 3)`}</p></div>
             ${u === SAMPLE_UNIT ? '<span class="tag">Beispiel</span>' : isO ? '<span class="tag soft">Aus</span>' : isP ? '<span class="tag soft">Pause</span>' : ""}</div>
           ${isP || isO ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}
+          ${nfN && !isO ? `<div class="chips" role="group" aria-label="Welche Wörter aus ${esc(u)}?">
+            <button class="chip" data-fat="${esc(u)}" aria-pressed="${isF}">Nur fett gedruckte (${ce.length - nfN})</button>
+            <button class="chip" data-allw="${esc(u)}" aria-pressed="${!isF}">Alle (${ce.length})</button></div>` : ""}
           <div class="row">
             ${isO ? `<button class="btn small" data-on="${esc(u)}">Einschalten</button>`
               : isP ? `<button class="btn small" data-unpause="${esc(u)}">Freischalten</button>`
@@ -622,13 +628,15 @@ function renderHomeView() {
   $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   $$("[data-share]").forEach(b => b.onclick = () => renderShare(b.dataset.share));
   $$("[data-off]").forEach(b => b.onclick = () => { lang.off = [...off, b.dataset.off]; save(); toast("Ausgeschaltet. Die Fächer der Wörter bleiben gespeichert."); keepScroll(renderHome); });
+  $$("[data-fat]").forEach(b => b.onclick = () => { if (!fat.includes(b.dataset.fat)) lang.fat = [...fat, b.dataset.fat]; save(); toast("Nur noch die fett gedruckten Wörter. Die anderen behalten ihr Fach."); keepScroll(renderHome); });
+  $$("[data-allw]").forEach(b => b.onclick = () => { lang.fat = fat.filter(u => u !== b.dataset.allw); save(); toast("Alle Wörter sind dabei."); keepScroll(renderHome); });
   $$("[data-on]").forEach(b => b.onclick = () => { lang.off = off.filter(u => u !== b.dataset.on); save(); toast("Eingeschaltet. Alle Wörter sind wieder in ihren Fächern."); keepScroll(renderHome); });
   $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); if (lang.upto) delete lang.upto[b.dataset.unpause]; save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
   $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderHome); });
   $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderHome); });
   $$("[data-del-yes]").forEach(b => b.onclick = () => {
     const u = b.dataset.delYes; S.cards = S.cards.filter(c => !(c.lang === S.cur && c.unit === u));
-    lang.paused = paused.filter(x => x !== u); lang.off = off.filter(x => x !== u); confirmDelete = null; save(); keepScroll(renderHome); toast("Unit gelöscht");
+    lang.paused = paused.filter(x => x !== u); lang.off = off.filter(x => x !== u); lang.fat = fat.filter(x => x !== u); confirmDelete = null; save(); keepScroll(renderHome); toast("Unit gelöscht");
   });
   if (!keepScroll.on) window.scrollTo(0, 0);
 }
@@ -1687,6 +1695,15 @@ function addCards(unit, list, book) {
   dayLog().added += added;
   return added;
 }
+// Karten einer Unit in die Reihenfolge des Buchs bringen (wichtig für „Wir sind bei … bis Wort“), andere Karten bleiben, wo sie sind
+function bookOrder(unit, rows) {
+  const rank = new Map(rows.map((r, i) => [norm(r.en) + "|" + norm(r.de), i])), mine = c => c.lang === S.cur && c.unit === unit;
+  const slots = [], cs = [];
+  S.cards.forEach((c, i) => { if (mine(c)) { slots.push(i); cs.push(c); } });
+  const key = c => rank.get(norm(c.en) + "|" + norm(c.de)) ?? 1e9;
+  cs.map((c, i) => [c, i]).sort((x, y) => key(x[0]) - key(y[0]) || x[1] - y[1]).forEach(([c], j) => { S.cards[slots[j]] = c; });
+  ordCache = null;
+}
 // Ein Link mit einem ganzen Buch: Jede Unit lässt sich gleich lernen oder erst einmal pausieren.
 function renderBook(p) {
   const have = new Set(cardsAll().map(c => c.unit)), total = p.units.reduce((n, u) => n + u.rows.length, 0);
@@ -1716,8 +1733,14 @@ function renderBook(p) {
   $("#back").onclick = () => renderHome();
   $("#save").onclick = () => {
     const lang = L(); let added = 0;
-    lang.paused = lang.paused || [];
-    p.units.forEach((u, i) => { added += addCards(u.name, all[i] ? u.rows : u.rows.filter(r => !r.nf), p.title); if (!have.has(u.name)) lang.paused.push(u.name); });
+    lang.paused = lang.paused || []; const fat = new Set(lang.fat || []);
+    // Es kommen immer alle Wörter in den Kasten; „nur fett“ blendet die übrigen aus und lässt sich auf der Startseite umschalten.
+    p.units.forEach((u, i) => { const nb = u.rows.filter(r => !r.nf), rest = u.rows.filter(r => r.nf);
+      added += addCards(u.name, nb, p.title); const k = addCards(u.name, rest, p.title); if (all[i]) added += k;
+      if (k) bookOrder(u.name, u.rows);
+      if (!all[i] && rest.length) fat.add(u.name); else fat.delete(u.name);
+      if (!have.has(u.name)) lang.paused.push(u.name); });
+    lang.fat = [...fat];
     save();
     toast(added ? `${added} Vokabeln übernommen` : "Diese Vokabeln sind schon in deinem Kasten");
     renderPos(p.units[0].name);
