@@ -404,6 +404,10 @@ button.streak{color:var(--ink);cursor:pointer}
 .gsoon summary{cursor:pointer}
 .gsoon ul{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:4px;font-size:.92rem}
 .gexplain{display:flex;flex-direction:column;gap:10px}
+.gvgl{background:rgba(127,127,127,.08);border-left:4px solid var(--marker);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.gvgl p{margin:0 0 10px}.gvgl[open] summary{margin-bottom:10px}.gvgl summary{cursor:pointer}.gvgl .eyebrow{margin-top:4px}.gvgl mark{background:var(--marker);color:#2A2200;border-radius:3px;padding:0 2px}
+.gaus{margin-top:14px;padding:12px 14px;border-radius:10px;border:2px dashed var(--marker)}.gaus p{margin:0 0 8px}.gaus mark{background:var(--marker);color:#2A2200;border-radius:3px;padding:0 2px}
+.gwrong{color:#C0392B;text-decoration-thickness:2px}
 .gexplain mark,.gex mark{background:var(--marker);color:#2A2200;border-radius:3px;padding:0 2px}
 .gexamples{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:12px;margin-top:4px}
 .gex{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700}
@@ -545,3 +549,7 @@ body.weltopen .confetti{z-index:60}
 .pw{border:1.5px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 10px;font:inherit;font-size:.9rem}
 .pw.on{border-color:var(--good);color:var(--ink);background:var(--good-bg)}
 .pwpart{font-weight:700;font-size:.8rem;color:var(--accent,#1F4E5F);margin-left:4px}
+.choice.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.gapline.filled{min-width:0;padding:0 4px;color:var(--accent);font-family:var(--hand)}
+.gapline.ok{color:var(--good);border-color:var(--good)}
+.gapline.bad{color:var(--bad);border-color:var(--bad);text-decoration:line-through}
