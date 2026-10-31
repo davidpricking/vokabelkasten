@@ -32,6 +32,7 @@ const LANG_PRESETS = [
 ];
 // Fahne der Sprache; eigene Sprachen bekommen ihre ersten zwei Buchstaben.
 function flagOf(l) {
+  if (l.kind === "verbs") return "🔁";
   const p = LANG_PRESETS.find(x => x.name === l.name);
   return p ? p.flag : `<span class="abbr">${esc(l.name.slice(0, 2))}</span>`;
 }
@@ -105,6 +106,7 @@ function cardsAll() { return S.cards.filter(c => c.lang === S.cur); }
 // in Units auf „nur fett“ (L().fat) fehlen die nicht fett gedruckten Wörter. Ihre Fächer bleiben gespeichert.
 function hidden(c, off, fat) { return off.includes(c.unit) || (c.nf && fat.includes(c.unit)); }
 function cardsL() { const l = L(), off = l.off || [], fat = l.fat || []; return off.length || fat.length ? cardsAll().filter(c => !hidden(c, off, fat)) : cardsAll(); }
+function lname0() { return L().kind === "verbs" ? "Englisch" : L().name; }   // Anzeigename der Sprache beim Abfragen
 function isEn() { return /^en/.test(L().code); }
 function canHear() { return canSpeak && !!L().code; }
 function addLang(name, code, withSample) {
@@ -131,7 +133,7 @@ async function copyText(text) {
 }
 
 function norm(s) {
-  return String(s).toLowerCase().replace(/[’‘`´]/g, "'").replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
+  return String(s).toLowerCase().replace(/[’‘`´]/g, "'").replace(/\s+[-–—]\s+|\s*[–—]\s*/g, " ").replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
 }
 function alts(s) { return String(s).split(/\s*[,/;]\s*/).map(norm).filter(Boolean); }
 function variants(a) { if (!isEn()) return [a]; return a.startsWith("to ") ? [a, a.slice(3)] : [a, "to " + a]; }
@@ -516,7 +518,7 @@ function renderHomeView() {
   const lang = L(), all = cardsL(), every = cardsAll(), paused = lang.paused || [], off = lang.off || [], fat = lang.fat || [];
   const due = dueToday().length, nl = Math.min(newAllowed(), newCards().length), gd = gDue().length;
   const units = [...new Set(every.map(c => c.unit))];
-  const dirs = [["de-en", `Deutsch → ${lang.name}`], ["en-de", `${lang.name} → Deutsch`], ["mix", "gemischt"]];
+  const dirs = [["de-en", `Deutsch → ${lname0()}`], ["en-de", `${lname0()} → Deutsch`], ["mix", "gemischt"]];
   const inputs = [["tiles", "Buchstaben und Sprechen"], ["keyboard", "Tastatur"]];
   const lv = levelOf(S.xp), todo = due + nl + gd;
   const placeU = units.find(u => !paused.includes(u) && !off.includes(u) && canPlace(u));
@@ -544,9 +546,9 @@ function renderHomeView() {
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
       ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
-    ${posCard()}
+    ${lang.kind === "verbs" ? verbPanel() : posCard()}
     ${counterCard()}
-    ${placeU ? `<section class="panel place">
+    ${placeU && lang.kind !== "verbs" ? `<section class="panel place">
       <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
       <p class="muted small">Beim Sortieren tippst du nur die richtige Bedeutung an. Was du schon kannst, fliegt gleich nach hinten. So lernst du nur, was wirklich neu ist.</p>
       <button class="btn ghost" data-place="${esc(placeU)}">Sortieren starten</button></section>` : ""}
@@ -557,6 +559,7 @@ function renderHomeView() {
     </section>` : ""}
     ${monsterCard()}
     ${grammarCard()}
+    ${verbCard()}
     ${questCard()}
     ${weltCard()}
     ${duelCard()}
@@ -566,7 +569,7 @@ function renderHomeView() {
       <div class="badgerow">${earned.length ? earned.slice(-6).map(b => `<span class="bdg" title="${esc(b[2])}">${b[1]}</span>`).join("")
         : `<span class="muted small">Dein erstes Abzeichen bekommst du nach der ersten Runde.</span>`}</div>
     </section>
-    <section>
+    <section${lang.kind === "verbs" ? " hidden" : ""}>
       <div class="spread"><h2>Units</h2><button class="btn small" id="add">+ Vokabeln</button></div>
       <div class="units">${units.length ? (() => {
         const unitHtml = u => { const ce = every.filter(c => c.unit === u), nfN = ce.filter(c => c.nf).length, isF = nfN > 0 && fat.includes(u);
@@ -614,7 +617,7 @@ function renderHomeView() {
       <p class="muted small">Buchstaben und Sprechen: Ins ${esc(lang.name)}e legst du das Wort aus Buchstaben, so übst du die Schreibweise. Ins Deutsche sagst du es ins Mikrofon oder drehst die Karte um.</p>
     </details>
   `));
-  $("#go").onclick = () => todo ? startRound(null) : all.length ? startRound(FREE) : renderImport();
+  $("#go").onclick = () => todo ? startRound(null) : all.length ? startRound(FREE) : lang.kind === "verbs" ? renderVerbs() : renderImport();
   if ($("#free")) $("#free").onclick = () => startRound(FREE);
   $("#add").onclick = () => renderImport();
   $("#settings").onclick = () => renderSettings();
@@ -629,6 +632,7 @@ function renderHomeView() {
   save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
   if ($("#homePack")) $("#homePack").onclick = () => openPack();
   if ($("#gram")) $("#gram").onclick = () => renderGrammar();
+  bindVerbs();
   $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
   $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); keepScroll(renderHome); });
   $$("[data-input]").forEach(b => b.onclick = () => { S.input = b.dataset.input; save(); keepScroll(renderHome); });
@@ -702,7 +706,7 @@ function renderCard() {
   const dir = card.chk && !R.practice ? "de-en" : dirFor();   // Gekonnt einsortiert: einmal in die schwere Richtung prüfen
   const q = dir === "de-en" ? card.de : card.en;
   const sol = dir === "de-en" ? card.en : card.de;
-  const lname = L().name;
+  const lname = lname0();
   const qHot = dir === "en-de" && hotSpot(card, q);   // schwierige Schreibstelle im englischen Wort leuchtet mit
   const qHtml = qHot ? spellHtml(q, qHot, "spellq") : esc(q);
   const pool = cardsL().filter(c => c.id !== card.id);
@@ -850,7 +854,7 @@ function listenDe(sol, cb, fallback) {
 
 // Tastatur, wie früher: tippen oder mit dem Mikrofon sprechen bzw. buchstabieren
 function keyboardUi(area, sol, dir, done) {
-  const lname = L().name, lang = dir === "de-en" ? L().code : "de-DE";
+  const lname = lname0(), lang = dir === "de-en" ? L().code : "de-DE";
   const mic = SR && !!lang, spellOk = /^(en|de)/.test(lang);
   area.replaceChildren(h(`<form id="f" autocomplete="off">
     <div class="answerRow">
@@ -1834,6 +1838,85 @@ function gMove(id, ok) {
   st.box = ok ? Math.min(7, b0 + 1) : Math.max(1, b0 - 2); st.due = today() + INTERVAL[st.box] * DAY;
   return ok ? `Grammatik „${esc(t.t)}“ wandert weiter in Fach ${st.box}.` : `Grammatik „${esc(t.t)}“ rutscht zurück in Fach ${st.box} und kommt morgen wieder.`;
 }
+// ---------- Unregelmäßige Verben: eigener Kasten (eine eigene „Sprache“ mit kind: "verbs") ----------
+// S.verbPP: mit past participle (3. Form). Standard aus. Beim Einschalten fangen alle Verben von vorn an.
+const VERB_UNIT = "Unregelmäßige Verben";
+function verbLang(create) {
+  let l = S.langs.find(x => x.kind === "verbs");
+  if (!l && create) { l = { id: uid(), name: VERB_UNIT, code: "en-GB", kind: "verbs", dir: "de-en", newDay: 0, newCount: 0 }; S.langs.push(l); }
+  return l;
+}
+function verbText(v) { return S.verbPP ? `${v[0]} – ${v[1]} – ${v[2]}` : `${v[0]} – ${v[1]}`; }
+function verbCards() { const l = verbLang(); return l ? S.cards.filter(c => c.lang === l.id && c.vb) : []; }
+function setVerbPP(on) {
+  S.verbPP = !!on;
+  verbCards().forEach(c => {
+    const v = IRREG.find(x => x[0] === c.vb); if (!v) return;
+    c.en = verbText(v);
+    if (on) { c.level = 0; c.due = 0; ["st", "df", "seen", "ivl", "chk", "pl"].forEach(k => delete c[k]); }
+  });
+  save();
+}
+function toggleVerb(v) {
+  const l = verbLang(true), c = S.cards.find(x => x.lang === l.id && x.vb === v[0]);
+  if (c) {
+    if (c.level > 0 && !confirm(`„${v[0]}“ hast du schon geübt. Wirklich wieder aus dem Kasten nehmen?`)) return false;
+    S.cards = S.cards.filter(x => x !== c);
+  } else S.cards.push({ id: uid(), en: verbText(v), de: v[3], ex: v[4] || "", unit: VERB_UNIT, lang: l.id, level: 0, due: 0, vb: v[0] });
+  save(); return true;
+}
+function verbCard() {
+  if (L().kind === "verbs" || !isEn()) return "";
+  const l = verbLang(), cs = verbCards();
+  const counts = Array(8).fill(0); cs.forEach(c => counts[c.level]++);
+  return `<section class="panel">
+      <div class="spread"><div><h2>Unregelmäßige Verben</h2><p class="muted small">${cs.length ? `${cs.length} Verben in ihrem eigenen Kasten` : `${IRREG.length} Verben zum Auswählen`}</p></div>
+        <button class="btn small" id="verbPick">Auswählen</button></div>
+      ${cs.length ? kastenHtml(counts, true, "Verben pro Fach") + `<button class="btn ghost" id="verbGo">Zum Verben-Kasten</button>` : ""}
+    </section>`;
+}
+function verbPanel() {
+  const n = verbCards().length;
+  return `<section class="panel">
+      <div class="spread"><div><b>Deine Verben</b><p class="muted small">${n} von ${IRREG.length} ausgewählt</p></div>
+        <button class="btn small" id="verbPick">Auswählen</button></div>
+      <label class="toggle"><span><b>Mit past participle</b><br><span class="muted small">Dann fragt die App alle drei Formen ab, zum Beispiel go – went – gone. Beim Einschalten fangen alle Verben wieder von vorn an.</span></span>
+        <input type="checkbox" id="verbPP" ${S.verbPP ? "checked" : ""}></label>
+    </section>`;
+}
+function bindVerbs() {
+  if ($("#verbPick")) $("#verbPick").onclick = () => renderVerbs();
+  if ($("#verbGo")) $("#verbGo").onclick = () => { S.cur = verbLang().id; save(); renderHome(); window.scrollTo(0, 0); };
+  if ($("#verbPP")) $("#verbPP").onchange = e => {
+    const on = e.target.checked, n = verbCards().length;
+    if (on && n && !confirm(`Mit past participle fangen alle ${n} Verben wieder von vorn an. Einschalten?`)) { e.target.checked = false; return; }
+    setVerbPP(on); toast(on ? "Ab jetzt mit allen drei Formen." : "Ab jetzt nur Grundform und simple past."); keepScroll(renderHome);
+  };
+}
+function renderVerbs() {
+  const l = verbLang(), have = new Set(verbCards().map(c => c.vb));
+  const letters = [...new Set(IRREG.map(v => v[0][0]))];
+  const row = v => `<button class="vrow" data-verb="${esc(v[0])}" aria-pressed="${have.has(v[0])}">
+      <span><b>${esc(v[0])}</b> – ${esc(v[1])}<span class="${S.verbPP ? "" : "vpp"}"> – ${esc(v[2])}</span><span class="small muted vde">${esc(v[3])}</span></span><i aria-hidden="true">${have.has(v[0]) ? "✓" : "+"}</i></button>`;
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Unregelmäßige Verben</h2></div>
+    <p class="muted">Tipp ein Verb an, dann kommt es in deinen Verben-Kasten. Nochmal antippen nimmt es wieder heraus.${S.verbPP ? "" : " Die grauen dritten Formen kommen dazu, wenn du „Mit past participle“ einschaltest."}</p>
+    <nav class="abc" aria-label="Zum Buchstaben springen">${"abcdefghijklmnopqrstuvwxyz".split("").map(ch => letters.includes(ch) ? `<button data-abc="${ch}">${ch.toUpperCase()}</button>` : `<span>${ch.toUpperCase()}</span>`).join("")}</nav>
+    ${letters.map(ch => `<h3 class="abch" id="vl-${ch}">${ch.toUpperCase()}</h3><div class="vlist">${IRREG.filter(v => v[0][0] === ch).map(row).join("")}</div>`).join("")}
+    <div class="vbar"><span id="vcount">${have.size} ausgewählt</span><button class="btn" id="vdone">Fertig</button></div>`));
+  const back = () => { if (verbLang() && have.size && L().kind !== "verbs") { S.cur = verbLang().id; save(); } renderHome(); window.scrollTo(0, 0); };
+  $("#back").onclick = () => { renderHome(); window.scrollTo(0, 0); };
+  $("#vdone").onclick = back;
+  $$("[data-abc]").forEach(b => b.onclick = () => $("#vl-" + b.dataset.abc).scrollIntoView({ behavior: "smooth", block: "start" }));
+  $$("[data-verb]").forEach(b => b.onclick = () => {
+    const v = IRREG.find(x => x[0] === b.dataset.verb);
+    if (!toggleVerb(v)) return;
+    have.has(v[0]) ? have.delete(v[0]) : have.add(v[0]);
+    b.setAttribute("aria-pressed", String(have.has(v[0]))); b.querySelector("i").textContent = have.has(v[0]) ? "✓" : "+";
+    $("#vcount").textContent = `${have.size} ausgewählt`;
+  });
+  window.scrollTo(0, 0);
+}
 function grammarCard() {
   const d = gData(); if (!d) return "";
   const ready = d.topics.filter(gReady), st = gStore();
@@ -2552,7 +2635,7 @@ function duelQuestion() {
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="dQuit" aria-label="Abbrechen">✕</button>
       <div class="bar" style="flex:1"><i style="width:${Math.round(D.i / N * 100)}%"></i></div><b class="small">${esc(p.n)} · ${D.i + 1}/${N}</b></div>
-    <div class="icard"><div class="spread"><span class="eyebrow">Deutsch → ${esc(L().name)}</span>${sprint ? `<b class="dclock" id="dClock">${secTxt(penTime(p))}</b>` : ""}</div>
+    <div class="icard"><div class="spread"><span class="eyebrow">Deutsch → ${esc(lname0())}</span>${sprint ? `<b class="dclock" id="dClock">${secTxt(penTime(p))}</b>` : ""}</div>
       <div class="q">${esc(q.de)}</div>
       <div class="choices">${q.opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div></div>`));
   const t0 = performance.now(), base = penTime(p);
