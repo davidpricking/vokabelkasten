@@ -1743,7 +1743,7 @@ function gData() { return GRAM[L().name]; }
 function gReady(t) { return !!(t.explain && t.tasks); }
 function gStore() { return S.gram[S.cur] || (S.gram[S.cur] = {}); }
 // **fett** in den Texten wird markiert; alles andere wird als Text ausgegeben.
-function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>"); }
+function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>").replace(/~~(.+?)~~/g, "<s class=\"gwrong\">$1</s>"); }
 function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
 // Grammatik-Kasten: Geübte Themen bekommen ein Fach und melden sich in wachsenden Abständen in der Tagesrunde.
 // Haken für „Wir sind bei“ (Lernlogik): gesperrte Themen kommen nicht in die Tagesrunde.
@@ -1817,7 +1817,7 @@ function renderGrammar() {
   window.scrollTo(0, 0);
 }
 function explainHtml(t) {
-  return `${(t.anim || []).map(morphHtml).join("")}<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>
+  return `${t.vgl ? `<details class="gvgl"><summary><b>Deutsche Erklärung</b> <span class="muted small">· Wie im Deutschen?</span></summary>${t.vgl.map(p => `<p>${gmark(p)}</p>`).join("")}${(t.vglEx || []).length ? `<p class="eyebrow">Beispiele</p>${t.vglEx.map(([f, de]) => `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${gmark(de)}</span></span></div>`).join("")}` : ""}</details>` : ""}${(t.anim || []).map(morphHtml).join("")}<div class="gexplain">${t.explain.map(p => `<p>${gmark(p)}</p>`).join("")}</div>${t.aus ? `<div class="gaus"><p class="eyebrow">Ausnahmen – aufgepasst!</p>${t.aus.map(p => `<p>${gmark(p)}</p>`).join("")}</div>` : ""}
     ${t.ex && t.ex.length ? `<div class="gexamples"><p class="eyebrow">Beispiele</p>${t.ex.map(([f, de]) =>
       `<div class="gex"><span>${gmark(f)}<br><span class="muted small">${esc(de)}</span></span>
         ${canHear() ? `<button class="iconbtn gsay" data-say="${esc(f.replace(/\*\*/g, ""))}" aria-label="Vorlesen">${ICON.speaker}</button>` : ""}</div>`).join("")}</div>` : ""}`;
@@ -1935,13 +1935,26 @@ function drawTask(task, area, done) {
   if (type === "gap" && task[4]) return drawTask(["pick", q, [task[2].split("|")[0], ...task[4]], task[3]], area, done);
   if (type === "pick") {
     const right = task[2][0], opts = shuffle([...task[2]]);
-    area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}">${esc(o)}</button>`).join("")}</div>`));
+    // Antippen setzt die Wahl nur in die Lücke; bewertet wird erst mit „Prüfen“.
+    area.replaceChildren(h(`<div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}" aria-pressed="false">${esc(o)}</button>`).join("")}</div>
+      <button class="btn wide" id="chk" style="margin-top:12px" disabled>Prüfen</button>`));
+    const gap = area.closest(".icard") && area.closest(".icard").querySelector(".gapline");
+    let sel = null;
     $$(".choice", area).forEach(b => b.onclick = () => {
-      const ok = opts[+b.dataset.k] === right;
-      $$(".choice", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
-      if (!ok) b.classList.add("wrong");
-      done(ok, q.includes("___") ? q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", right) : right, task[3]);
+      sel = b; sound("tap");
+      $$(".choice", area).forEach(x => { x.classList.toggle("sel", x === b); x.setAttribute("aria-pressed", x === b); });
+      if (gap) { gap.textContent = opts[+b.dataset.k]; gap.classList.add("filled"); }
+      $("#chk", area).disabled = false;
     });
+    $("#chk", area).onclick = () => {
+      if (!sel) return;
+      const ok = opts[+sel.dataset.k] === right;
+      $$(".choice, #chk", area).forEach(x => { x.disabled = true; if (opts[+x.dataset.k] === right) x.classList.add("right"); });
+      sel.classList.remove("sel"); if (!ok) sel.classList.add("wrong");
+      $("#chk", area).hidden = true;
+      if (gap) gap.classList.add(ok ? "ok" : "bad");
+      done(ok, q.includes("___") ? q.replace(/\s*\([^)]*\)\s*$/, "").replace("___", right) : right, task[3]);
+    };
   } else if (type === "gap") {
     const sols = task[2].split("|");
     area.replaceChildren(h(`<form id="f" autocomplete="off">

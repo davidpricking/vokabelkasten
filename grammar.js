@@ -47,11 +47,11 @@ window.GRAMMAR = {
       "worst": "am schlechtesten", "children": "Kinder", "child": "Kind", "women": "Frauen", "feet": "Füße", "baby": "Baby",
       "elephant": "Elefant", "germany": "Deutschland", "team": "Mannschaft", "ball": "Ball", "colour": "Farbe", "touch": "berühren",
       "toilet": "Toilette", "basketball": "Basketball", "ill": "krank", "dishes": "Geschirr", "spider": "Spinne", "milk": "Milch",
-      "meat": "Fleisch", "breakfast": "Frühstück", "film": "Film", "bark": "bellen", "song": "Lied", "cookie": "Keks",
+      "meat": "Fleisch", "breakfast": "Frühstück", "film": "Film", "bark": "bellen", "song": "Lied", "biscuit": "Keks",
       "fridge": "Kühlschrank", "egg": "Ei", "bread": "Brot", "pizza": "Pizza", "tea": "Tee", "vet": "Tierarzt, Tierärztin",
       "rabbit": "Kaninchen", "pair": "Paar", "feed": "füttern", "cinema": "Kino", "key": "Schlüssel", "fox": "Fuchs",
       "catch": "fangen", "sugar": "Zucker", "advice": "Rat, Ratschlag", "furniture": "Möbel", "snow": "schneien, Schnee", "anyone": "irgendjemand",
-      "mountain": "Berg", "high": "hoch", "driver": "Fahrer", "slow": "langsam", "fast": "schnell", "happily": "fröhlich",
+      "mountain": "Berg", "high": "hoch", "driver": "Fahrer", "slow": "langsam", "slowly": "langsam (Adverb)", "opposite": "gegenüber", "toy": "Spielzeug", "tennis": "Tennis", "fast": "schnell", "happily": "fröhlich",
       "beautifully": "wunderschön", "quietly": "leise", "carefully": "vorsichtig", "hard": "hart, fleißig", "hardly": "kaum", "cancel": "absagen",
       "apologise": "sich entschuldigen", "novel": "Roman", "heat": "erhitzen, Hitze", "melt": "schmelzen", "pass": "bestehen", "study": "lernen", "tall": "groß (Körper)",
       "travel": "reisen", "lottery": "Lotterie", "earlier": "früher", "hurt": "weh tun", "match": "Spiel", "parent": "Elternteil",
@@ -104,8 +104,8 @@ window.GRAMMAR = {
           ["pick", "___ banana", ["a", "an"], "banana fängt mit einem Konsonanten-Laut an."],
           ["pick", "___ hour", ["an", "a"], "Das h in hour hört man nicht, man spricht „auer“."],
           ["pick", "___ uniform", ["a", "an"], "uniform spricht man „junifórm“, also mit Konsonanten-Laut."],
-          ["pick", "My mum is ___ doctor.", ["a", "the", "–"], "Bei Berufen steht im Englischen a oder an."],
-          ["pick", "Can you open ___ window, please? It's hot in here.", ["the", "a", "an"], "Es ist klar, welches Fenster gemeint ist."],
+          ["pick", "My mum is ___ doctor.", ["a", "an", "–"], "Bei Berufen steht im Englischen a oder an."],
+          ["pick", "I've got a cat and a dog. ___ cat is black.", ["The", "A", "An"], "Die Katze kennt man schon, also the."],
           ["pick", "I've got ___ idea!", ["an", "a"], "idea fängt mit einem Vokal-Laut an."],
           ["pick", "There's ___ elephant in the zoo.", ["an", "a"], "elephant fängt mit einem Vokal-Laut an."]
         ] },
@@ -209,7 +209,7 @@ window.GRAMMAR = {
         ex: [["**Close** the door, please.", "Mach bitte die Tür zu."], ["**Don't** touch that!", "Fass das nicht an!"], ["**Let's** play a game!", "Lass uns ein Spiel spielen!"]],
         tasks: [
           ["pick", "___ the window, please.", ["Open", "Opens", "You open"], "Aufforderungen beginnen mit der Grundform."],
-          ["pick", "___ talk in the library!", ["Don't", "Not", "No"], "Verneint: Don't + Verb."],
+          ["pick", "___ talk in the library!", ["Don't", "Not", "Doesn't"], "Verneint: Don't + Verb."],
           ["gap", "___ late! (nicht + sein)", "Don't be|Do not be", "", ["Not be", "Don't"]],
           ["order", "Please close the door."],
           ["pick", "___ play a game!", ["Let's", "Lets us", "Let"], "Vorschläge mit Let's."],
@@ -282,7 +282,7 @@ window.GRAMMAR = {
         ex: [["I **play** football every Friday.", "Ich spiele jeden Freitag Fußball."], ["My sister **watches** TV after school.", "Meine Schwester sieht nach der Schule fern."], ["Tom **has** a dog.", "Tom hat einen Hund."]],
         tasks: [
           ["gap", "She ___ to school by bus. (go)", "goes", "she → -s, und nach o kommt -es.", ["go", "gos"]],
-          ["gap", "My dad ___ the dishes every evening. (wash)", "washes", "Nach sh kommt -es.", ["washs", "wash"]],
+          ["gap", "My dad ___ the car every Saturday. (wash)", "washes", "Nach sh kommt -es.", ["washs", "wash"]],
           ["gap", "We ___ English on Mondays. (have)", "have", "Bei we bleibt das Verb ohne -s.", ["has", "haves"]],
           ["gap", "Emma ___ a cat. (have)", "has", "Emma = she, und have wird zu has.", ["have", "haves"]],
           ["gap", "The baby ___ a lot. (cry)", "cries", "Konsonant + y wird zu -ies.", ["crys", "cry"]],
@@ -387,9 +387,9 @@ window.GRAMMAR = {
           "Bei Angeboten und Bitten nimmst du **some**, auch in Fragen: Would you like **some** tea? Can I have **some** water?",
           "Genauso: something/anything, somebody/anybody."
         ],
-        ex: [["There are **some** cookies.", "Da sind ein paar Kekse."], ["Is there **any** milk?", "Gibt es Milch?"], ["Would you like **some** juice?", "Möchtest du etwas Saft?"]],
+        ex: [["There are **some** biscuits.", "Da sind ein paar Kekse."], ["Is there **any** milk?", "Gibt es Milch?"], ["Would you like **some** juice?", "Möchtest du etwas Saft?"]],
         tasks: [
-          ["pick", "There are ___ cookies on the table.", ["some", "any"], "Bejahter Satz: some."],
+          ["pick", "There are ___ biscuits on the table.", ["some", "any"], "Bejahter Satz: some."],
           ["pick", "Is there ___ milk in the fridge?", ["any", "some"], "Frage: any."],
           ["pick", "I haven't got ___ money.", ["any", "some"], "Verneinter Satz: any."],
           ["pick", "Would you like ___ juice?", ["some", "any"], "Angebot: some, auch in der Frage."],
@@ -410,7 +410,7 @@ window.GRAMMAR = {
           ["pick", "I like pizza ___ chips.", ["and", "but", "so"]],
           ["pick", "I'm tired, ___ I go to bed.", ["so", "because", "but"], "Die Folge: so."],
           ["pick", "Tom is sad ___ his cat is ill.", ["because", "so", "or"], "Der Grund: because."],
-          ["pick", "Do you want tea ___ juice?", ["or", "and", "but"]],
+          ["pick", "Do you want tea ___ juice?", ["or", "but", "because"], "oder = or."],
           ["pick", "Emma likes maths, ___ she doesn't like art.", ["but", "so", "or"]],
           ["gap", "We stay at home ___ it's raining. (weil)", "because", "", ["but", "so"]],
           ["order", "I'm happy because it's my birthday."],
@@ -609,10 +609,10 @@ window.GRAMMAR = {
           ["gap", "This is the ___ day of my life! (happy)", "happiest", "y wird zu i: happiest.", ["happyest", "most happy"]],
           ["gap", "Maths is ___ than art. (difficult)", "more difficult", "Lange Adjektive: more.", ["difficulter", "most difficult"]],
           ["gap", "My cake is ___ than yours. (good)", "better", "good – better – best.", ["gooder", "best"]],
-          ["gap", "This is the ___ film I know. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
-          ["pick", "Lisa is older ___ her mum.", ["than", "as", "then"], "als = than."],
+          ["gap", "This is the ___ film I've ever seen. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
+          ["pick", "Lisa is older ___ her brother.", ["than", "as", "then"], "als = than."],
           ["pick", "My bike is as fast ___ yours.", ["as", "than"], "as … as."],
-          ["gap", "This is the ___ tower in London. (high)", "highest", "", ["higher", "most high"]]
+          ["gap", "This is the ___ mountain in England. (high)", "highest", "", ["higher", "most high"]]
         ] },
       { id: "adverbsmanner", band: "6", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
         explain: [
@@ -752,7 +752,7 @@ window.GRAMMAR = {
     adverbsfreq: [{ a: "She plays tennis.", b: "She often plays tennis.", hint: "Häufigkeitswörter stehen **vor** dem Verb." }],
     questions: [{ a: "He plays football.", b: "Does he play football?", hint: "**Does** holt sich das s vom Verb." }],
     presentprog: [{ a: "I read a book.", b: "I am reading a book now.", hint: "Gerade jetzt: **am/is/are** + Verb mit **-ing**." }],
-    someany: [{ a: "I have some apples.", b: "I don't have any apples.", hint: "Bei Verneinung wird **some** zu **any**." }],
+    someany: [{ a: "I've got some apples.", b: "I haven't got any apples.", hint: "Bei Verneinung wird **some** zu **any**." }],
     objectpronouns: [{ a: "I like Tom.", b: "I like him.", hint: "Nach dem Verb: **me, you, him, her, it, us, them**." }],
     wordorder: [{ a: "On Saturday I play football.", b: "I play football on Saturday.", hint: "**S – V – O**: Subjekt, Verb, Objekt. Ort und Zeit kommen ans Ende." }],
     simplepast: [{ a: "I play football.", b: "Yesterday I played football.", hint: "Vorbei? Dann kommt **-ed** dran." }],
@@ -761,17 +761,17 @@ window.GRAMMAR = {
     will: [{ a: "It rains.", b: "It will rain tomorrow.", hint: "Vorhersage: **will** + Verb ohne -s." }],
     comparison: [{ a: "Tom is tall.", b: "Tom is taller than Ben.", hint: "Vergleich: **-er** + **than**." }],
     if12: [
-      { a: "If it rains, I will stay home.", b: "If it rained, I would stay home.", hint: "Typ 1 wird zu Typ 2: **eine Zeit zurück**, aus will wird **would**." },
+      { a: "If it rains, I will stay at home.", b: "If it rained, I would stay at home.", hint: "Typ 1 wird zu Typ 2: **eine Zeit zurück**, aus will wird **would**." },
       { a: "If I am rich,", b: "If I were rich,", hint: "Unwirklich? Dann **If I were**, auch bei I und he/she/it." }
     ],
-    if3: [{ a: "If it rained, I would stay home.", b: "If it had rained, I would have stayed home.", hint: "Typ 3 geht noch eine Zeit zurück: **had** + 3. Form, **would have** + 3. Form." }]
+    if3: [{ a: "If it rained, I would stay at home.", b: "If it had rained, I would have stayed at home.", hint: "Typ 3 geht noch eine Zeit zurück: **had** + 3. Form, **would have** + 3. Form." }]
   };
   const topics = window.GRAMMAR.Englisch.topics;
   topics.forEach(t => { if (A[t.id]) t.anim = A[t.id]; });
   const put = (id, extra) => Object.assign(topics.find(t => t.id === id), extra);
   put("if12", {
     explain: [
-      "**Typ 1 – wirklich möglich:** If + simple present, dann **will** + Verb. If it rains, I will stay home.",
+      "**Typ 1 – wirklich möglich:** If + simple present, dann **will** + Verb. If it rains, I will stay at home.",
       "**Typ 2 – unwahrscheinlich oder ausgedacht:** If + simple past, dann **would** + Verb. If I had a million euros, I would buy an island.",
       "Merksatz: **Im if-Teil steht nie will oder would.**",
       "Bei Typ 2 sagt man oft **If I were** statt If I was, besonders in „If I were you, …“ (An deiner Stelle …)."
@@ -800,7 +800,383 @@ window.GRAMMAR = {
       ["pick", "If they had trained more, they ___ the match.", ["would have won", "would win", "had won"], "Typ 3 im Hauptsatz: would have + 3. Form."],
       ["pick", "If I had gone to bed earlier, I ___ so tired now.", ["wouldn't be", "wouldn't have been", "won't be"], "Gemischt: früher (Typ 3) mit Folge jetzt (now), also would be."],
       ["gap", "She would have called if she ___ your number. (have)", "had had", "had + 3. Form von have = had had.", ["would have", "has had"]],
-      ["order", "If you had asked me I would have helped you.", "Typ 3: had asked, would have helped."]
+      ["order", "If you had asked me, I would have helped you.", "Typ 3: had asked, would have helped."]
     ]
   });
+})();
+
+// Vergleich mit dem Deutschen: steht vor der Erklärung. Wie sagen wir es? Wo ist Englisch anders? Typischer Fehler.
+(function () {
+  const V = {
+    plural: [
+      "Im Deutschen gibt es viele Arten, die Mehrzahl zu bilden: Buch → Büch**er**, Katze → Katze**n**, Tisch → Tisch**e**, Auto → Auto**s**.",
+      "Im Englischen ist es viel einfacher: Fast immer kommt nur **-s** dazu. book → book**s**, cat → cat**s**.",
+      "Aufpassen bei Wörtern, die schon unregelmäßig sind: Wie bei uns Mann → **Männer** gibt es man → **men**. Falsch ist ~~mans~~."
+    ],
+    articles: [
+      "Im Deutschen gibt es drei Artikel für „der, die, das“ und viele Formen (den, dem, des …). Im Englischen gibt es nur **the**, für alles.",
+      "Für „ein, eine“ gibt es nur **a**, und **an** vor einem Vokal-Laut: a dog, an apple. Das hängt vom Klang ab, nicht vom Wort.",
+      "Anders als im Deutschen steht bei Berufen **a**: Meine Mutter ist Ärztin. → My mum is **a** doctor. Falsch ist ~~My mum is doctor.~~"
+    ],
+    tobe: [
+      "Das Verb „sein“ heißt **to be**. Wie bei uns (ich bin, du bist, er ist) ändert es sich je nach Person: I **am**, you **are**, he/she/it **is**.",
+      "Englisch hat nur **you** für „du“ und „ihr“ und auch für „Sie“. Es gibt keinen Unterschied zwischen du und Sie.",
+      "**it** benutzt man für Dinge und Tiere, auch wenn es im Deutschen „der“ oder „die“ heißt: Der Tisch ist groß. → **It** is big. Falsch ist ~~He is big.~~"
+    ],
+    bequestions: [
+      "Wie im Deutschen tauschen bei der Frage Verb und Person die Plätze: Du bist zwölf. → **Bist du** zwölf? / You are twelve. → **Are you** twelve?",
+      "Das funktioniert im Englischen nur mit am, is, are (und can, have got). Bei anderen Verben braucht man do/does, das kommt später.",
+      "Fragewörter stehen wie bei uns vorne: **Wo** bist du? → **Where** are you?"
+    ],
+    thereis: [
+      "„Es gibt“ heißt nicht ~~It gives~~! Englisch sagt **there is** (eins) und **there are** (mehrere).",
+      "Im Deutschen ist „es gibt“ immer gleich: Es gibt einen Hund. Es gibt zwei Hunde. Im Englischen ändert sich das Verb: There **is** a dog. There **are** two dogs.",
+      "Frage: Gibt es …? → **Is there** …? / **Are there** …?"
+    ],
+    prepositions: [
+      "Viele Ortswörter passen eins zu eins: in → **in**, auf → **on**, unter → **under**, hinter → **behind**, neben → **next to**.",
+      "Aber: „zwischen“ heißt **between**, „vor“ heißt **in front of**, und „gegenüber“ heißt **opposite**.",
+      "Falsche Freunde: „bei“ ist nicht ~~by~~, sondern oft **at**: bei Oma → **at** Grandma's. Und **at** home heißt zu Hause."
+    ],
+    possessives: [
+      "„sein“ und „ihr“ heißen wie im Deutschen je nach Besitzer verschieden: Tom und **sein** Hund → Tom and **his** dog, Lisa und **ihr** Hund → Lisa and **her** dog.",
+      "Aber das Englische ändert sich **nicht** nach dem Ding, das man besitzt: mein Hund, meine Katze, meine Bücher → **my** dog, **my** cat, **my** books.",
+      "Achtung bei „ihr“: ihr (Lisas) → **her**, ihr (von mehreren) → **their**, Ihr (höflich) → **your**."
+    ],
+    commands: [
+      "Bei uns sagt man „Mach die Tür zu!“ oder „Macht die Tür zu!“. Im Englischen gibt es nur eine Form: **Close** the door! Das Verb steht ohne Person vorne.",
+      "Verbot: Im Deutschen „Fass das nicht an!“, das „nicht“ steht hinten. Im Englischen steht **Don't** vorne: **Don't** touch it! Falsch ist ~~Touch it not!~~",
+      "Höflich wird es mit **please**: Please sit down. (Setz dich bitte.)"
+    ],
+    can: [
+      "**can** heißt „können“ und manchmal auch „dürfen“: Can I go out? (Darf ich rausgehen?)",
+      "Anders als im Deutschen ändert sich can nie: ich kann, er kann → I **can**, he **can**. Falsch ist ~~he cans~~.",
+      "Das Verb danach steht ohne to und ohne -s, gleich nach can: She can **swim**. Im Deutschen steht es am Ende: Sie kann **schwimmen**."
+    ],
+    havegot: [
+      "„Ich habe einen Hund“ heißt in Großbritannien meist **I have got** a dog (kurz: I've got).",
+      "Wie bei „ich habe, er hat“ ändert sich die Form: I **have got**, he/she/it **has got**.",
+      "Frage und Verneinung gehen mit have selbst, nicht mit do: **Have** you **got** a pet? I **haven't got** a pet."
+    ],
+    genitive: [
+      "Wir sagen „Toms Fahrrad“ oder „das Fahrrad von Tom“. Englisch sagt fast immer **Tom's** bike, mit Apostroph vor dem s.",
+      "Im Deutschen schreibt man „Toms“ ohne Apostroph. Im Englischen gehört er dazu: Tom**'s**.",
+      "Mehrere Besitzer mit -s: Der Apostroph kommt hinten dran: my parents**'** car (das Auto meiner Eltern)."
+    ],
+    simplepresent: [
+      "**Gibt es das im Deutschen?** Ja, das ist unser **Präsens**: ich spiele, du spielst, er spielt. Gebaut wird es wie bei uns aus nur **einem** Wort.",
+      "**Der große Unterschied:** Unser Präsens kann alles. „Ich spiele Fußball“ kann heißen: jeden Samstag, gerade jetzt oder sogar morgen. Englisch teilt das auf. Das simple present steht nur für **immer wieder, normalerweise** und für **Tatsachen**: I play football every Saturday. Cats like milk.",
+      "**Endungen:** Wir haben viele (spiel**e**, spiel**st**, spiel**t**, spiel**en**). Englisch hat nur eine einzige: **-s bei he, she, it**. Wo wir „er spiel**t**“ sagen, sagt Englisch „he play**s**“.",
+      "Typische Fehler: ~~He play football.~~ (das s fehlt) und ~~I am play football every day.~~ (am gehört hier nicht hin)."
+    ],
+    negations: [
+      "Im Deutschen hängt man einfach „nicht“ an: Ich spiele **nicht**. Im Englischen braucht man ein Hilfsverb: I **don't** play. Falsch ist ~~I play not.~~",
+      "Bei he, she, it heißt es **doesn't**, und das Verb verliert sein -s: He **doesn't** play. Falsch ist ~~He doesn't plays.~~",
+      "Bei am, is, are und can braucht man kein don't: I'm **not** tired. She **can't** swim."
+    ],
+    adverbsfreq: [
+      "Im Deutschen steht „oft“ meist nach dem Verb: Sie spielt **oft** Tennis. Im Englischen steht es **davor**: She **often** plays tennis.",
+      "Nur bei am, is, are steht es dahinter, fast wie im Deutschen: She is **never** late.",
+      "Orts- und Zeitangaben stehen im Englischen meistens am Satzende: I play football **in the park on Saturday**."
+    ],
+    shortanswers: [
+      "Im Deutschen reicht oft ein „Ja“ oder „Nein“. Im Englischen klingt nur „Yes“ oder „No“ unhöflich kurz.",
+      "Man wiederholt das Hilfsverb aus der Frage: **Are** you ready? – Yes, I **am**. **Can** you swim? – No, I **can't**.",
+      "Falsch ist ~~Yes, I swim.~~ oder ~~Yes, I'm.~~ Bei Ja steht am Ende keine Kurzform."
+    ],
+    questions: [
+      "Im Deutschen tauschen wir einfach: Du spielst. → **Spielst du**? Im Englischen geht das bei normalen Verben nicht. Falsch ist ~~Play you football?~~",
+      "Man braucht **do** oder **does** vorne: **Do** you play football? **Does** he play football?",
+      "Bei does verliert das Verb sein -s: Does he **play**? Fragewörter kommen davor: **Where does** she live?"
+    ],
+    presentprog: [
+      "**Gibt es das im Deutschen?** Nicht als eigene Zeit. Wir sagen „Ich lese“ und hängen höchstens „gerade“ an. Aber in manchen Gegenden sagt man „**Ich bin am Lesen**“, und genau so ist das Englische gebaut!",
+      "**So baust du es mit dem Deutschen:** Ich **bin** am **Lesen** → I **am** read**ing**. „bin“ wird zu **am/is/are**, „am Lesen“ wird zu **Verb + -ing**.",
+      "**Wann?** Nur für das, was **jetzt gerade** läuft oder nur für kurze Zeit so ist. Für „immer wieder“ nimmst du das simple present: I **play** football every Saturday. Look, I**'m playing** football now!",
+      "Typische Fehler: ~~I reading.~~ (am fehlt) und ~~I am read.~~ (-ing fehlt). Du brauchst immer **beides**."
+    ],
+    someany: [
+      "Im Deutschen sagen wir oft gar nichts: Ich habe Äpfel. Haben wir Milch? Im Englischen sagt man meist **some** oder **any** dazu.",
+      "**some** steht in normalen Sätzen und in Bitten: I've got **some** apples. Would you like **some** juice?",
+      "**any** steht in Fragen und mit not: Have you got **any** milk? I haven't got **any** milk. (Ich habe keine Milch.)"
+    ],
+    conjunctions: [
+      "Die Wörter passen gut zum Deutschen: und → **and**, aber → **but**, oder → **or**, weil → **because**, also → **so**.",
+      "Großer Unterschied: Im Deutschen rutscht das Verb nach „weil“ ans Ende (weil ich müde **bin**). Im Englischen bleibt alles normal: because I **am** tired.",
+      "Falscher Freund: Das deutsche „also“ heißt **so**. Das englische also heißt „auch“."
+    ],
+    objectpronouns: [
+      "Im Deutschen gibt es mich und mir, dich und dir, ihn und ihm. Englisch hat nur **eine** Form: me, you, him, her, it, us, them.",
+      "Hilf **mir**! und Sieh **mich** an! → Help **me**! Look at **me**!",
+      "Falsch ist ~~I like he.~~ Nach dem Verb steht die Objektform: I like **him**."
+    ],
+    modals: [
+      "**must** heißt „müssen“: You **must** go now.",
+      "Achtung, falscher Freund: **mustn't** heißt nicht „nicht müssen“, sondern „**nicht dürfen**“: You **mustn't** run here. (Du darfst hier nicht rennen.)",
+      "**should** heißt „sollte“, **shouldn't** heißt „sollte nicht“. Wie bei can steht danach das Verb ohne to und ohne -s."
+    ],
+    wordorder: [
+      "Im Deutschen darf vieles vorne stehen, dann rutscht die Person hinter das Verb: **Heute spiele ich** Fußball.",
+      "Im Englischen bleibt die Reihenfolge immer gleich: **S**ubjekt – **V**erb – **O**bjekt. **Today I play** football. Falsch ist ~~Today play I football.~~",
+      "Auch nach because bleibt es so (deutsch: weil er lustig **ist**, englisch: because he **is** funny). Ort kommt vor Zeit: in the park after school."
+    ],
+    thisthat: [
+      "Im Deutschen sagen wir „dieser hier“ und „der dort“. Englisch hat dafür eigene Wörter: **this** (hier) und **that** (dort).",
+      "Anders als im Deutschen haben sie eine Mehrzahl: this → **these**, that → **those**.",
+      "Typischer Fehler: ~~this shoes~~. Mehrere Dinge, also **these** shoes."
+    ],
+    simplepast: [
+      "**Gibt es das im Deutschen?** Ja, das ist unser **Präteritum**: ich spiel**te**, ich **ging**. Gebaut wird es fast wie bei uns, aus einem Wort: Regelmäßig mit Endung (spiel**te** → play**ed**), unregelmäßig mit einem neuen Wort (ging → **went**, sah → **saw**).",
+      "**Der große Unterschied:** Wenn wir erzählen, sagen wir meist das Perfekt: Ich **habe** gestern Fußball **gespielt**. Englisch nimmt dafür das simple past: Yesterday I **played** football.",
+      "**Merke:** Steht eine Zeit in der Vergangenheit dabei (yesterday, last week, two days ago, in 2020), dann nimmst du **immer** das simple past.",
+      "**Fragen und Verneinung:** Wir sagen „Spieltest du?“ und „Ich spielte nicht“. Englisch braucht **did**: **Did** you play? I **didn't** play. Das Verb steht danach in der Grundform, weil did die Vergangenheit schon trägt.",
+      "Typische Fehler: ~~Did you played?~~ und ~~Yesterday I have played.~~"
+    ],
+    countable: [
+      "Manche Wörter haben im Deutschen eine Mehrzahl, im Englischen aber nicht: die Informationen → **information**, die Hausaufgaben → **homework**, Ratschläge → **advice**, Möbel → **furniture**.",
+      "Diese Wörter bekommen kein -s und kein a/an, und das Verb steht in der Einzahl: My homework **is** easy.",
+      "Wenn man doch zählen will, sagt man wie im Deutschen **a piece of** (ein Stück), **a glass of** (ein Glas)."
+    ],
+    quantifiers: [
+      "Im Deutschen sagen wir „viel“ zu allem: viel Geld, viele Freunde. Englisch unterscheidet: **much** money (nicht zählbar), **many** friends (zählbar).",
+      "Genauso bei „ein bisschen“ und „ein paar“: **a little** milk, **a few** friends.",
+      "Ein einfacher Ausweg in normalen Sätzen: **a lot of** passt zu allem."
+    ],
+    presentperfect: [
+      "**Gibt es das im Deutschen?** Gebaut ja: Es sieht aus wie unser **Perfekt** mit „haben“ und Partizip. Ich **habe** ge**gessen** → I **have eaten**. Das Partizip (gegessen) ist die **3. Form** in der Verbtabelle.",
+      "**Unterschied beim Bauen:** Wir nehmen „haben“ oder „sein“ (ich habe gegessen, ich **bin** gegangen). Englisch nimmt **immer have**: I **have** gone. Falsch ist ~~I am gone.~~",
+      "**Unterschied bei der Bedeutung, das Wichtigste:** Wir benutzen das Perfekt für fast jede Vergangenheit. Englisch nur, wenn das **Wann egal** ist und es mit **jetzt** zu tun hat: I have lost my key. (Er ist jetzt noch weg.) Sobald eine Zeit dabeisteht, nimmst du das simple past: I **lost** it yesterday.",
+      "**Und bei „seit“:** Wir sagen „Ich **wohne** seit 2020 hier“, also Präsens. Englisch nimmt das present perfect, weil es bis jetzt andauert: I **have lived** here **since** 2020.",
+      "Typische Fehler: ~~I have seen it yesterday.~~ und ~~I live here since 2020.~~"
+    ],
+    goingto: [
+      "**Gibt es das im Deutschen?** So ähnlich: „Ich **habe vor**, Oma zu besuchen.“ Meistens sagen wir aber einfach das Präsens: Morgen **besuche** ich Oma. Das geht im Englischen nicht, dort braucht die Zukunft eine Zukunftsform.",
+      "**So baust du es:** Für Pläne nimmst du **am/is/are + going to + Grundform**: I**'m going to** visit Grandma. Stell dir vor: Ich bin schon auf dem Weg dahin, ich habe es fest vor.",
+      "**Wie unser „gleich“:** Wenn man etwas schon kommen sieht: Es regnet **gleich**. → It**'s going to** rain.",
+      "Typische Fehler: ~~Tomorrow I visit Grandma.~~ (für einen Plan) und ~~I going to visit …~~ (am fehlt)."
+    ],
+    will: [
+      "**Gibt es das im Deutschen?** Ja, das ist unser **Futur** mit „werden“: Ich **werde** kommen → I **will** come. Gebaut wird es genauso: **will + Grundform**.",
+      "**Unterschiede beim Bauen:** „werden“ ändert sich (werde, wirst, wird), will nie: I will, he will. Und das Verb kommt im Englischen **direkt** nach will, nicht ans Ende: Ich werde morgen **kommen**. → I will **come** tomorrow.",
+      "**Achtung, falscher Freund:** I will heißt **nicht** „ich will“! Ich will ein Eis. → I **want** an ice cream.",
+      "**Unterschied beim Benutzen:** Wir lassen „werden“ oft weg: Ich ruf dich später an. Englisch nicht: I**'ll** call you later."
+    ],
+    comparison: [
+      "Kurze Wörter steigert man wie im Deutschen mit Endungen: klein, klein**er**, am klein**sten** → small, small**er**, the small**est**.",
+      "Lange Wörter bekommen im Englischen **more** und **most**: interessanter → **more** interesting. Falsch ist ~~interestinger~~.",
+      "„als“ heißt beim Vergleich **than**, nicht ~~as~~ und nicht ~~then~~: größer **als** → bigger **than**. „so groß wie“ → **as** big **as**."
+    ],
+    adverbsmanner: [
+      "Im Deutschen sagt man „Sie ist leise“ und „Sie spricht leise“, beides mit demselben Wort.",
+      "Englisch unterscheidet: She is **quiet**. (wie sie ist) She speaks **quietly**. (wie sie es tut, mit **-ly**)",
+      "Typischer Fehler: ~~He plays good.~~ Wie spielt er? Gut → **well**: He plays **well**."
+    ],
+    if12: [
+      "**Gibt es das im Deutschen?** Ja, beide. Typ 1 ist wie bei uns: **Wenn** es regnet, bleibe ich zu Hause. → If it **rains**, I **will stay** at home. Das kann wirklich passieren.",
+      "Typ 2 ist unser **Konjunktiv** mit „würde“, „wäre“, „hätte“: **Wenn** ich reich **wäre**, **würde** ich eine Insel kaufen. → If I **were** rich, I **would** buy an island. Es ist nur ausgedacht.",
+      "**So baust du Typ 2 mit dem Deutschen:** Unser „hätte“ sieht aus wie „hatte“ (Vergangenheit). Englisch macht es genauso: Im if-Teil steht die **Vergangenheitsform** (If I **had**, If I **were**), im anderen Teil steht **would** (= würde).",
+      "Typischer Fehler: Wie im Deutschen ein „würde“ in den if-Teil setzen. Falsch ist ~~If I would have money~~. Im if-Teil steht nie will oder would."
+    ],
+    if3: [
+      "Typ 3 ist unser „hätte“ und „wäre“ in der Vergangenheit: **Wenn** ich gelernt **hätte**, **hätte** ich bestanden. → If I **had learned**, I **would have passed**.",
+      "Wann? Wenn etwas **schon vorbei** ist und **nicht passiert ist**. Man stellt sich vor, wie es anders hätte kommen können, oft wenn man etwas bedauert. In echt habe ich nicht gelernt und bin durchgefallen.",
+      "Warum diese Form? Englisch geht beim Unwirklichen immer eine Zeit zurück: Typ 1 if it **rains** → Typ 2 if it **rained** → Typ 3 if it **had rained**.",
+      "Typischer Fehler: Weil im Deutschen zweimal „hätte“ steht, schreiben viele ~~If I would have known~~. Im if-Teil steht nie would: If I **had** known, I **would have** come."
+    ]
+  };
+  // Ausnahmen: eigener Kasten nach der Erklärung
+  const AUS = {
+    plural: [
+      "Wörter auf **-f** oder **-fe** werden oft zu **-ves**: knife → kni**ves**, wife → wi**ves**, leaf → lea**ves**, half → hal**ves**. Aber: roof → roof**s**.",
+      "Bei Wörtern auf **-o** gibt es beides: tomato → tomato**es**, potato → potato**es**, aber photo → photo**s**, piano → piano**s**.",
+      "Unregelmäßig, zum Auswendiglernen: man → **men**, woman → **women**, child → **children**, foot → **feet**, tooth → **teeth**, mouse → **mice**, person → **people**.",
+      "In Einzahl und Mehrzahl gleich: one **sheep**, two **sheep**. Genauso: **fish**, **deer**.",
+      "Nur in der Mehrzahl, auch wenn es ein Ding ist: **trousers**, **jeans**, **shorts**, **glasses** (Brille), **scissors** (Schere). My jeans **are** new."
+    ],
+    articles: [
+      "Es zählt der **Laut**, nicht der Buchstabe! **a university** spricht man „ju-ni-wör-si-ti“. Das „ju“ beginnt mit dem j-Laut wie in „Jacke“, und j ist ein Konsonant. Darum **a** university, **a** uniform, **a** European.",
+      "Genauso **a one-way ticket**: one spricht man „wan“, also mit w-Laut.",
+      "Umgekehrt: **an hour**, **an honest** girl. Das h spricht man hier nicht, das Wort beginnt also mit einem Vokal-Laut. Aber: **a h**orse, **a h**ouse, denn dort hört man das h.",
+      "Bei Abkürzungen auch nach dem Laut: **an** MP3 player (gesprochen „em“), aber **a** USB stick (gesprochen „ju“).",
+      "Ohne Artikel, anders als im Deutschen: I go to **school** / to **bed**. I'm at **home**. I play **football**. Aber Instrumente mit the: I play **the** piano."
+    ],
+    tobe: [
+      "**you** ist Einzahl und Mehrzahl, und es heißt immer **are**: You **are** my friend. You **are** my friends.",
+      "Verneint bei I gibt es keine Kurzform mit am: I**'m not** tired. Falsch ist ~~I amn't~~.",
+      "Haustiere nennt man oft **he** oder **she** statt it, wenn man sie kennt: Our dog is great. **He** loves balls."
+    ],
+    bequestions: [
+      "Kurzantwort mit Yes ohne Kurzform: Yes, I **am**. Yes, she **is**. Falsch ist ~~Yes, I'm.~~",
+      "Bei Fragen nach dem Alter: **How old are you?** Antwort: I'm twelve. Nicht ~~I have twelve years.~~"
+    ],
+    thereis: [
+      "Bei einer Aufzählung zählt das **erste** Ding: There **is** a pen and two books on the desk. There **are** two books and a pen on the desk.",
+      "Es gibt die Kurzform **there's**, aber für there are schreibt man meist keine Kurzform."
+    ],
+    prepositions: [
+      "Anders als im Deutschen: **in** the picture (**auf** dem Bild), **on** the bus / **on** the train (**im** Bus), aber **in** the car.",
+      "**at** für feste Orte: **at** school, **at** home, **at** the station, **at** Grandma's.",
+      "**on** the left / **on** the right (links, rechts), **on** the first floor."
+    ],
+    possessives: [
+      "**its** (sein bei Dingen und Tieren) hat **keinen** Apostroph. **it's** heißt it is.",
+      "Bei Körperteilen und Kleidung nimmt Englisch den Possessivbegleiter, wo wir „die“ sagen: Ich wasche mir **die** Hände. → I wash **my** hands. Er zieht **die** Jacke an. → He puts on **his** jacket."
+    ],
+    commands: [
+      "Auch bei be braucht man Don't: **Don't be** sad! Falsch ist ~~Be not sad!~~",
+      "Ein Vorschlag mit **Let's** (lass uns): **Let's** go! Verneint: **Let's not** go."
+    ],
+    can: [
+      "**cannot** schreibt man zusammen, kurz **can't**.",
+      "Vergangenheit von can ist **could**: When I was five, I **could** swim. (konnte)",
+      "can hat keine Zukunft und keine to-Form. Dafür sagt man **be able to**: I**'ll be able to** come."
+    ],
+    havegot: [
+      "have got gibt es nur in der **Gegenwart**. Vergangenheit meist ohne got: I **had** a dog. (Ich hatte einen Hund.)",
+      "Bei Tätigkeiten heißt es **have** ohne got: **have** breakfast, **have** a shower, **have** fun, **have** a party. Falsch ist ~~I've got breakfast at seven.~~"
+    ],
+    genitive: [
+      "Namen auf -s: Beides geht: **James's** bike oder **James'** bike.",
+      "**at Grandma's** heißt „bei Oma zu Hause“, das Wort house fällt weg. Genauso: at the doctor's (beim Arzt).",
+      "Auch bei Zeit: **today's** lesson (die Stunde von heute)."
+    ],
+    simplepresent: [
+      "Nach **s, sh, ch, x** und **o** kommt **-es**: watch → watch**es**, go → go**es**, do → do**es**.",
+      "Konsonant + y wird zu **-ies**: fly → fl**ies**. Aber Vokal + y nur **-s**: play → play**s**.",
+      "Ganz unregelmäßig: have → **has**, be → **am/is/are**.",
+      "Bei can, must, should gibt es **nie** ein -s: She **can** swim."
+    ],
+    negations: [
+      "Bei be, can und have got brauchst du kein do: I'm **not** …, She **can't** …, We **haven't got** …",
+      "Nur **eine** Verneinung pro Satz: I **never** eat fish. Falsch ist ~~I don't never eat fish.~~ Genauso: I've got **no** money = I haven't got **any** money."
+    ],
+    adverbsfreq: [
+      "**sometimes** darf auch ganz vorne oder hinten stehen: **Sometimes** I walk to school.",
+      "Bei Hilfsverb + Verb steht es dazwischen: I **can never** remember it. She **has always** liked cats."
+    ],
+    shortanswers: [
+      "Bei have got: **Have** you got a pet? – Yes, I **have**. / No, I **haven't**. (ohne got)",
+      "Bei Fragen mit Fragewort (Where, What …) gibt es keine Kurzantwort mit Yes/No."
+    ],
+    questions: [
+      "Fragst du nach dem **Subjekt** (wer oder was tut etwas?), brauchst du **kein** do: **Who lives** here? **What happened**? Falsch ist ~~Who does live here?~~",
+      "Bei be, can und have got kein do: **Are** you …? **Can** you …? **Have** you got …?"
+    ],
+    presentprog: [
+      "Manche Verben beschreiben keinen Vorgang, sondern einen **Zustand**. Sie stehen fast nie mit -ing: **like, love, hate, want, need, know, believe, understand**. I **like** this song. Falsch ist ~~I'm liking this song.~~",
+      "Schreibung: **-ie** wird zu **-ying**: lie → l**ying**, die → d**ying**.",
+      "Britisches Englisch verdoppelt das l: travel → trave**ll**ing."
+    ],
+    someany: [
+      "**any** in bejahten Sätzen heißt „egal welche“: You can take **any** book.",
+      "**no** = not any: I've got **no** money = I haven't got **any** money."
+    ],
+    conjunctions: [
+      "Steht der because-Teil vorne, kommt ein Komma: **Because** it was raining, we stayed at home.",
+      "Vor **so** steht meist ein Komma, vor because meist nicht: I'm tired**,** so I go to bed. I go to bed because I'm tired."
+    ],
+    objectpronouns: [
+      "Nach **than** und **as** sagt man meist die Objektform: She is taller **than me**.",
+      "Ich bin's! → **It's me!** (nicht ~~It's I~~)"
+    ],
+    modals: [
+      "must hat **keine Vergangenheit**. Dafür nimmt man **had to**: Yesterday I **had to** go to the dentist.",
+      "„muss nicht“ heißt **don't have to** oder **needn't**: You **don't have to** come. (Du musst nicht kommen.) Nicht verwechseln mit mustn't!"
+    ],
+    wordorder: [
+      "Die Zeitangabe darf auch **ganz vorne** stehen, dann kommt trotzdem zuerst das Subjekt: **On Saturday I play** football.",
+      "In Fragen tauschen sich Hilfsverb und Subjekt: **Do you** like it? **Are you** ready?",
+      "Häufigkeitswörter stehen vor dem Verb in der Mitte: I **always** play."
+    ],
+    thisthat: [
+      "**this morning** = heute Morgen, **this week** = diese Woche.",
+      "Am Telefon: **This is** Tom. (Hier ist Tom.)"
+    ],
+    simplepast: [
+      "Schreibung: **-e** bekommt nur **-d**: live → live**d**. Kurzer Vokal + ein Konsonant: verdoppeln: stop → sto**pp**ed. Konsonant + y: **-ied**: cry → cr**ied**. Aber Vokal + y: play → play**ed**.",
+      "Britisches Englisch verdoppelt das l: travel → trave**ll**ed.",
+      "Manche unregelmäßigen Verben bleiben gleich: put → **put**, cut → **cut**, let → **let**, hit → **hit**.",
+      "Bei be gibt es zwei Formen: I/he/she/it **was**, you/we/they **were**."
+    ],
+    countable: [
+      "**hair** ist nicht zählbar: My hair **is** long. (Meine Haare sind lang.)",
+      "**news** endet auf -s, ist aber Einzahl: The news **is** good.",
+      "Manches geht beides: **coffee** (Kaffee allgemein) und **a coffee** (eine Tasse Kaffee). Genauso: chocolate und **a chocolate** (eine Praline)."
+    ],
+    quantifiers: [
+      "**a few** = ein paar (gut so), **few** ohne a = wenige (zu wenig): I've got **a few** friends. – He has **few** friends. (Er hat kaum Freunde.)",
+      "Genauso **a little** (ein bisschen) und **little** (kaum).",
+      "In bejahten Sätzen klingt **much** oft steif. Man sagt eher **a lot of**: I've got **a lot of** time."
+    ],
+    presentperfect: [
+      "**been** oder **gone**? She has **gone** to London. = Sie ist hingefahren und jetzt noch dort. She has **been** to London. = Sie war schon mal dort und ist wieder da.",
+      "**since** steht vor einem Zeitpunkt (since Monday, since 2020), **for** vor einer Zeitspanne (for two weeks).",
+      "**already** steht in der Mitte, **yet** am Ende: I've **already** finished. Have you finished **yet**?"
+    ],
+    goingto: [
+      "Bei **go** sagt man trotzdem going to **go**: I'm going to go to the cinema. Kürzer geht auch: I'm going to the cinema.",
+      "Für feste Verabredungen nimmt man oft das present progressive: I**'m meeting** Tom tomorrow.",
+      "Für Fahrpläne das simple present: The train **leaves** at eight."
+    ],
+    will: [
+      "Bei Vorschlägen mit I und we sagt man **Shall**: **Shall** we go? **Shall** I help you?",
+      "Nach **when** und **if** steht kein will, auch wenn es um die Zukunft geht: **When** I **am** older, I'll be a vet. Falsch ist ~~When I will be older~~."
+    ],
+    comparison: [
+      "Doppelt bei kurzem Vokal: big → bi**gg**er, hot → ho**tt**er. Stummes e: nice → nice**r**.",
+      "Zweisilbig auf -y mit -er: happy → happ**ier**, easy → eas**ier**. Andere zweisilbige meist mit more: **more** boring, **more** famous.",
+      "Unregelmäßig: good → **better** → **best**, bad → **worse** → **worst**, many/much → **more** → **most**, little → **less** → **least**, far → **further** → **furthest**."
+    ],
+    adverbsmanner: [
+      "Schon auf -ly und doch Adjektive: **friendly, lovely, lonely, silly**. Davon gibt es kein Adverb, man sagt: in a friendly **way**.",
+      "**hard** bleibt hard, **hardly** heißt etwas anderes: kaum. Genauso **late** (spät) und **lately** (in letzter Zeit).",
+      "Nach **be, look, feel, sound, taste** steht das Adjektiv: You **look happy**. It **tastes good**."
+    ],
+    if12: [
+      "Steht der if-Teil **hinten**, gibt es kein Komma: I'll stay at home **if** it rains.",
+      "**unless** = if not: I'll be late **unless** I hurry.",
+      "**if** oder **when**? when = wenn es sicher passiert: **When** I get home, I'll call you. if = falls: **If** I have time, I'll call you."
+    ],
+    if3: [
+      "Kurzform **'d** kann **had** oder **would** sein: If I**'d** (had) known, I**'d** (would) have come.",
+      "Statt would have geht auch **could have** (hätte können) oder **might have** (hätte vielleicht): If you had asked, I **could have** helped."
+    ]
+  };
+  // Beispiele zum Vergleich: [englisch, deutsch]
+  const E = {
+    plural: [["one book, two **books**", "ein Buch, zwei Büch**er**"], ["one cat, three **cats**", "eine Katze, drei Katze**n**"], ["one man, two **men**", "ein Mann, zwei **Männer**"], ["one child, four **children**", "ein Kind, vier Kind**er**"]],
+    articles: [["**the** dog, **the** cat, **the** house", "**der** Hund, **die** Katze, **das** Haus"], ["**a** banana, **an** apple", "**eine** Banane, **ein** Apfel"], ["My dad is **a** teacher.", "Mein Vater ist Lehrer."], ["I give **the** dog **the** ball.", "Ich gebe **dem** Hund **den** Ball."]],
+    tobe: [["I **am** twelve.", "Ich **bin** zwölf."], ["You **are** my friend. / You **are** my friends.", "Du **bist** mein Freund. / Ihr **seid** meine Freunde."], ["Where is the ball? – **It** is under the bed.", "Wo ist der Ball? – **Er** ist unter dem Bett."], ["We **are** at school.", "Wir **sind** in der Schule."]],
+    bequestions: [["**Are you** twelve?", "**Bist du** zwölf?"], ["**Is she** your sister?", "**Ist sie** deine Schwester?"], ["Where **are you**?", "Wo **bist du**?"], ["**Is it** cold today?", "**Ist es** heute kalt?"]],
+    thereis: [["**There is** a dog in the garden.", "**Es gibt** einen Hund im Garten. / Im Garten ist ein Hund."], ["**There are** two dogs in the garden.", "**Es gibt** zwei Hunde im Garten."], ["**Is there** a park near your house?", "**Gibt es** einen Park in der Nähe von deinem Haus?"], ["**There aren't** any shops here.", "Hier **gibt es** keine Läden."]],
+    prepositions: [["The cat is **under** the table.", "Die Katze ist **unter** dem Tisch."], ["The bus stop is **in front of** the school.", "Die Bushaltestelle ist **vor** der Schule."], ["I'm **at** Grandma's.", "Ich bin **bei** Oma."], ["The shop is **opposite** the park.", "Der Laden ist **gegenüber** vom Park."]],
+    possessives: [["Tom and **his** dog", "Tom und **sein** Hund"], ["Lisa and **her** dog", "Lisa und **ihr** Hund"], ["**my** brother, **my** sister, **my** books", "**mein** Bruder, **meine** Schwester, **meine** Bücher"], ["The children and **their** teacher", "Die Kinder und **ihre** Lehrerin"]],
+    commands: [["**Close** the door, please.", "**Mach** bitte die Tür zu. / **Macht** bitte die Tür zu."], ["**Don't touch** the cake!", "**Fass** den Kuchen **nicht an**!"], ["**Sit down**, please.", "**Setz dich** bitte. / **Setzt euch** bitte."], ["**Don't be** late!", "**Sei nicht** zu spät!"]],
+    can: [["I **can swim**.", "Ich **kann schwimmen**."], ["She **can play** the guitar.", "Sie **kann** Gitarre **spielen**."], ["**Can** I go out, please?", "**Darf** ich bitte rausgehen?"], ["My brother **can't** ride a bike.", "Mein Bruder **kann nicht** Fahrrad fahren."]],
+    havegot: [["I**'ve got** a dog.", "Ich **habe** einen Hund."], ["She **has got** two brothers.", "Sie **hat** zwei Brüder."], ["**Have** you **got** a pencil?", "**Hast** du einen Bleistift?"], ["We **haven't got** a garden.", "Wir **haben keinen** Garten."]],
+    genitive: [["**Tom's** bike", "**Toms** Fahrrad / das Fahrrad **von Tom**"], ["**my sister's** room", "das Zimmer **meiner Schwester**"], ["**my parents'** car", "das Auto **meiner Eltern**"], ["**the children's** toys", "die Spielsachen **der Kinder**"]],
+    simplepresent: [["I **play** football.", "Ich **spiele** Fußball."], ["He **plays** football.", "Er **spielt** Fußball."], ["We **play** football **every Saturday**.", "Wir **spielen jeden Samstag** Fußball."], ["My mum **works** in a shop.", "Meine Mutter **arbeitet** in einem Laden."]],
+    negations: [["I **don't** like fish.", "Ich mag **keinen** Fisch. / Ich mag Fisch **nicht**."], ["He **doesn't** play tennis.", "Er spielt **nicht** Tennis."], ["We **don't** live in London.", "Wir wohnen **nicht** in London."], ["I'm **not** tired.", "Ich bin **nicht** müde."]],
+    adverbsfreq: [["She **often** plays tennis.", "Sie spielt **oft** Tennis."], ["I **always** have breakfast at seven.", "Ich frühstücke **immer** um sieben."], ["He is **never** late.", "Er ist **nie** zu spät."], ["We **sometimes** go to the cinema.", "Wir gehen **manchmal** ins Kino."]],
+    shortanswers: [["Are you ready? – **Yes, I am.**", "Bist du fertig? – **Ja.**"], ["Can you swim? – **No, I can't.**", "Kannst du schwimmen? – **Nein.**"], ["Do you like pizza? – **Yes, I do.**", "Magst du Pizza? – **Ja.**"], ["Has she got a pet? – **No, she hasn't.**", "Hat sie ein Haustier? – **Nein.**"]],
+    questions: [["**Do** you **play** football?", "**Spielst du** Fußball?"], ["**Does** he **like** cats?", "**Mag er** Katzen?"], ["Where **does** she **live**?", "Wo **wohnt sie**?"], ["What **do** you **eat** for breakfast?", "Was **isst du** zum Frühstück?"]],
+    presentprog: [["I **am reading** a book.", "Ich **lese gerade** ein Buch."], ["Look! It **is snowing**.", "Schau! Es **schneit**."], ["We **are having** lunch.", "Wir **essen gerade** zu Mittag."], ["What **are** you **doing**?", "Was **machst** du **gerade**?"]],
+    someany: [["I've got **some** apples.", "Ich habe (ein paar) Äpfel."], ["Would you like **some** juice?", "Möchtest du (etwas) Saft?"], ["Have you got **any** milk?", "Hast du Milch?"], ["I haven't got **any** milk.", "Ich habe **keine** Milch."]],
+    conjunctions: [["I'm happy **because** it **is** my birthday.", "Ich bin froh, **weil** ich Geburtstag **habe**."], ["I'm tired, **so** I go to bed.", "Ich bin müde, **also** gehe ich ins Bett."], ["I like cats, **but** I don't like dogs.", "Ich mag Katzen, **aber** ich mag keine Hunde."], ["Do you want tea **or** juice?", "Möchtest du Tee **oder** Saft?"]],
+    objectpronouns: [["Help **me**, please!", "Hilf **mir** bitte!"], ["Look at **me**!", "Schau **mich** an!"], ["I like **him**.", "Ich mag **ihn**."], ["Can you call **us**?", "Kannst du **uns** anrufen?"]],
+    modals: [["You **must** go home now.", "Du **musst** jetzt nach Hause gehen."], ["You **mustn't** run here.", "Du **darfst** hier **nicht** rennen."], ["You **should** ask your teacher.", "Du **solltest** deine Lehrerin fragen."], ["You **shouldn't** eat so many sweets.", "Du **solltest nicht** so viele Süßigkeiten essen."]],
+    wordorder: [["**Today I play** football.", "**Heute spiele ich** Fußball."], ["**On Saturday we go** to the cinema.", "**Am Samstag gehen wir** ins Kino."], ["I like Tom because **he is** funny.", "Ich mag Tom, weil **er** lustig **ist**."], ["She meets her friends **in the park after school**.", "Sie trifft ihre Freunde **nach der Schule im Park**."]],
+    thisthat: [["**This** dog here is mine.", "**Dieser** Hund **hier** ist meiner."], ["Look at **that** house!", "Schau dir **das** Haus **dort** an!"], ["**These** shoes are new.", "**Diese** Schuhe (hier) sind neu."], ["Who are **those** girls?", "Wer sind **die** Mädchen **dort**?"]],
+    simplepast: [["Yesterday I **played** football.", "Gestern **habe** ich Fußball **gespielt**."], ["Last summer we **went** to Spain.", "Letzten Sommer **sind** wir nach Spanien **gefahren**."], ["She **saw** a fox in the park.", "Sie **hat** im Park einen Fuchs **gesehen**."], ["**Did** you **like** the film?", "**Hat** dir der Film **gefallen**?"]],
+    countable: [["My homework **is** easy.", "Meine Hausaufgaben **sind** leicht."], ["I need some **information**.", "Ich brauche ein paar **Informationen**."], ["Can you give me some **advice**?", "Kannst du mir ein paar **Ratschläge** geben?"], ["Can I have **a piece of** cake?", "Kann ich **ein Stück** Kuchen haben?"]],
+    quantifiers: [["How **much** money have you got?", "Wie **viel** Geld hast du?"], ["How **many** friends have you got?", "Wie **viele** Freunde hast du?"], ["Can I have **a little** milk?", "Kann ich **ein bisschen** Milch haben?"], ["I've got **a few** friends in Berlin.", "Ich habe **ein paar** Freunde in Berlin."]],
+    presentperfect: [["I **have lost** my key.", "Ich **habe** meinen Schlüssel **verloren**. (Er ist immer noch weg.)"], ["**Have** you ever **been** to London?", "**Warst** du schon einmal in London?"], ["I **lost** my key **yesterday**.", "Ich **habe gestern** meinen Schlüssel **verloren**."], ["She **has** just **finished** her homework.", "Sie **ist** gerade mit den Hausaufgaben **fertig geworden**."]],
+    goingto: [["I**'m going to** visit Grandma tomorrow.", "Morgen **besuche** ich Oma."], ["We**'re going to** have a party.", "Wir **wollen** eine Party machen."], ["Look at the clouds! It**'s going to** rain.", "Schau dir die Wolken an! Es **regnet gleich**."], ["What **are** you **going to** do at the weekend?", "Was **machst** du am Wochenende?"]],
+    will: [["It **will** rain tomorrow.", "Morgen **wird** es regnen."], ["I **want** an ice cream.", "Ich **will** ein Eis."], ["I**'ll** call you later.", "Ich **rufe** dich später **an**."], ["I **won't** tell anyone.", "Ich **werde** es niemandem sagen."]],
+    comparison: [["Tom is **taller than** Ben.", "Tom ist **größer als** Ben."], ["Maths is **more difficult than** art.", "Mathe ist **schwieriger als** Kunst."], ["This is **the best** day ever!", "Das ist **der beste** Tag überhaupt!"], ["My bike is **as fast as** yours.", "Mein Fahrrad ist **so schnell wie** deins."]],
+    adverbsmanner: [["She is **quiet**.", "Sie ist **leise**."], ["She speaks **quietly**.", "Sie spricht **leise**."], ["He plays **well**.", "Er spielt **gut**."], ["Please walk **slowly**.", "Bitte geh **langsam**."]],
+    if12: [["If it **rains**, I **will stay** at home.", "Wenn es **regnet**, **bleibe** ich zu Hause."], ["If you **hurry**, you **will catch** the bus.", "Wenn du dich **beeilst**, **erwischst** du den Bus."], ["If I **were** rich, I **would buy** an island.", "Wenn ich reich **wäre**, **würde** ich eine Insel **kaufen**."], ["If I **were** you, I **would call** her.", "An deiner Stelle **würde** ich sie **anrufen**."]],
+    if3: [["If I **had learned**, I **would have passed**.", "Wenn ich gelernt **hätte**, **hätte** ich bestanden."], ["If we **had left** earlier, we **would have caught** the train.", "Wenn wir früher losgefahren **wären**, **hätten** wir den Zug erwischt."], ["If you **had asked** me, I **would have helped** you.", "Wenn du mich gefragt **hättest**, **hätte** ich dir geholfen."], ["If it **hadn't rained**, we **would have gone** to the beach.", "Wenn es nicht geregnet **hätte**, **wären** wir an den Strand gegangen."]]
+  };
+  window.GRAMMAR.Englisch.topics.forEach(t => { if (V[t.id]) { t.vgl = V[t.id]; t.vglEx = E[t.id] || []; } if (AUS[t.id]) t.aus = AUS[t.id]; });
 })();
