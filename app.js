@@ -502,6 +502,8 @@ async function flyCard(from, to, ok, word) {
 
 // ---------- Startseite ----------
 let confirmDelete = null;
+// Was auf der Startseite aufgeklappt ist: ein Buch und einzelne Units. Bleibt beim Neuzeichnen erhalten.
+const homeOpen = { book: null, units: new Set() };
 function goalCount() { const d = dayLog(); return d.ans + d.gram; }
 function ringHtml(n, goal) {
   const r = 34, c = +(2 * Math.PI * r).toFixed(1), f = Math.min(1, n / goal);
@@ -566,14 +568,14 @@ function renderHomeView() {
     </section>
     <section>
       <div class="spread"><h2>Units</h2><button class="btn small" id="add">+ Vokabeln</button></div>
-      <div class="units">${units.length ? units.map(u => {
-        const ce = every.filter(c => c.unit === u), nfN = ce.filter(c => c.nf).length, isF = nfN > 0 && fat.includes(u);
+      <div class="units">${units.length ? (() => {
+        const unitHtml = u => { const ce = every.filter(c => c.unit === u), nfN = ce.filter(c => c.nf).length, isF = nfN > 0 && fat.includes(u);
         const cs = isF ? ce.filter(c => !c.nf) : ce; const sit = cs.filter(c => c.level >= 3).length;
         const pct = Math.round(sit / cs.length * 100), isO = off.includes(u), isP = !isO && paused.includes(u), learned = cs.filter(c => c.level > 0).length;
-        return `<div class="unit${isP || isO ? " paused" : ""}">
-          <div class="spread"><div><h3 style="overflow-wrap:anywhere">${esc(u)}</h3>
+        return `<details class="unit${isP || isO ? " paused" : ""}" data-unit="${esc(u)}"${homeOpen.units.has(u) ? " open" : ""}>
+          <summary class="spread"><div><h3 style="overflow-wrap:anywhere">${esc(u)}</h3>
             <p class="muted small">${cs.length} Wörter · ${isO ? `ausgeschaltet${learned ? `, ${learned} schon gelernt` : ""}` : isP ? "pausiert" : `${pct} % sitzen (ab Fach 3)`}</p></div>
-            ${u === SAMPLE_UNIT ? '<span class="tag">Beispiel</span>' : isO ? '<span class="tag soft">Aus</span>' : isP ? '<span class="tag soft">Pause</span>' : ""}</div>
+            ${u === SAMPLE_UNIT ? '<span class="tag">Beispiel</span>' : isO ? '<span class="tag soft">Aus</span>' : isP ? '<span class="tag soft">Pause</span>' : ""}</summary>
           ${isP || isO ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}
           ${nfN && !isO ? `<div class="chips" role="group" aria-label="Welche Wörter aus ${esc(u)}?">
             <button class="chip" data-fat="${esc(u)}" aria-pressed="${isF}">Nur fett gedruckte (${ce.length - nfN})</button>
@@ -586,8 +588,15 @@ function renderHomeView() {
             ${confirmDelete === u
               ? `<span class="small">Wirklich löschen?</span><button class="link" data-del-yes="${esc(u)}">Ja</button><button class="link" data-del-no>Nein</button>`
               : `<button class="link" data-del="${esc(u)}">Löschen</button>`}
-          </div></div>`;
-      }).join("") : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
+          </div></details>`;
+      };
+        const groups = []; units.forEach(u => { const c = every.find(x => x.unit === u), b = (c && c.book) || "Eigene Wörter", g = groups.find(x => x[0] === b); g ? g[1].push(u) : groups.push([b, [u]]); });
+        if (groups.length < 2) return units.map(unitHtml).join("");
+        if (!groups.some(g => g[0] === homeOpen.book)) { const pu = lang.pos && lang.pos.u, g = groups.find(x => x[1].includes(pu)); homeOpen.book = (g || groups.find(x => x[0] !== "Eigene Wörter") || groups[0])[0]; }
+        return groups.map(([b, us]) => `<details class="bookgrp" name="buch" data-book="${esc(b)}"${b === homeOpen.book ? " open" : ""}>
+          <summary><b>${esc(b)}</b><span class="muted small">${us.length} ${us.length === 1 ? "Unit" : "Units"}</span></summary>
+          <div class="units">${us.map(unitHtml).join("")}</div></details>`).join("");
+      })() : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
       <p class="muted small">Ausgeschaltete Units sind ganz aus dem Kasten, auch aus „neu“. Die App merkt sich, in welchem Fach jedes Wort war. Beim Einschalten ist alles wieder da.</p>
     </section>
     ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3 && t !== "allgemein").sort((a, b) => n[b] - n[a]);
@@ -632,6 +641,9 @@ function renderHomeView() {
   $$("[data-allw]").forEach(b => b.onclick = () => { lang.fat = fat.filter(u => u !== b.dataset.allw); save(); toast("Alle Wörter sind dabei."); keepScroll(renderHome); });
   $$("[data-on]").forEach(b => b.onclick = () => { lang.off = off.filter(u => u !== b.dataset.on); save(); toast("Eingeschaltet. Alle Wörter sind wieder in ihren Fächern."); keepScroll(renderHome); });
   $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); if (lang.upto) delete lang.upto[b.dataset.unpause]; save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
+  $$("details.bookgrp").forEach(d => d.addEventListener("toggle", () => { if (!d.open) { if (homeOpen.book === d.dataset.book) homeOpen.book = ""; return; }
+    homeOpen.book = d.dataset.book; $$("details.bookgrp").forEach(o => { if (o !== d) o.open = false; }); }));
+  $$("details.unit").forEach(d => d.addEventListener("toggle", () => { d.open ? homeOpen.units.add(d.dataset.unit) : homeOpen.units.delete(d.dataset.unit); }));
   $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderHome); });
   $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderHome); });
   $$("[data-del-yes]").forEach(b => b.onclick = () => {

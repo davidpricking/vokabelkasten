@@ -135,6 +135,16 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .newbadges .badge:nth-child(2){animation-delay:.15s}
 @keyframes badgein{from{transform:scale(.3) rotate(-12deg);opacity:0}}
 .unit.paused{opacity:.75;border-style:dashed}
+details.unit>summary{cursor:pointer;list-style:none;align-items:center}
+details.unit>summary::-webkit-details-marker,details.bookgrp>summary::-webkit-details-marker{display:none}
+details.unit:not([open]){gap:0}
+details.unit>summary::after,details.bookgrp>summary::after{content:"▸";color:var(--muted);transition:transform .2s;flex:none}
+details.unit[open]>summary::after,details.bookgrp[open]>summary::after{transform:rotate(90deg)}
+details.bookgrp{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:0 12px}
+details.bookgrp>summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:center;padding:16px 4px;font-size:1.1rem}
+details.bookgrp>summary .small{margin-left:auto}
+details.bookgrp>.units{padding-bottom:12px}
+details.bookgrp .unit{border-color:var(--line);background:var(--paper)}
 .tag.soft{background:var(--line);color:var(--ink)}
 details.panel>summary{cursor:pointer}
 .confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:30}
