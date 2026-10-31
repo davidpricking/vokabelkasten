@@ -1716,29 +1716,21 @@ function renderBook(p) {
     <section class="panel">
       ${p.units.map((u, i) => {
         const bold = u.rows.filter(r => !r.nf).length;
-        return `<p><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></p>` +
-          (bold < u.rows.length ? `<div class="chips" role="group" aria-label="Welche Wörter aus ${esc(u.name)}?">
-            <button class="chip" data-u="${i}" data-all="0" aria-pressed="true">Nur fett gedruckte (${bold})</button>
-            <button class="chip" data-u="${i}" data-all="1" aria-pressed="false">Alle (${u.rows.length})</button></div>` : "");
+        return `<p><b>${esc(u.name)}</b><br><span class="muted small">${u.rows.length} Wörter${bold < u.rows.length ? `, davon ${bold} fett gedruckt` : ""}${have.has(u.name) ? " · schon im Kasten, nur Neues kommt dazu" : ""}</span></p>`;
       }).join("")}
+      ${p.units.some(u => u.rows.some(r => r.nf)) ? '<p class="muted small">Abgefragt werden erst einmal nur die fett gedruckten Wörter. Auf der Startseite kannst du bei jeder Unit auf „Alle“ umschalten.</p>' : ""}
       <p class="muted small">Gleich danach tippst du an, wie weit ihr in der Schule seid. Nur das wird abgefragt.</p>
     </section>
     <button class="btn wide" id="save">Übernehmen</button>`));
-  // Fett gedruckt ist im Buch der Lernwortschatz; „Alle“ holt auch die übrigen Wörter. Später nochmal „Alle“ ergänzt nur den Rest.
-  const all = p.units.map(() => false);
-  $$("[data-u]").forEach(b => b.onclick = () => {
-    all[+b.dataset.u] = b.dataset.all === "1";
-    $$(`[data-u="${b.dataset.u}"]`).forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-  });
+  // Es kommt immer die ganze Unit. Neue Units stehen auf „nur fett“ (Lernwortschatz im Buch), umschalten geht auf der Startseite.
   $("#back").onclick = () => renderHome();
   $("#save").onclick = () => {
     const lang = L(); let added = 0;
     lang.paused = lang.paused || []; const fat = new Set(lang.fat || []);
     // Es kommen immer alle Wörter in den Kasten; „nur fett“ blendet die übrigen aus und lässt sich auf der Startseite umschalten.
-    p.units.forEach((u, i) => { const nb = u.rows.filter(r => !r.nf), rest = u.rows.filter(r => r.nf);
-      added += addCards(u.name, nb, p.title); const k = addCards(u.name, rest, p.title); if (all[i]) added += k;
-      if (k) bookOrder(u.name, u.rows);
-      if (!all[i] && rest.length) fat.add(u.name); else fat.delete(u.name);
+    p.units.forEach(u => { const hadNf = cardsAll().some(c => c.unit === u.name && c.nf), k = addCards(u.name, u.rows, p.title); added += k;
+      if (k && have.has(u.name)) bookOrder(u.name, u.rows);
+      if (!hadNf && u.rows.some(r => r.nf)) fat.add(u.name);   // neu dazugekommene nicht fette Wörter starten ausgeblendet
       if (!have.has(u.name)) lang.paused.push(u.name); });
     lang.fat = [...fat];
     save();
