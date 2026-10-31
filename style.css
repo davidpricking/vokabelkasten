@@ -563,3 +563,18 @@ body.weltopen .confetti{z-index:60}
 .gapline.filled{min-width:0;padding:0 4px;color:var(--accent);font-family:var(--hand)}
 .gapline.ok{color:var(--good);border-color:var(--good)}
 .gapline.bad{color:var(--bad);border-color:var(--bad);text-decoration:line-through}
+
+/* ---------- Unregelmäßige Verben ---------- */
+.abc{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:4px;background:var(--paper);padding:8px 0;margin:0 -2px}
+.abc button,.abc span{width:30px;height:32px;display:grid;place-items:center;border-radius:8px;font-weight:700;font-size:.9rem}
+.abc button{border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.abc span{color:var(--line)}
+.abch{scroll-margin-top:130px;margin:14px 0 6px}
+.vlist{display:flex;flex-direction:column;gap:6px}
+.vrow{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:10px 14px;font-size:1rem}
+.vrow i{font-style:normal;font-weight:700;font-size:1.2rem;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);flex:none}
+.vrow[aria-pressed="true"]{border-color:var(--accent)}
+.vrow[aria-pressed="true"] i{background:var(--accent);color:#fff;border-color:var(--accent)}
+.vrow .vde{display:block}
+.vpp{opacity:.4}
+.vbar{position:sticky;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--paper);padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))}
