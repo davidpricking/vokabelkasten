@@ -593,3 +593,4 @@ body.weltopen .confetti{z-index:60}
 .tile.hot{border-color:var(--marker);box-shadow:0 0 0 2px var(--marker)}
 .tnews{position:absolute;top:8px;right:8px;background:var(--marker);color:#3A2A00;font-size:.75rem;font-weight:700;border-radius:999px;padding:2px 8px}
 .backup{border-color:var(--marker)}
+.vcard .kasten .when{display:none}
