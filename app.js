@@ -403,7 +403,7 @@ const ICON = {
 function renderHome() {
   if (!S.onboarded) return renderWelcome();
   if (!S.langs.length) return renderAddLang(true);
-  if (L().kind === "verbs") { const id = verbHome(); if (id) { S.cur = id; save(); } }   // Verben laufen über die Karte auf der Englisch-Seite
+  if (L().kind === "verbs") { const id = verbHome(); if (id) { S.cur = id; save(); return renderVerbMenu(); } }   // nach einer Verben-Runde zurück ins Verben-Menü
   renderHomeView();
 }
 function renderWelcome() {
@@ -2064,35 +2064,35 @@ function verbCard() {
   const counts = Array(8).fill(0); cs.forEach(c => counts[c.level]++);
   const due = l ? withLang(l.id, () => dueToday().length) : 0, nw = l ? withLang(l.id, () => Math.min(newAllowed(), newCards().length)) : 0;
   const what = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nw && `${nw} ${nw === 1 ? "neues Verb" : "neue Verben"}`].filter(Boolean).join(" · ");
-  const sortN = l ? withLang(l.id, () => placeable(VERB_UNIT).length) : 0, fresh = cs.filter(c => !c.level).length, lim = l ? withLang(l.id, () => (newLeft(), verbNewLimit(l))) : VERB_NEW;
-  const more = !what && fresh > 0;
-  return `<section class="panel vcard">
-      <h2>Unregelmäßige Verben</h2>
-      <div class="vsec"><h3>1. Üben</h3>
-        ${cs.length ? `${kastenHtml(counts, false, "Verben pro Fach")}
-          ${sortN >= 5 && sortN === fresh && fresh >= 10 ? `<p class="small"><b>Kennst du schon viele Verben?</b> Sortier sie zuerst. Was du schon kannst, fliegt gleich nach hinten.</p>
-            <button class="btn" id="verbSort">Verben sortieren</button>` : ""}
-          <p class="muted small">${what ? `Heute dran: ${what}` : "Heute alles geschafft."}${lim > VERB_NEW ? ` Du bist schnell: ${lim} neue Verben pro Tag!` : ""}</p>
-          <div class="row"><button class="btn${sortN >= 5 && sortN === fresh && fresh >= 10 ? " ghost" : ""}" id="verbGo">${what ? "Verben üben" : "Frei üben"}</button>
-            ${more ? `<button class="btn ghost" id="verbMore">Noch 5 Verben</button>` : ""}</div>`
-        : `<p class="muted small">Wähl unten zuerst Verben aus.</p>`}
-      </div>
-      <div class="vsec"><h3>2. Verbenauswahl</h3>
-        <p class="muted small">${cs.length} von ${IRREG.length} Verben ausgewählt</p>
-        <label class="toggle"><span><b>Mit past participle</b><br><span class="muted small">Dann fragt die App alle drei Formen ab, zum Beispiel go – went – gone. Beim Einschalten fangen alle Verben wieder von vorn an.</span></span>
-          <input type="checkbox" id="verbPP" ${S.verbPP ? "checked" : ""}></label>
-        <div class="row"><button class="btn ghost" id="verbPick">Verben auswählen</button>
-          <button class="btn ghost" id="vall">${cs.length === IRREG.length ? "Alle abwählen" : "Alle auswählen"}</button></div>
-      </div>
-    </section>`;
+  const lim = l ? withLang(l.id, () => (newLeft(), verbNewLimit(l))) : VERB_NEW;
+  // Startseite: nur Überschrift und Kasten. Antippen öffnet das Verben-Menü (Üben, Verbenauswahl).
+  return `<button class="panel vcard" id="verbMenu" aria-label="Unregelmäßige Verben öffnen">
+      <div class="spread"><h2>Unregelmäßige Verben</h2><span class="muted small">${cs.length ? (what ? "Heute dran" : "✓ heute geschafft") : "noch keine"}</span></div>
+      ${kastenHtml(counts, false, "Verben pro Fach")}
+    </button>`;
+}
+function renderVerbMenu() {
+  const l = verbLang(), cs = verbCards(), counts = Array(8).fill(0); cs.forEach(c => counts[c.level]++);
+  const due = l ? withLang(l.id, () => dueToday().length) : 0, nw = l ? withLang(l.id, () => Math.min(newAllowed(), newCards().length)) : 0;
+  const what = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nw && `${nw} ${nw === 1 ? "neues Verb" : "neue Verben"}`].filter(Boolean).join(" · ");
+  const lim = l ? withLang(l.id, () => (newLeft(), verbNewLimit(l))) : VERB_NEW;
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Unregelmäßige Verben</h2></div>
+    <section><div class="spread"><h2>Dein Verben-Kasten</h2><span class="muted small">${cs.length} Verben</span></div>${kastenHtml(counts)}</section>
+    ${cs.length ? `<section class="hero"><b class="herotitle">${what ? "Heute dran" : "Heute alles geschafft!"}</b>
+      <span class="muted small">${what || "Freies Üben geht immer."}${lim > VERB_NEW ? ` Du bist schnell: ${lim} neue Verben pro Tag!` : ""}</span>
+      <button class="btn big wide" id="verbGo">${what ? "Üben" : "Frei üben"}</button></section>` : `<p class="muted">Wähl zuerst aus, welche Verben du lernen willst.</p>`}
+    <button class="btn ghost wide" id="verbPick">Verbenauswahl</button>
+    <p class="muted small" style="text-align:center">${cs.length} von ${IRREG.length} Verben ausgewählt · ${S.verbPP ? "mit" : "ohne"} past participle</p>`));
+  $("#back").onclick = () => renderHome();
+  bindVerbs();
+  window.scrollTo(0, 0);
 }
 // Die Englisch-Sprache, zu der der Verben-Kasten gehört
 function verbHome() { const e = S.langs.find(l => l.kind !== "verbs" && /^en/.test(l.code || "")) || S.langs.find(l => /^englisch/i.test(l.name)); return e && e.id; }
 function bindVerbs() {
   if ($("#verbPick")) $("#verbPick").onclick = () => renderVerbs();
-  if ($("#vall")) $("#vall").onclick = () => allVerbs(() => keepScroll(renderHome));
-  if ($("#verbSort")) $("#verbSort").onclick = () => { S.cur = verbLang().id; save(); startPlace(VERB_UNIT); };
-  if ($("#verbMore")) $("#verbMore").onclick = () => { const l = verbLang(); S.cur = l.id; newLeft(); l.extra = (l.extra || 0) + 5; l.extraDay = today(); save(); startRound(null); };
+  if ($("#verbMenu")) $("#verbMenu").onclick = () => renderVerbMenu();
   if ($("#verbGo")) $("#verbGo").onclick = () => {
     const l = verbLang(); S.cur = l.id; save();
     const todo = dueToday().length + Math.min(newAllowed(), newCards().length);
@@ -2134,7 +2134,7 @@ function renderVerbs() {
     <nav class="abc" aria-label="Zum Buchstaben springen">${"abcdefghijklmnopqrstuvwxyz".split("").map(ch => letters.includes(ch) ? `<button data-abc="${ch}">${ch.toUpperCase()}</button>` : `<span>${ch.toUpperCase()}</span>`).join("")}</nav>
     ${letters.map(ch => `<h3 class="abch" id="vl-${ch}">${ch.toUpperCase()}</h3><div class="vlist">${IRREG.filter(v => v[0][0] === ch).map(row).join("")}</div>`).join("")}
     <div class="vbar"><span id="vcount">${have.size} ausgewählt</span><button class="btn" id="vdone">Fertig</button></div>`));
-  const back = () => { renderHome(); const c = $(".vcard"); c ? c.scrollIntoView({ block: "start" }) : window.scrollTo(0, 0); };
+  const back = () => renderVerbMenu();
   $("#back").onclick = $("#vdone").onclick = back;
   bindVerbPP(() => keepScroll(renderVerbs));
   $("#vall").onclick = () => allVerbs(() => keepScroll(renderVerbs));
