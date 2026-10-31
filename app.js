@@ -529,7 +529,7 @@ function renderHomeView() {
   app.replaceChildren(h(`
     <div class="spread">
       <nav class="langs" aria-label="Sprachen">
-        ${S.langs.map(l => `<button class="langflag" data-lang="${l.id}" aria-pressed="${l.id === S.cur}" title="${esc(l.name)}" aria-label="${esc(l.name)}">${flagOf(l)}</button>`).join("")}
+        ${S.langs.filter(l => l.kind !== "verbs").map(l => `<button class="langflag" data-lang="${l.id}" aria-pressed="${l.id === S.cur || (lang.kind === "verbs" && l.id === verbHome())}" title="${esc(l.name)}" aria-label="${esc(l.name)}">${flagOf(l)}</button>`).join("")}
         <button class="langflag add" id="addLang" title="Sprache hinzufügen" aria-label="Sprache hinzufügen">+</button>
       </nav>
       <div class="row" style="gap:6px;flex-wrap:nowrap">
@@ -1880,14 +1880,17 @@ function verbCard() {
 }
 function verbPanel() {
   const n = verbCards().length;
-  return `<section class="panel">
+  return `<button class="link" id="verbBack">← Zurück zu Englisch</button><section class="panel">
       <div class="spread"><div><b>Deine Verben</b><p class="muted small">${n} von ${IRREG.length} ausgewählt</p></div>
         <button class="btn small" id="verbPick">Auswählen</button></div>
       <label class="toggle"><span><b>Mit past participle</b><br><span class="muted small">Dann fragt die App alle drei Formen ab, zum Beispiel go – went – gone. Beim Einschalten fangen alle Verben wieder von vorn an.</span></span>
         <input type="checkbox" id="verbPP" ${S.verbPP ? "checked" : ""}></label>
     </section>`;
 }
+// Die Englisch-Sprache, zu der der Verben-Kasten gehört
+function verbHome() { const e = S.langs.find(l => l.kind !== "verbs" && /^en/.test(l.code || "")) || S.langs.find(l => /^englisch/i.test(l.name)); return e && e.id; }
 function bindVerbs() {
+  if ($("#verbBack")) $("#verbBack").onclick = () => { const id = verbHome(); if (id) { S.cur = id; save(); } renderHome(); window.scrollTo(0, 0); };
   if ($("#verbPick")) $("#verbPick").onclick = () => renderVerbs();
   if ($("#verbGo")) $("#verbGo").onclick = () => { S.cur = verbLang().id; save(); renderHome(); window.scrollTo(0, 0); };
   bindVerbPP(() => keepScroll(renderHome));
@@ -2312,7 +2315,7 @@ function renderSettings(msg) {
     </section>
     <section class="panel">
       <h3>Deine Sprachen</h3>
-      ${S.langs.map(l => `<div class="spread"><span><span class="flag">${flagOf(l)}</span> ${esc(l.name)} <span class="muted small">· ${S.cards.filter(c => c.lang === l.id).length} Wörter</span></span>
+      ${S.langs.filter(l => l.kind !== "verbs").map(l => `<div class="spread"><span><span class="flag">${flagOf(l)}</span> ${esc(l.name)} <span class="muted small">· ${S.cards.filter(c => c.lang === l.id).length} Wörter</span></span>
         ${confirmLangDelete === l.id
           ? `<span class="row small" style="gap:8px">Mit allen Wörtern löschen?<button class="link" data-ldel-yes="${l.id}">Ja</button><button class="link" data-ldel-no>Nein</button></span>`
           : `<button class="link" data-ldel="${l.id}">Löschen</button>`}</div>`).join("")}
