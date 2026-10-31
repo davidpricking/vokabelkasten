@@ -92,8 +92,18 @@ function migrate(s) {
   }
   if (s.langs.length && !s.langs.some(l => l.id === s.cur)) s.cur = s.langs[0].id;
   // Ältere Sprachen ohne Sprachcode bekommen ihn nach dem Namen (sonst fehlen Aussprache, Fehlerfallen und die Verben-Karte)
+  s.langs.forEach(l => { if (s.cards.some(c => c.lang === l.id && c.book)) dropSample(s, l); });
+  if (!s.backupAt) s.backupAt = Date.now();
   s.langs.forEach(l => { if (!l.code && !l.kind) { const p = LANG_PRESETS.find(x => x.name.toLowerCase() === String(l.name).trim().toLowerCase()); if (p && p.code) l.code = p.code; } });
   return s;
+}
+// Die Beispiel-Unit ist nur zum Ausprobieren da. Sobald echte Buch-Wörter da sind, fliegt sie raus.
+function dropSample(s, l) {
+  if (!s.cards.some(c => c.lang === l.id && c.unit === SAMPLE_UNIT)) return;
+  s.cards = s.cards.filter(c => !(c.lang === l.id && c.unit === SAMPLE_UNIT));
+  ["paused", "off", "fat", "skip"].forEach(k => { if (l[k]) l[k] = l[k].filter(u => u !== SAMPLE_UNIT); });
+  if (l.upto) delete l.upto[SAMPLE_UNIT];
+  if (l.pos && l.pos.u === SAMPLE_UNIT) delete l.pos;
 }
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return migrate(s); } catch (e) {}
@@ -518,15 +528,12 @@ function ringHtml(n, goal) {
 }
 function renderHomeView() {
   const qd = checkQuests(); if (qd.length) setTimeout(() => celebrate(`Tagesaufgabe geschafft: ${qd[0]}`), 400);
-  const lang = L(), all = cardsL(), every = cardsAll(), paused = lang.paused || [], off = lang.off || [], fat = lang.fat || [];
+  const lang = L(), all = cardsL(), every = cardsAll(), paused = lang.paused || [], off = lang.off || [];
   const due = dueToday().length, nl = Math.min(newAllowed(), newCards().length), gd = gDue().length;
   const units = [...new Set(every.map(c => c.unit))];
-  const dirs = [["de-en", `Deutsch → ${lname0()}`], ["en-de", `${lname0()} → Deutsch`], ["mix", "gemischt"]];
-  const inputs = [["tiles", "Buchstaben und Sprechen"], ["keyboard", "Tastatur"]];
   const lv = levelOf(S.xp), todo = due + nl + gd;
   const placeU = units.find(u => !paused.includes(u) && !off.includes(u) && canPlace(u));
   const parts = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nl && `${nl} neue ${nl === 1 ? "Wort" : "Wörter"}`, gd && `${gd} Grammatik`].filter(Boolean);
-  const earned = BADGES.filter(b => S.badges[b[0]]);
   app.replaceChildren(h(`
     <div class="spread">
       <nav class="langs" aria-label="Sprachen">
@@ -549,8 +556,8 @@ function renderHomeView() {
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
       ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
+    ${backupCard()}
     ${posCard()}
-    ${counterCard()}
     ${placeU && lang.kind !== "verbs" ? `<section class="panel place">
       <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
       <p class="muted small">Beim Sortieren tippst du nur die richtige Bedeutung an. Was du schon kannst, fliegt gleich nach hinten. So lernst du nur, was wirklich neu ist.</p>
@@ -558,21 +565,77 @@ function renderHomeView() {
     ${all.length ? `<section>
       <div class="spread"><h2>Dein Kasten</h2><span class="muted small">${all.length} Wörter</span></div>
       ${kastenHtml(levelCounts())}
-      <p class="muted small">Richtig heißt mindestens ein Fach weiter, leichte Wörter springen auch weiter. Falsch heißt zwei Fächer zurück. Unter jedem Fach steht ungefähr, wann ein Wort daraus wieder drankommt.</p>
+      <p class="muted small">Richtig: mindestens ein Fach weiter. Falsch: zwei Fächer zurück.</p>
     </section>` : ""}
+    ${counterCard()}
     ${monsterCard()}
+    ${playSection()}
     ${grammarCard()}
     ${verbCard()}
-    ${questCard()}
-    ${weltCard()}
-    ${duelCard()}
-    ${albumCard()}
+    ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3 && t !== "allgemein").sort((a, b) => n[b] - n[a]);
+      const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">${t.startsWith(WB) ? esc(t.slice(WB.length).replace(/-/g, " ")) : "#" + esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
+      const wb = ts.filter(t => t.startsWith(WB)), th = ts.filter(t => !GRAM_TAGS.includes(t) && !t.startsWith(WB)), gr = ts.filter(t => GRAM_TAGS.includes(t));
+      return ts.length ? `<details class="panel"><summary><b>Nach Thema üben</b></summary>
+      ${th.length ? chips(th) : ""}${wb.length ? `<h3>Wordbanks aus dem Buch</h3>${chips(wb)}` : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
+      <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Richtig: Das Wort bleibt im Fach, seine Wartezeit beginnt neu. Falsch: zwei Fächer zurück.</p></details>` : ""; })()}
+    ${wordsCard(units.length, every.length)}
+  `));
+  $("#go").onclick = () => todo ? startRound(null) : all.length ? startRound(FREE) : lang.kind === "verbs" ? renderVerbs() : renderImport();
+  if ($("#free")) $("#free").onclick = () => startRound(FREE);
+  if ($("#add")) $("#add").onclick = () => renderImport();
+  $("#settings").onclick = () => renderSettings();
+  $("#cal").onclick = () => { renderCalendar(); scrollTo(0, 0); };
+  $("#addLang").onclick = () => renderAddLang(false);
+  $("#lv").onclick = () => renderBadges();
+  bindPlay();
+  if ($("#units")) $("#units").onclick = () => { confirmDelete = null; renderUnits(); };
+  bindPos();
+  save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
+  if ($("#gram")) $("#gram").onclick = () => renderGrammar();
+  bindVerbs();
+  $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
+  $$("[data-tag]").forEach(b => b.onclick = () => startRound(TAG + b.dataset.tag));
+  $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
+  bindBackup();
+  if (!keepScroll.on) window.scrollTo(0, 0);
+}
+// ---------- Lernstand sichern: einmal pro Woche freundlich erinnern ----------
+const BACKUP_EVERY = 7 * 864e5;
+function exportBackup() {
+  S.backupAt = Date.now(); save();
+  const blob = new Blob([JSON.stringify(S, null, 1)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `vokabelkasten-${new Date().toISOString().slice(0, 10)}.json`; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function backupCard() {
+  if (S.cards.filter(c => c.level > 0).length < 20 || Date.now() - (S.backupAt || 0) < BACKUP_EVERY) return "";
+  return `<section class="panel backup"><b>💾 Zeit für eine Sicherung</b>
+    <p class="muted small">Dein Lernstand ist nur auf diesem Handy. Speicher ihn als Datei, dann geht nichts verloren, wenn das Handy kaputtgeht oder du ein neues bekommst.</p>
+    <div class="row"><button class="btn small" id="bkNow">Jetzt sichern</button><button class="link" id="bkLater">Später</button></div></section>`;
+}
+function bindBackup() {
+  if ($("#bkNow")) $("#bkNow").onclick = () => { exportBackup(); toast("Gesichert. Die Datei liegt bei deinen Downloads."); keepScroll(renderHome); };
+  if ($("#bkLater")) $("#bkLater").onclick = () => { S.backupAt = Date.now() - BACKUP_EVERY + 3 * 864e5; save(); keepScroll(renderHome); };   // in 3 Tagen wieder
+}
+// ---------- Meine Wörter: Units verwalten und Abfrage einstellen (eigene Seite, damit die Startseite kurz bleibt) ----------
+function wordsCard(nu, nw) {
+  if (L().kind === "verbs") return "";
+  return `<section class="panel mywords">
+    <div class="spread"><div><h2>Meine Wörter</h2><p class="muted small">${nu ? `${nu} ${nu === 1 ? "Unit" : "Units"} · ${nw} Wörter` : "Noch keine Vokabeln"}</p></div>
+      <button class="btn small" id="add">+ Vokabeln</button></div>
+    ${nu ? `<button class="btn ghost wide" id="units">Units und Abfrage einstellen</button>
+    <p class="muted small">Units ein- und ausschalten, nur fett gedruckte Wörter, für einen Test üben, Richtung der Abfrage.</p>` : `<p class="muted small">Tipp auf „+ Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p>`}
+  </section>`;
+}
+function renderUnits() {
+  const lang = L(), every = cardsAll(), paused = lang.paused || [], off = lang.off || [], fat = lang.fat || [];
+  const units = [...new Set(every.map(c => c.unit))];
+  const dirs = [["de-en", `Deutsch → ${lname0()}`], ["en-de", `${lname0()} → Deutsch`], ["mix", "gemischt"]];
+  const inputs = [["tiles", "Buchstaben und Sprechen"], ["keyboard", "Tastatur"]];
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Meine Wörter</h2></div>
     <section>
-      <div class="spread"><h2>Abzeichen</h2><button class="link" id="badges">Alle ${BADGES.length} ansehen</button></div>
-      <div class="badgerow">${earned.length ? earned.slice(-6).map(b => `<span class="bdg" title="${esc(b[2])}">${b[1]}</span>`).join("")
-        : `<span class="muted small">Dein erstes Abzeichen bekommst du nach der ersten Runde.</span>`}</div>
-    </section>
-    <section${lang.kind === "verbs" ? " hidden" : ""}>
       <div class="spread"><h2>Units</h2><button class="btn small" id="add">+ Vokabeln</button></div>
       <div class="units">${units.length ? (() => {
         const unitHtml = u => { const ce = every.filter(c => c.unit === u), nfN = ce.filter(c => c.nf).length, isF = nfN > 0 && fat.includes(u);
@@ -605,12 +668,6 @@ function renderHomeView() {
       })() : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
       <p class="muted small">Ausgeschaltete Units sind ganz aus dem Kasten, auch aus „neu“. Die App merkt sich, in welchem Fach jedes Wort war. Beim Einschalten ist alles wieder da.</p>
     </section>
-    ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3 && t !== "allgemein").sort((a, b) => n[b] - n[a]);
-      const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">${t.startsWith(WB) ? esc(t.slice(WB.length).replace(/-/g, " ")) : "#" + esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
-      const wb = ts.filter(t => t.startsWith(WB)), th = ts.filter(t => !GRAM_TAGS.includes(t) && !t.startsWith(WB)), gr = ts.filter(t => GRAM_TAGS.includes(t));
-      return ts.length ? `<details class="panel"><summary><b>Nach Thema üben</b></summary>
-      ${th.length ? chips(th) : ""}${wb.length ? `<h3>Wordbanks aus dem Buch</h3>${chips(wb)}` : ""}${gr.length ? `<h3>Wortarten</h3>${chips(gr)}` : ""}
-      <p class="muted small">Eine Runde nur mit Wörtern zu diesem Tag. Richtig: Das Wort bleibt im Fach, seine Wartezeit beginnt neu. Falsch: zwei Fächer zurück.</p></details>` : ""; })()}
     <details class="panel">
       <summary><b>So wirst du abgefragt</b></summary>
       <h3>Richtung</h3>
@@ -620,42 +677,26 @@ function renderHomeView() {
       <p class="muted small">Buchstaben und Sprechen: Ins ${esc(lang.name)}e legst du das Wort aus Buchstaben, so übst du die Schreibweise. Ins Deutsche sagst du es ins Mikrofon oder drehst die Karte um.</p>
     </details>
   `));
-  $("#go").onclick = () => todo ? startRound(null) : all.length ? startRound(FREE) : lang.kind === "verbs" ? renderVerbs() : renderImport();
-  if ($("#free")) $("#free").onclick = () => startRound(FREE);
+  $("#back").onclick = () => { confirmDelete = null; renderHome(); };
   $("#add").onclick = () => renderImport();
-  $("#settings").onclick = () => renderSettings();
-  $("#cal").onclick = () => { renderCalendar(); scrollTo(0, 0); };
-  $("#addLang").onclick = () => renderAddLang(false);
-  $("#lv").onclick = $("#badges").onclick = () => renderBadges();
-  if ($("#album")) $("#album").onclick = () => renderAlbum();
-  $("#welt").onclick = () => renderWelt();
-  if ($("#duelGo")) $("#duelGo").onclick = renderDuelSetup;
-  if ($("#sprintGo")) $("#sprintGo").onclick = renderSprint;
-  bindPos();
-  save(); pauseNotice(); animateCounter(); if (!qd.length) setTimeout(checkMilestone, 600);
-  if ($("#homePack")) $("#homePack").onclick = () => openPack();
-  if ($("#gram")) $("#gram").onclick = () => renderGrammar();
-  bindVerbs();
-  $$("[data-lang]").forEach(b => b.onclick = () => { S.cur = b.dataset.lang; confirmDelete = null; save(); renderHome(); });
-  $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); keepScroll(renderHome); });
-  $$("[data-input]").forEach(b => b.onclick = () => { S.input = b.dataset.input; save(); keepScroll(renderHome); });
+  $$("[data-dir]").forEach(b => b.onclick = () => { lang.dir = b.dataset.dir; save(); keepScroll(renderUnits); });
+  $$("[data-input]").forEach(b => b.onclick = () => { S.input = b.dataset.input; save(); keepScroll(renderUnits); });
   $$("[data-test]").forEach(b => b.onclick = () => startRound(b.dataset.test));
-  $$("[data-tag]").forEach(b => b.onclick = () => startRound(TAG + b.dataset.tag));
   $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   $$("[data-share]").forEach(b => b.onclick = () => renderShare(b.dataset.share));
-  $$("[data-off]").forEach(b => b.onclick = () => { lang.off = [...off, b.dataset.off]; save(); toast("Ausgeschaltet. Die Fächer der Wörter bleiben gespeichert."); keepScroll(renderHome); });
-  $$("[data-fat]").forEach(b => b.onclick = () => { if (!fat.includes(b.dataset.fat)) lang.fat = [...fat, b.dataset.fat]; save(); toast("Nur noch die fett gedruckten Wörter. Die anderen behalten ihr Fach."); keepScroll(renderHome); });
-  $$("[data-allw]").forEach(b => b.onclick = () => { lang.fat = fat.filter(u => u !== b.dataset.allw); save(); toast("Alle Wörter sind dabei."); keepScroll(renderHome); });
-  $$("[data-on]").forEach(b => b.onclick = () => { lang.off = off.filter(u => u !== b.dataset.on); save(); toast("Eingeschaltet. Alle Wörter sind wieder in ihren Fächern."); keepScroll(renderHome); });
-  $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); if (lang.upto) delete lang.upto[b.dataset.unpause]; save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
+  $$("[data-off]").forEach(b => b.onclick = () => { lang.off = [...off, b.dataset.off]; save(); toast("Ausgeschaltet. Die Fächer der Wörter bleiben gespeichert."); keepScroll(renderUnits); });
+  $$("[data-fat]").forEach(b => b.onclick = () => { if (!fat.includes(b.dataset.fat)) lang.fat = [...fat, b.dataset.fat]; save(); toast("Nur noch die fett gedruckten Wörter. Die anderen behalten ihr Fach."); keepScroll(renderUnits); });
+  $$("[data-allw]").forEach(b => b.onclick = () => { lang.fat = fat.filter(u => u !== b.dataset.allw); save(); toast("Alle Wörter sind dabei."); keepScroll(renderUnits); });
+  $$("[data-on]").forEach(b => b.onclick = () => { lang.off = off.filter(u => u !== b.dataset.on); save(); toast("Eingeschaltet. Alle Wörter sind wieder in ihren Fächern."); keepScroll(renderUnits); });
+  $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); if (lang.upto) delete lang.upto[b.dataset.unpause]; save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderUnits); });
   $$("details.bookgrp").forEach(d => d.addEventListener("toggle", () => { if (!d.open) { if (homeOpen.book === d.dataset.book) homeOpen.book = ""; return; }
     homeOpen.book = d.dataset.book; $$("details.bookgrp").forEach(o => { if (o !== d) o.open = false; }); }));
   $$("details.unit").forEach(d => d.addEventListener("toggle", () => { d.open ? homeOpen.units.add(d.dataset.unit) : homeOpen.units.delete(d.dataset.unit); }));
-  $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderHome); });
-  $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderHome); });
+  $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderUnits); });
+  $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderUnits); });
   $$("[data-del-yes]").forEach(b => b.onclick = () => {
     const u = b.dataset.delYes; S.cards = S.cards.filter(c => !(c.lang === S.cur && c.unit === u));
-    lang.paused = paused.filter(x => x !== u); lang.off = off.filter(x => x !== u); lang.fat = fat.filter(x => x !== u); confirmDelete = null; save(); keepScroll(renderHome); toast("Unit gelöscht");
+    lang.paused = paused.filter(x => x !== u); lang.off = off.filter(x => x !== u); lang.fat = fat.filter(x => x !== u); confirmDelete = null; save(); keepScroll(renderUnits); toast("Unit gelöscht");
   });
   if (!keepScroll.on) window.scrollTo(0, 0);
 }
@@ -1367,7 +1408,7 @@ function questCard() {
     ${qs.map(([id, name, prog]) => { const [a, b] = prog(d), ok = d.qdone.includes(id);
       return `<div class="quest${ok ? " ok" : ""}"><span class="qchk" aria-hidden="true">${ok ? "✓" : ""}</span><div><b>${esc(name)}</b>
         <div class="bar"><i style="width:${Math.min(100, Math.round(a / b * 100))}%"></i></div></div><span class="small muted">${Math.min(a, b)}/${b}</span></div>`; }).join("")}
-    <p class="muted small">${all ? "Alles geschafft! Morgen gibt es neue Aufgaben." : "Jede Aufgabe bringt ein Sticker-Päckchen. Alle drei zusammen: ein goldenes Päckchen mit sicherem seltenen Sticker."}</p>
+    <p class="muted small">${all ? "Alles geschafft! Morgen gibt es neue Aufgaben." : "Jede Aufgabe bringt ein Päckchen, alle drei ein goldenes."}</p>
   </section>`;
 }
 
@@ -1435,17 +1476,32 @@ function weltNew() {
   const W = S.welt || {}, built = W.built || [], have = new Set([...built.map(b => b.id), ...(W.wait || [])]);
   return S.cards.filter(c => c.level >= 3 && !have.has(c.id)).length + Math.max(0, built.length - (W.seen || 0));
 }
-function weltCard() {
-  const n = (S.welt.built || []).length, fresh = weltNew(), dn = weltDistrictNew(), tr = treasureReady();
-  const nd = 1 + (S.welt.dist || []).length, next = weltUnits().filter(u => !u.done).sort((a, b) => b.pct - a.pct)[0];
-  return `<section class="panel weltcard">
-    <div class="spread"><h2>Deine Camden-Welt</h2><span class="muted small">${n} ${n === 1 ? "Haus" : "Häuser"} · Viertel ${nd}/7</span></div>
-    <div class="weltpeek" aria-hidden="true">${SKYLINE}${fresh ? `<span class="weltbadge">+${fresh}</span>` : ""}${tr ? `<span class="weltgift">🎁</span>` : ""}</div>
-    ${dn ? `<p class="weltnews">🗺️ Eine Unit ist geschafft. Ein neues Viertel wartet auf dich!</p>` : ""}
-    ${tr ? `<p class="weltnews">🎁 Heute ist in Camden ein Sticker-Päckchen versteckt. Folge dem Lichtstrahl!</p>` : ""}
-    <p class="muted small">Jedes Wort ab Fach 3 baut ein Haus. In Fach 5 leuchten nachts seine Fenster, in Fach 7 bekommt es ein goldenes Dach.${nd < 7 && next ? ` Nächstes Viertel: „${esc(next.name)}“ zu ${Math.min(99, Math.round(next.pct / .8 * 100))} % geschafft.` : ""}</p>
-    <button class="btn${fresh || dn || tr ? "" : " ghost"}" id="welt">${dn ? "Neues Viertel ansehen" : fresh ? (fresh === 1 ? "1 neues Haus bauen" : fresh + " neue Häuser bauen") : tr ? "Schatz suchen" : "Welt ansehen"}</button>
+// ---------- Spielen und sammeln: ein kompakter Bereich auf der Startseite ----------
+function playSection() {
+  const has = cardsL().length;
+  const n = (S.welt.built || []).length, fresh = weltNew(), dn = weltDistrictNew(), tr = treasureReady(), nd = 1 + (S.welt.dist || []).length;
+  const ws = weekStart(dayKey()), tally = duelTally(duelsWeek(ws)), recs = Object.keys(S.records || {}).filter(k => k.startsWith(S.cur + "|")).length;
+  const earned = BADGES.filter(b => S.badges[b[0]]).length, duel = has >= DUEL_N;
+  const tile = (id, ic, t, sub, news) => `<button class="tile${news ? " hot" : ""}" id="${id}"><span class="ti" aria-hidden="true">${ic}</span><b>${t}</b><span class="small muted">${sub}</span>${news ? `<span class="tnews">${news}</span>` : ""}</button>`;
+  return `<section class="play"><h2>Spielen und sammeln</h2>
+    ${S.packQ.length ? `<button class="btn wide gold" id="homePack">🎁 ${S.packQ.length === 1 ? "Päckchen öffnen" : S.packQ.length + " Päckchen öffnen"}</button>` : ""}
+    ${questCard()}
+    <div class="tiles">
+      ${tile("tWelt", SKYLINE, "Camden-Welt", `${n} ${n === 1 ? "Haus" : "Häuser"} · Viertel ${nd}/7`, dn ? "Neues Viertel!" : fresh ? `+${fresh} ${fresh === 1 ? "Haus" : "Häuser"}` : tr ? "🎁 Schatz" : "")}
+      ${tile("tAlbum", "📒", "Sticker-Album", `${albumCount()} von ${STICKERS.length}`, "")}
+      ${duel ? tile("tSprint", "⏱️", "Auf Zeit üben", recs ? `${recs} ${recs === 1 ? "Rekord" : "Rekorde"}` : "Jag deinen Rekord", "") : ""}
+      ${duel ? tile("tDuel", "⚔️", "Duell", tally.length ? tally.slice(0, 2).map(([nm, w]) => `${esc(nm)} ${w}`).join(" : ") : "Zu zweit an einem Handy", "") : ""}
+      ${tile("tBadges", "🏅", "Abzeichen", `${earned} von ${BADGES.length}`, "")}
+    </div>
   </section>`;
+}
+function bindPlay() {
+  if ($("#homePack")) $("#homePack").onclick = () => openPack();
+  $("#tWelt").onclick = () => renderWelt();
+  $("#tAlbum").onclick = () => renderAlbum();
+  $("#tBadges").onclick = () => renderBadges();
+  if ($("#tSprint")) $("#tSprint").onclick = renderSprint;
+  if ($("#tDuel")) $("#tDuel").onclick = renderDuelSetup;
 }
 function renderWelt() {
   document.body.classList.add("weltopen");
@@ -1458,15 +1514,6 @@ function renderWelt() {
   })).catch(() => { document.body.classList.remove("weltopen"); toast("Die Welt braucht einmal Internet zum Laden."); });
 }
 
-function albumCard() {
-  const n = albumCount(), N = STICKERS.length;
-  return `<section class="panel albumcard">
-    <div class="spread"><h2>Sticker-Album</h2><span class="muted small">${n} von ${N}</span></div>
-    <div class="bar"><i style="width:${Math.round(n / N * 100)}%"></i></div>
-    <div class="albumpeek">${STICKERS.filter(x => S.stickers[x.id]).slice(-5).map(x => stickerHtml(x, { cls: "sm" })).join("") || `<span class="muted small">Nach jeder Runde gibt es ein Päckchen mit 3 Stickern. Seltene gibt es öfter, wenn Wörter nach hinten wandern.</span>`}</div>
-    <div class="row">${S.packQ.length ? `<button class="btn" id="homePack">${S.packQ.length === 1 ? "Päckchen öffnen" : S.packQ.length + " Päckchen öffnen"}</button>` : ""}<button class="btn ghost" id="album">Album ansehen</button></div>
-  </section>`;
-}
 function openPack() {
   const ids = S.packQ[0]; if (!ids) return renderHome();
   app.replaceChildren(h(`<div class="packstage">
@@ -1711,6 +1758,7 @@ function addCards(unit, list, book) {
     if (book) c.book = book;
     S.cards.push(c); added++;
   });
+  if (book) { dropSample(S, L()); ordCache = null; }
   dayLog().added += added;
   return added;
 }
@@ -2384,12 +2432,7 @@ function renderSettings(msg) {
   $$("[data-goal]").forEach(b => b.onclick = () => { S.goal = +b.dataset.goal; save(); keepScroll(renderSettings); });
   $("#sound").onchange = e => { S.sound = e.target.checked; save(); if (S.sound) sound("good"); };
   $("#bot").onchange = e => { S.bot = e.target.value; save(); };
-  $("#export").onclick = () => {
-    const blob = new Blob([JSON.stringify(S, null, 1)], { type: "application/json" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = `vokabelkasten-${new Date().toISOString().slice(0, 10)}.json`; document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  };
+  $("#export").onclick = () => { exportBackup(); keepScroll(() => renderSettings("Gesichert. Die Datei liegt bei deinen Downloads.")); };
   $("#importFile").onchange = async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     try {
@@ -2568,19 +2611,6 @@ function makeQuestions(cards) {
   });
 }
 const newPlayer = n => ({ n, s: 0, t: 0, a: [] });
-function duelCard() {
-  if (cardsL().length < DUEL_N) return "";
-  const ws = weekStart(dayKey()), week = duelsWeek(ws), tally = duelTally(week), prev = duelTally(duelsWeek(shiftDay(ws, -7)));
-  const recs = Object.keys(S.records || {}).filter(k => k.startsWith(S.cur + "|")).length, max = Math.max(1, ...tally.map(t => t[1]));
-  return `<section class="panel duel">
-    <div class="spread"><h2>Rekorde und Duelle</h2><span class="muted small">${recs ? `${recs} ${recs === 1 ? "Rekord" : "Rekorde"}` : ""}</span></div>
-    ${tally.length ? tally.map(([n, w], i) => `<div class="duelrow${n === (S.name || "Ich") ? " me" : ""}"><span class="duelname">${i === 0 && w > 0 && w > (tally[1] || [0, 0])[1] ? "👑 " : ""}${esc(n)}</span>
-      <span class="bar"><i style="width:${Math.round(w / max * 100)}%"></i></span><b>${w}</b></div>`).join("") + `<p class="muted small">Siege diese Woche</p>`
-      : `<p class="muted small">Üb eine Unit bis zu einem Teil auf Zeit und jag deinen Rekord. Wenn du richtig schnell warst, fordere jemanden heraus! Oder spielt ein Duell: beide bekommen dieselben ${DUEL_N} Wörter.</p>`}
-    ${prev.length && prev[0][1] > (prev[1] || [0, 0])[1] ? `<p class="small">🏆 Letzte Woche hat ${esc(prev[0][0])} gewonnen (${prev.map(([n, w]) => `${esc(n)} ${w}`).join(" : ")}).</p>` : ""}
-    <div class="row"><button class="btn" id="sprintGo">⏱️ Auf Zeit üben</button><button class="btn ghost" id="duelGo">Duell starten</button></div>
-  </section>`;
-}
 function renderSprint() {
   const units = [...new Set(cardsL().map(c => c.unit))].filter(u => unitPartList(u).length), R2 = S.records || {};
   app.replaceChildren(h(`
