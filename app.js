@@ -99,7 +99,10 @@ function load() {
 let S = load() || defaults();
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 function L() { return S.langs.find(l => l.id === S.cur) || S.langs[0]; }
-function cardsL() { return S.cards.filter(c => c.lang === S.cur); }
+// Alle Karten der Sprache, auch aus ausgeschalteten Units (L().off). Die Fächer bleiben dabei gespeichert.
+function cardsAll() { return S.cards.filter(c => c.lang === S.cur); }
+// Karten im Kasten: ausgeschaltete Units fehlen überall (Fächer, Wiederholungen, neue Wörter)
+function cardsL() { const off = L().off || []; return off.length ? cardsAll().filter(c => !off.includes(c.unit)) : cardsAll(); }
 function isEn() { return /^en/.test(L().code); }
 function canHear() { return canSpeak && !!L().code; }
 function addLang(name, code, withSample) {
@@ -506,13 +509,13 @@ function ringHtml(n, goal) {
 }
 function renderHomeView() {
   const qd = checkQuests(); if (qd.length) setTimeout(() => celebrate(`Tagesaufgabe geschafft: ${qd[0]}`), 400);
-  const lang = L(), all = cardsL(), paused = lang.paused || [];
+  const lang = L(), all = cardsL(), every = cardsAll(), paused = lang.paused || [], off = lang.off || [];
   const due = dueToday().length, nl = Math.min(newAllowed(), newCards().length), gd = gDue().length;
-  const units = [...new Set(all.map(c => c.unit))];
+  const units = [...new Set(every.map(c => c.unit))];
   const dirs = [["de-en", `Deutsch → ${lang.name}`], ["en-de", `${lang.name} → Deutsch`], ["mix", "gemischt"]];
   const inputs = [["tiles", "Buchstaben und Sprechen"], ["keyboard", "Tastatur"]];
   const lv = levelOf(S.xp), todo = due + nl + gd;
-  const placeU = units.find(u => !paused.includes(u) && canPlace(u));
+  const placeU = units.find(u => !paused.includes(u) && !off.includes(u) && canPlace(u));
   const parts = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nl && `${nl} neue ${nl === 1 ? "Wort" : "Wörter"}`, gd && `${gd} Grammatik`].filter(Boolean);
   const earned = BADGES.filter(b => S.badges[b[0]]);
   app.replaceChildren(h(`
@@ -562,24 +565,24 @@ function renderHomeView() {
     <section>
       <div class="spread"><h2>Units</h2><button class="btn small" id="add">+ Vokabeln</button></div>
       <div class="units">${units.length ? units.map(u => {
-        const cs = all.filter(c => c.unit === u); const sit = cs.filter(c => c.level >= 3).length;
-        const pct = Math.round(sit / cs.length * 100), isP = paused.includes(u), fresh = cs.filter(c => c.level === 0).length;
-        return `<div class="unit${isP ? " paused" : ""}">
+        const cs = every.filter(c => c.unit === u); const sit = cs.filter(c => c.level >= 3).length;
+        const pct = Math.round(sit / cs.length * 100), isO = off.includes(u), isP = !isO && paused.includes(u), learned = cs.filter(c => c.level > 0).length;
+        return `<div class="unit${isP || isO ? " paused" : ""}">
           <div class="spread"><div><h3 style="overflow-wrap:anywhere">${esc(u)}</h3>
-            <p class="muted small">${cs.length} Wörter · ${isP ? "pausiert" : `${pct} % sitzen (ab Fach 3)`}</p></div>
-            ${u === SAMPLE_UNIT ? '<span class="tag">Beispiel</span>' : isP ? '<span class="tag soft">Pause</span>' : ""}</div>
-          ${isP ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}
+            <p class="muted small">${cs.length} Wörter · ${isO ? `ausgeschaltet${learned ? `, ${learned} schon gelernt` : ""}` : isP ? "pausiert" : `${pct} % sitzen (ab Fach 3)`}</p></div>
+            ${u === SAMPLE_UNIT ? '<span class="tag">Beispiel</span>' : isO ? '<span class="tag soft">Aus</span>' : isP ? '<span class="tag soft">Pause</span>' : ""}</div>
+          ${isP || isO ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}
           <div class="row">
-            ${isP ? `<button class="btn small" data-unpause="${esc(u)}">Freischalten</button>`
+            ${isO ? `<button class="btn small" data-on="${esc(u)}">Einschalten</button>`
+              : isP ? `<button class="btn small" data-unpause="${esc(u)}">Freischalten</button>`
               : `<button class="btn ghost small" data-test="${esc(u)}">Für den Test üben</button>${canPlace(u) ? `<button class="link" data-place="${esc(u)}">Sortieren</button>` : ""}`}
-            <button class="link" data-share="${esc(u)}">Teilen</button>
-            ${!isP && fresh ? `<button class="link" data-pause="${esc(u)}">Pausieren</button>` : ""}
+            ${isO ? "" : `<button class="link" data-share="${esc(u)}">Teilen</button><button class="link" data-off="${esc(u)}">Ausschalten</button>`}
             ${confirmDelete === u
               ? `<span class="small">Wirklich löschen?</span><button class="link" data-del-yes="${esc(u)}">Ja</button><button class="link" data-del-no>Nein</button>`
               : `<button class="link" data-del="${esc(u)}">Löschen</button>`}
           </div></div>`;
       }).join("") : `<div class="unit"><p><b>Noch keine Vokabeln für ${esc(lang.name)}.</b></p><p class="muted small">Tipp auf „Vokabeln“. Du kannst eine Buchseite fotografieren oder die Wörter eintippen.</p></div>`}</div>
-      <p class="muted small">Pausierte Units liefern keine neuen Wörter. Schalte sie frei, wenn das Thema in der Schule drankommt.</p>
+      <p class="muted small">Ausgeschaltete Units sind ganz aus dem Kasten, auch aus „neu“. Die App merkt sich, in welchem Fach jedes Wort war. Beim Einschalten ist alles wieder da.</p>
     </section>
     ${(() => { const n = tagCounts(), ts = Object.keys(n).filter(t => n[t] >= 3 && t !== "allgemein").sort((a, b) => n[b] - n[a]);
       const chips = l => `<div class="chips">${l.map(t => `<button class="chip" data-tag="${esc(t)}">${t.startsWith(WB) ? esc(t.slice(WB.length).replace(/-/g, " ")) : "#" + esc(t)} <span class="muted small">${n[t]}</span></button>`).join("")}</div>`;
@@ -618,13 +621,14 @@ function renderHomeView() {
   $$("[data-tag]").forEach(b => b.onclick = () => startRound(TAG + b.dataset.tag));
   $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   $$("[data-share]").forEach(b => b.onclick = () => renderShare(b.dataset.share));
-  $$("[data-pause]").forEach(b => b.onclick = () => { lang.paused = [...paused, b.dataset.pause]; save(); keepScroll(renderHome); });
+  $$("[data-off]").forEach(b => b.onclick = () => { lang.off = [...off, b.dataset.off]; save(); toast("Ausgeschaltet. Die Fächer der Wörter bleiben gespeichert."); keepScroll(renderHome); });
+  $$("[data-on]").forEach(b => b.onclick = () => { lang.off = off.filter(u => u !== b.dataset.on); save(); toast("Eingeschaltet. Alle Wörter sind wieder in ihren Fächern."); keepScroll(renderHome); });
   $$("[data-unpause]").forEach(b => b.onclick = () => { lang.paused = paused.filter(u => u !== b.dataset.unpause); if (lang.upto) delete lang.upto[b.dataset.unpause]; save(); toast("Freigeschaltet. Die neuen Wörter kommen ab jetzt dran."); keepScroll(renderHome); });
   $$("[data-del]").forEach(b => b.onclick = () => { confirmDelete = b.dataset.del; keepScroll(renderHome); });
   $$("[data-del-no]").forEach(b => b.onclick = () => { confirmDelete = null; keepScroll(renderHome); });
   $$("[data-del-yes]").forEach(b => b.onclick = () => {
     const u = b.dataset.delYes; S.cards = S.cards.filter(c => !(c.lang === S.cur && c.unit === u));
-    lang.paused = paused.filter(x => x !== u); confirmDelete = null; save(); keepScroll(renderHome); toast("Unit gelöscht");
+    lang.paused = paused.filter(x => x !== u); lang.off = off.filter(x => x !== u); confirmDelete = null; save(); keepScroll(renderHome); toast("Unit gelöscht");
   });
   if (!keepScroll.on) window.scrollTo(0, 0);
 }
@@ -1040,11 +1044,11 @@ function renderSummary() {
 // L().pos = { u, n }: In Unit u sind die ersten n Wörter frei, alle Units davor auch (außer übersprungene), alle danach warten.
 // L().paused: gesperrte Units, L().upto[u]: Anzahl freier Wörter in einer halb freien Unit, L().skip: Units, die die Lehrerin auslässt.
 let ordCache = null;
-function unitList() { return [...new Set(cardsL().map(c => c.unit))]; }
-function unitCards(u) { return cardsL().filter(c => c.unit === u); }
+function unitList() { return [...new Set(cardsAll().map(c => c.unit))]; }
+function unitCards(u) { return cardsAll().filter(c => c.unit === u); }
 function ordOf(c) {
   const key = S.cur + ":" + S.cards.length;
-  if (!ordCache || ordCache.key !== key) { const m = new Map(), n = {}; cardsL().forEach(x => { n[x.unit] = n[x.unit] || 0; m.set(x.id, n[x.unit]++); }); ordCache = { key, m }; }
+  if (!ordCache || ordCache.key !== key) { const m = new Map(), n = {}; cardsAll().forEach(x => { n[x.unit] = n[x.unit] || 0; m.set(x.id, n[x.unit]++); }); ordCache = { key, m }; }
   return ordCache.m.get(c.id) ?? 0;
 }
 function isPaused(c) {
@@ -1665,7 +1669,7 @@ function renderImport(prefill) {
 // Übernimmt Zeilen in eine Unit; doppelte Wörter in derselben Unit behalten ihren Lernstand,
 // bekommen aber neue Eselsbrücken und Beispielsätze aus dem Link.
 function addCards(unit, list, book) {
-  const existing = new Map(cardsL().filter(c => c.unit === unit).map(c => [norm(c.en) + "|" + norm(c.de), c]));
+  const existing = new Map(cardsAll().filter(c => c.unit === unit).map(c => [norm(c.en) + "|" + norm(c.de), c]));
   let added = 0;
   list.forEach(r => {
     const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
@@ -1685,7 +1689,7 @@ function addCards(unit, list, book) {
 }
 // Ein Link mit einem ganzen Buch: Jede Unit lässt sich gleich lernen oder erst einmal pausieren.
 function renderBook(p) {
-  const have = new Set(cardsL().map(c => c.unit)), total = p.units.reduce((n, u) => n + u.rows.length, 0);
+  const have = new Set(cardsAll().map(c => c.unit)), total = p.units.reduce((n, u) => n + u.rows.length, 0);
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Vokabeln übernehmen</h2></div>
     <section class="hero">
