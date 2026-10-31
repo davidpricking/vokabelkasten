@@ -8,6 +8,7 @@ const INTERVAL = [0, 1, 2, 4, 8, 16, 30, 180];          // Grammatik-Kasten: Tag
 const FACH_MAX = [0, 2, 5, 10, 21, 45, 120, Infinity];  // Abstand in Tagen bis einschließlich dieses Fachs
 const FACH_LABEL = ["neu", "1–2 Tage", "3–5 Tage", "1 Woche", "2–3 Wochen", "1 Monat", "2–4 Monate", "½ Jahr"];
 const FACH_IN = ["", "morgen", "in 2 Tagen", "in 4 Tagen", "in 8 Tagen", "in 16 Tagen", "in 1 Monat", "in ½ Jahr"];
+const VERB_DUE = 15, VERB_NEW = 5;                     // Verben sind ein Zusatz-Kasten mit eigenem, kleinerem Tageslimit
 const DUE_SHOW = 30;                                   // höchstens so viele Wiederholungen pro Tag, der Rest wartet unsichtbar
 const NEW_GATE = 20;                                   // neue Wörter nur, solange weniger Wiederholungen offen sind
 const DAY_BUDGET = 15 * 60;                            // nach 15 Minuten Übungszeit kommen heute keine neuen Wörter mehr
@@ -168,11 +169,13 @@ function check(input, solution) {
 // Fällig, niedrigste Fächer zuerst, dann die am längsten wartenden
 function dueCards() { const now = Date.now(); return cardsL().filter(c => c.level > 0 && c.due <= now).sort((a, b) => a.level - b.level || a.due - b.due); }
 // Tagesbudget: höchstens DUE_SHOW Wiederholungen am Tag; was darüber liegt, wartet unsichtbar auf morgen
-function dueLeft() { return Math.max(0, DUE_SHOW - (dayLog().rev || 0)); }
+// Jeder Kasten (Sprache, Verben) hat sein eigenes Limit, damit viele fällige Verben keine Englisch-Wörter verdrängen
+function perLang(k) { const d = dayLog(); return (d[k] || (d[k] = {})); }
+function dueLeft() { return Math.max(0, (L().kind === "verbs" ? VERB_DUE : DUE_SHOW) - (perLang("revBy")[S.cur] || 0)); }
 function dueToday() { return dueCards().slice(0, dueLeft()); }
 // Neue Wörter nur, wenn kein Stau da ist und die 15 Minuten noch nicht um sind
 function newAllowed() { return dueCards().length < NEW_GATE && dayLog().sec < DAY_BUDGET ? newLeft() : 0; }
-function newLeft() { const l = L(); if (l.newDay !== today()) { l.newDay = today(); l.newCount = 0; } return Math.max(0, S.newPerDay - l.newCount); }
+function newLeft() { const l = L(); if (l.newDay !== today()) { l.newDay = today(); l.newCount = 0; } return Math.max(0, (l.kind === "verbs" ? Math.min(VERB_NEW, S.newPerDay) : S.newPerDay) - l.newCount); }
 function levelCounts() { const n = Array(8).fill(0); cardsL().forEach(c => { if (c.level || !isPaused(c)) n[c.level]++; }); return n; }
 // ---------- FSRS (Free Spaced Repetition Scheduler, Version 5, Standardgewichte) ----------
 const FW = [0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621];
@@ -219,7 +222,7 @@ function grade(card, result) {
   else if (result === "bad") card.level = Math.max(1, card.level - 2);
   else card.level = Math.max(1, card.level);
   card.due = today() + iv * DAY;
-  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++; } else { const dl = dayLog(); dl.rev = (dl.rev || 0) + 1; }
+  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++; } else { const dl = dayLog(), rb = perLang("revBy"); dl.rev = (dl.rev || 0) + 1; rb[S.cur] = (rb[S.cur] || 0) + 1; }
 }
 // Freies Üben, richtig: Wort bleibt im Fach, seine Wartezeit beginnt von vorn
 function rest(card) { fInit(card); card.due = today() + (card.ivl || INTERVAL[card.level] || 1) * DAY; card.seen = Date.now(); }
@@ -520,9 +523,18 @@ let confirmDelete = null;
 // Was auf der Startseite aufgeklappt ist: ein Buch und einzelne Units. Bleibt beim Neuzeichnen erhalten.
 const homeOpen = { book: null, units: new Set() };
 function goalCount() { const d = dayLog(); return d.ans + d.gram; }
+// Tagesziel = „Heute dran“ der Sprache (ohne Verben-Zusatz): erledigt / (erledigt + noch offen).
+// Ist heute gar nichts dran, zählen wie früher die Antworten bis S.goal.
+function todoCount() { return dueToday().length + Math.min(newAllowed(), newCards().length) + gDue().length; }
+function goalState() {
+  const id = L().kind === "verbs" ? verbHome() || S.cur : S.cur;
+  return withLang(id, () => { const done = perLang("taskBy")[id] || 0, left = todoCount();
+    return left ? [done, done + left] : done ? [done, done] : [goalCount(), S.goal]; });
+}
+function taskDone() { if (!R || R.practice) return; const tb = perLang("taskBy"); tb[S.cur] = (tb[S.cur] || 0) + 1; }
 function ringHtml(n, goal) {
   const r = 34, c = +(2 * Math.PI * r).toFixed(1), f = Math.min(1, n / goal);
-  return `<div class="ring${n >= goal ? " full" : ""}" role="img" aria-label="Tagesziel: ${Math.min(n, goal)} von ${goal} Antworten">
+  return `<div class="ring${n >= goal ? " full" : ""}" role="img" aria-label="Tagesziel: ${Math.min(n, goal)} von ${goal} geschafft">
     <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="${r}" class="ring-bg"/><circle cx="40" cy="40" r="${r}" class="ring-fg" style="stroke-dasharray:${c};--off:${(c * (1 - f)).toFixed(1)}"/></svg>
     <span>${n >= goal ? "✓" : `${n}<small>/${goal}</small>`}</span></div>`;
 }
@@ -550,7 +562,7 @@ function renderHomeView() {
       <button class="lvchip" id="lv" aria-label="Level ${lv}, Abzeichen ansehen"><span>Level ${lv}</span><i><b style="width:${levelPct(S.xp)}%"></b></i></button>
     </header>
     <section class="hero">
-      <div class="herotop">${ringHtml(goalCount(), S.goal)}
+      <div class="herotop">${ringHtml(...goalState())}
         <div><b class="herotitle">${todo ? "Heute dran" : all.length ? "Heute alles geschafft!" : "Los geht's!"}</b>
           <span class="muted small">${todo ? parts.join(" · ") : all.length ? "Freies Üben geht immer. Was du dabei kannst, wartet wieder von vorn." : "Hol dir zuerst Vokabeln in deinen Kasten."}</span></div></div>
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
@@ -997,7 +1009,7 @@ function answered(card, result, sol, dir, typed) {
   $$("#answerArea button, #answerArea input").forEach(x => x.disabled = true);
   const firstTime = !(card.id in R.first), from = card.level;
   const dl = dayLog(); dl.ans++; if (result !== "bad") dl.right++;
-  if (firstTime && !R.practice) delete card.chk;
+  if (firstTime && !R.practice) { delete card.chk; taskDone(); }
   if (firstTime) { R.first[card.id] = result; if (result !== "bad") R.good++; if (!R.practice) grade(card, result); else if (card.level > 0) { if (result === "bad") grade(card, "bad"); else if (result === "good") rest(card); } }
   // Beim freien Üben: falsch rutscht zwei Fächer zurück, richtig bleibt im Fach und die Wartezeit beginnt von vorn.
   const to = card.level, moved = firstTime && !R.practice, slipped = firstTime && R.practice && to < from, rested = firstTime && R.practice && result === "good" && to > 0;
@@ -1056,7 +1068,7 @@ function renderRoundTask() {
     tick();
     const first = !(item in R.first);
     dayLog().gram++;
-    if (first) { R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); }
+    if (first) { taskDone(); R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); }
     R.queue.shift();
     if (ok) { R.done.add(item); if (first) { R.combo++; R.best = Math.max(R.best, R.combo); } }
     else { R.combo = 0; R.queue.splice(Math.min(R.queue.length, 3), 0, item); }
@@ -1309,7 +1321,8 @@ function addXp(n) {
 }
 function checkGoal() {
   const d = dayLog();
-  if (!d.goalHit && goalCount() >= S.goal) { d.goalHit = true; setTimeout(() => celebrate("Tagesziel geschafft!"), 300); }
+  const [n, g] = goalState();
+  if (!d.goalHit && g > 0 && n >= g) { d.goalHit = true; setTimeout(() => celebrate("Tagesziel geschafft!"), 300); }
 }
 function celebrate(msg) { confetti(); sound("up"); toast(msg); }
 const BADGES = [
@@ -1367,7 +1380,7 @@ function renderBadges() {
 
 // ---------- Tagesaufgaben: drei wechselnde kleine Aufgaben, jede bringt ein Extra-Päckchen ----------
 const QUESTS = [
-  ["goal", "Schaff dein Tagesziel", d => [goalCount(), S.goal]],
+  ["goal", "Schaff dein Tagesziel", () => goalState()],
   ["combo", "5 richtig am Stück", d => [d.combo || 0, 5]],
   ["combo8", "8 richtig am Stück", d => [d.combo || 0, 8]],
   ["up", "Bring 8 Wörter ein Fach weiter", d => [d.up || 0, 8]],
@@ -2385,7 +2398,7 @@ function renderSettings(msg) {
     <section class="panel">
       <h3>Tagesziel</h3>
       <div class="chips">${[10, 20, 30, 50].map(n => `<button class="chip" data-goal="${n}" aria-pressed="${S.goal === n}">${n} Antworten</button>`).join("")}</div>
-      <p class="muted small">Der Ring auf der Startseite füllt sich mit jeder Antwort, auch bei Grammatik. 20 Antworten sind etwa 5 Minuten.</p>
+      <p class="muted small">Der Ring auf der Startseite zeigt, wie viel von „Heute dran“ geschafft ist. Nur wenn heute nichts dran ist, zählt er stattdessen so viele Antworten. 20 Antworten sind etwa 5 Minuten.</p>
       <label class="toggle"><span><b>Töne</b><br><span class="muted small">Kurze Klänge bei richtig, falsch und wenn eine Karte im Fach landet.</span></span>
         <input type="checkbox" id="sound" ${S.sound ? "checked" : ""}></label>
     </section>
