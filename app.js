@@ -2031,22 +2031,28 @@ function verbSlotsUi(area, v, done) {
   const put = (i, j) => { if (j == null) j = slot.indexOf(null); if (j < 0) j = slot.length - 1; slot[j] = i; sound("tap"); draw(); };
   $$(".vdrop", area).forEach(d => d.onclick = () => { slot[+d.dataset.s] = null; draw(); });
   // Ziehen mit Finger oder Maus; ein kurzer Tipp legt die Form ins nächste freie Feld
+  // Die Form klebt beim Ziehen sichtbar am Finger (gleich ab dem Antippen); ein kurzer Tipp ohne Ziehen legt sie ins nächste freie Feld
   $$(".vchip", area).forEach(el => el.onpointerdown = e => {
     if (el.disabled) return;
-    const i = +el.dataset.c, x0 = e.clientX, y0 = e.clientY; let ghost = null;
+    e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    const i = +el.dataset.c, x0 = e.clientX, y0 = e.clientY; let moved = false;
+    const ghost = el.cloneNode(true); ghost.classList.add("vghost"); ghost.removeAttribute("data-c"); document.body.append(ghost);
+    const at = (x, y) => { ghost.style.left = x + "px"; ghost.style.top = y + "px"; };
+    at(x0, y0); el.classList.add("dragging");
+    const overAt = (x, y) => $$(".vdrop", area).find(d => { const r = d.getBoundingClientRect(); return x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 6 && y <= r.bottom + 6; });
     const move = ev => {
-      if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 8) return;
-      if (!ghost) { ghost = el.cloneNode(true); ghost.classList.add("vghost"); document.body.append(ghost); }
-      ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px";
-      $$(".vdrop", area).forEach(d => { const r = d.getBoundingClientRect(); d.classList.toggle("over", ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom); });
+      if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) moved = true;
+      at(ev.clientX, ev.clientY);
+      const o = overAt(ev.clientX, ev.clientY); $$(".vdrop", area).forEach(d => d.classList.toggle("over", d === o));
     };
-    const up = ev => {
-      removeEventListener("pointermove", move); removeEventListener("pointerup", up);
-      if (!ghost) return put(i);
-      ghost.remove(); const over = $(".vdrop.over", area); $$(".vdrop", area).forEach(d => d.classList.remove("over"));
-      if (over) put(i, +over.dataset.s);
+    const end = (ev, cancel) => {
+      el.onpointermove = el.onpointerup = el.onpointercancel = null;
+      ghost.remove(); el.classList.remove("dragging"); $$(".vdrop", area).forEach(d => d.classList.remove("over"));
+      if (cancel) return;
+      if (!moved) return put(i);
+      const o = overAt(ev.clientX, ev.clientY); if (o) put(i, +o.dataset.s);
     };
-    addEventListener("pointermove", move); addEventListener("pointerup", up);
+    el.onpointermove = move; el.onpointerup = ev => end(ev); el.onpointercancel = ev => end(ev, true);
   });
   $("#vcheck").onclick = () => {
     const got = slot.map(c => chips.find(x => x.i === c).t), ok = ks.every((k, j) => got[j] === v[k]);

@@ -605,4 +605,5 @@ body.weltopen .confetti{z-index:60}
 .vdrop.wrong{border-color:var(--bad);background:var(--bad-bg)}
 .vpool{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .vchip{border:2px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;font:700 1.2rem var(--hand);color:var(--ink);touch-action:none;user-select:none}
-.vghost{position:fixed;z-index:50;transform:translate(-50%,-60%) scale(1.08);pointer-events:none;box-shadow:0 8px 20px #0004}
+.vghost{position:fixed;z-index:50;margin:0;transform:translate(-50%,-115%) scale(1.15);pointer-events:none;box-shadow:0 10px 24px #0005;border-color:var(--accent);background:var(--card)}
+.vchip.dragging{opacity:.4}
