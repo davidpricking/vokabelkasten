@@ -773,24 +773,26 @@ function renderCard() {
   if (R.queue[0].startsWith("g|")) return renderRoundTask();
   const card = S.cards.find(c => c.id === R.queue[0]);
   if (!card) { R.queue.shift(); return renderCard(); }
-  const dir = card.chk && !R.practice ? "de-en" : dirFor();   // Gekonnt einsortiert: einmal in die schwere Richtung prüfen
-  const q = dir === "de-en" ? card.de : card.en;
-  const sol = dir === "de-en" ? card.en : card.de;
+  const vf = verbOf(card);
+  const dir = vf ? "verb" : card.chk && !R.practice ? "de-en" : dirFor();   // Gekonnt einsortiert: einmal in die schwere Richtung prüfen
+  const q = vf ? vf[0] : dir === "de-en" ? card.de : card.en;
+  const sol = vf ? verbSol(vf) : dir === "de-en" ? card.en : card.de;
   const lname = lname0();
   const qHot = dir === "en-de" && hotSpot(card, q);   // schwierige Schreibstelle im englischen Wort leuchtet mit
   const qHtml = qHot ? spellHtml(q, qHot, "spellq") : esc(q);
   const pool = cardsL().filter(c => c.id !== card.id);
   const fresh = !R.done.has(card.id) && !(card.id in R.first);
   const useChoice = card.level <= 1 && fresh && pool.length >= 3 && !R.practice;
-  const mode = useChoice ? "choice" : S.input === "keyboard" ? "keyboard" : dir === "de-en" ? "tiles" : "speak";
+  const mode = useChoice ? "choice" : S.input === "keyboard" ? "keyboard" : dir === "en-de" ? "speak" : "tiles";
   const label = R.unit === FREE ? " · Freies Üben" : R.unit && R.unit.startsWith(TAG) ? (R.unit.startsWith(TAG + WB) ? " · Wordbank " + esc(R.unit.slice((TAG + WB).length).replace(/-/g, " ")) : " · #" + esc(R.unit.slice(TAG.length))) : R.practice ? " · Testtraining" : "";
   app.replaceChildren(h(`${roundHead()}
     <div class="icard" id="icard">
-      <div class="spread"><span class="eyebrow">${dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
+      <div class="spread"><span class="eyebrow">${vf ? (S.verbPP ? "Simple past und past participle" : "Simple past") : dir === "de-en" ? `Deutsch → ${esc(lname)}` : `${esc(lname)} → Deutsch`}${label}</span>
         ${dir === "en-de" && canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
       ${card.level === 0 && fresh && !R.practice ? '<span class="newtag">Neues Wort</span>' : isMonster(card) ? `<span class="newtag montag">👾 Monster-Wort · noch ${Math.max(1, 3 - card.level)} ♥</span>` : ""}
       ${mode === "speak" ? `<div class="flip" id="flip"><div class="face front"><div class="q">${qHtml}</div></div><div class="face back"><div class="q">${esc(sol)}</div></div></div>`
         : `<div class="q">${qHtml}</div>`}
+      ${vf ? `<p class="muted small vhint">${esc(vf[3])} · ${S.verbPP ? "Wie heißen die beiden anderen Formen?" : "Wie heißt die Vergangenheit?"}</p>` : ""}
       <div id="answerArea"></div>
       <div id="fb"></div>
     </div>`));
@@ -798,6 +800,12 @@ function renderCard() {
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
   if (dir === "en-de" && canHear() && !useChoice) say(card.en);
   liftCard(card.level, q);
+  if (vf && mode === "choice") { const opts = verbOpts(vf);
+    $("#answerArea").replaceChildren(h(`<div class="choices">${opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div>`));
+    $$(".choice").forEach(b => b.onclick = () => { const ok = opts[+b.dataset.i] === sol;
+      $$(".choice").forEach(x => { if (opts[+x.dataset.i] === sol) x.classList.add("right"); }); if (!ok) b.classList.add("wrong");
+      answered(card, ok ? "good" : "bad", sol, dir, ok ? "" : opts[+b.dataset.i]); });
+    return; }
   const area = $("#answerArea");
   const done = (result, typed) => answered(card, result, sol, dir, typed);
   if (mode === "choice") {
@@ -1284,26 +1292,27 @@ function renderPlace() {
   const card = S.cards.find(c => c.id === P.queue[0]);
   if (!card) { P.queue.shift(); return renderPlace(); }
   const k = P.total - P.queue.length, n = P.sample || P.total;
-  const opts = choiceOpts(card, card.de, "en-de", cardsL().filter(c => c.id !== card.id));
+  const vf = verbOf(card), right = vf ? verbSol(vf) : card.de;
+  const opts = vf ? verbOpts(vf) : choiceOpts(card, card.de, "en-de", cardsL().filter(c => c.id !== card.id));
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="quit" aria-label="Sortieren beenden">${ICON.x}</button>
       <div class="bar"><i style="width:${Math.round(k / n * 100)}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${k}/${n}</span></div>
     ${kastenHtml(levelCounts(), true)}
     <div class="icard" id="icard">
-      <div class="spread"><span class="eyebrow">${P.sample ? "Stichprobe" : "Sortieren"}</span>${canHear() ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
-      <div class="q">${esc(card.en)}</div>
-      <p class="muted small">Was heißt das? Tipp an${SR ? " oder sag es auf Deutsch" : ""}.</p>
+      <div class="spread"><span class="eyebrow">${P.sample ? "Stichprobe" : "Sortieren"}</span>${canHear() && !vf ? `<button class="speak" id="hear">${ICON.speaker}Anhören</button>` : ""}</div>
+      <div class="q">${esc(vf ? vf[0] : card.en)}</div>
+      <p class="muted small">${vf ? `${esc(vf[3])} · ${S.verbPP ? "Wie heißen die beiden anderen Formen?" : "Wie heißt die Vergangenheit?"}` : `Was heißt das? Tipp an${SR ? " oder sag es auf Deutsch" : ""}.`}</p>
       <div class="choices">${opts.map(o => `<button class="choice" data-o="${esc(o)}">${esc(o)}</button>`).join("")}</div>
-      <div class="row" style="justify-content:center">${SR ? `<button class="speak" id="bigmic">${ICON.mic || "🎤"}Sagen</button>` : ""}<button class="choice no" id="no">Weiß ich nicht</button></div>
+      <div class="row" style="justify-content:center">${SR && !vf ? `<button class="speak" id="bigmic">${ICON.mic || "🎤"}Sagen</button>` : ""}<button class="choice no" id="no">Weiß ich nicht</button></div>
     </div>
     <button class="link" id="stop" style="align-self:center">Rest später sortieren</button>`));
   const t0 = Date.now();
   $("#quit").onclick = $("#stop").onclick = () => { stopListening(); tick(); save(); P = null; renderHome(); };
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
-  liftCard(0, card.en);
+  liftCard(0, vf ? vf[0] : card.en);
   const go = (how, btn) => {
     stopListening(); $$("#icard button").forEach(b => b.disabled = true); tick();
-    $$("[data-o]").forEach(b => { if (b.dataset.o === card.de) b.classList.add("right"); });
+    $$("[data-o]").forEach(b => { if (b.dataset.o === right) b.classList.add("right"); });
     if (btn && how === "unknown") btn.classList.add("wrong");
     if (how !== "unknown") P.sk++;
     placeCard(card, how);
@@ -1312,7 +1321,7 @@ function renderPlace() {
     sound(how === "unknown" ? "tap" : "good");
     setTimeout(renderPlace, reduced() ? 150 : FLY + 200);
   };
-  $$("[data-o]").forEach(b => b.onclick = () => go(b.dataset.o === card.de ? (Date.now() - t0 <= PLACE_FAST ? "known" : "unsure") : "unknown", b));
+  $$("[data-o]").forEach(b => b.onclick = () => go(b.dataset.o === right ? (Date.now() - t0 <= PLACE_FAST ? "known" : "unsure") : "unknown", b));
   $("#no").onclick = () => go("unknown");
   // Sprechen: Deutsch versteht die Erkennung gut. Nicht verstanden heißt nicht falsch, dann einfach antippen.
   if ($("#bigmic")) $("#bigmic").onclick = () => listenDe(card.de, (hit, heard) => {
@@ -1962,6 +1971,53 @@ function toggleVerb(v) {
   } else S.cards.push({ id: uid(), en: verbText(v), de: v[3], ex: v[4] || "", unit: VERB_UNIT, lang: l.id, level: 0, due: 0, vb: v[0] });
   save(); return true;
 }
+// ---------- Verben abfragen: Gefragt wird nach den Formen, nicht nach der Bedeutung (die lernt man bei den Vokabeln) ----------
+// Frage: Grundform (go), Antwort: simple past (went) oder mit past participle (went – gone).
+// Falsche Antworten sind immer ähnlich: falsch regelmäßig (goed), nach dem Muster anderer Verben (think → thank wie drink → drank),
+// die andere Form (gone statt went), die Grundform selbst.
+const VERB_ALSO = { be: ["were"], get: ["gotten"], dive: ["dove"], prove: ["proved", "proven"], show: ["showed"], hang: ["hanged"], light: ["lighted"],
+  burn: ["burned"], dream: ["dreamed"], learn: ["learned"], lean: ["leaned"], leap: ["leaped"], smell: ["smelled"], spell: ["spelled"], spill: ["spilled"],
+  spoil: ["spoiled"], kneel: ["kneeled"], sew: ["sewed"], mow: ["mowed"], swell: ["swelled"], knit: ["knitted"], speed: ["speeded"], spit: ["spit"], wake: ["waked"] };
+function verbOf(card) { return card.vb && IRREG.find(v => v[0] === card.vb); }
+function verbSol(v) { return S.verbPP ? `${v[1]} – ${v[2]}` : v[1]; }
+function regPast(b) {
+  if (/e$/.test(b)) return b + "d";
+  if (/[^aeiou]y$/.test(b)) return b.slice(0, -1) + "ied";
+  if (/^[^aeiou]*[aeiou][bdgklmnprt]$/.test(b)) return b + b.slice(-1) + "ed";
+  return b + "ed";
+}
+function verbWrong(v, k) {   // k = 1 simple past, 2 past participle; gibt ähnliche, aber falsche Formen zurück
+  const b = v[0], ok = new Set([v[k], ...(VERB_ALSO[b] || [])].flatMap(x => x.split("/"))), out = new Map();
+  const add = (t, w) => { if (t && t.length > 1 && /[aeiouy]/.test(t) && !ok.has(t) && !/eo|[aeiou]{3}/.test(t)) out.set(t, Math.max(out.get(t) || 0, w)); };
+  IRREG.forEach(o => {
+    if (o[0] === b) return;
+    let i = 0; while (i < o[0].length && o[0][i] === o[k][i]) i++;
+    const from = o[0].slice(i), to = o[k].slice(i);
+    if (from.length >= 2 && to && b.endsWith(from) && b.length > from.length) add(b.slice(0, -from.length) + to, 3 + from.length);
+  });
+  add(regPast(b), 4);
+  add(v[3 - k], 3);
+  if (v[k] !== b) add(b, 2);
+  add(v[k].replace(/ought$/, "aught"), 3); add(v[k].replace(/aught$/, "ought"), 3);
+  if (/[^aeiou]e?n$/.test(v[k]) && k === 2) add(v[k].replace(/e?n$/, ""), 2);
+  if (k === 2 && !/n$/.test(v[k])) add(v[1] + (/e$/.test(v[1]) ? "n" : "en"), 3);
+  const m = v[k].match(/^(.*?)([aeiou]+)([^aeiou]*e?)$/);   // Reserve: anderer Vokal (cut → cat, cot)
+  if (m) ["a", "e", "i", "o", "u", "ou", "oo", "ea"].forEach(x => x !== m[2] && add(m[1] + x + m[3], 1));
+  return shuffle([...out].sort((a, c) => c[1] - a[1]).slice(0, 8)).sort((a, c) => c[1] - a[1]).map(x => x[0]);
+}
+function verbOpts(v) {
+  const sol = verbSol(v), out = new Set();
+  if (!S.verbPP) shuffle(verbWrong(v, 1).slice(0, 5)).forEach(t => out.size < 3 && out.add(t));
+  else {
+    const wp = verbWrong(v, 1), wpp = verbWrong(v, 2), c = [];
+    wp.slice(0, 3).forEach(t => c.push(`${t} – ${v[2]}`));
+    wpp.slice(0, 3).forEach(t => c.push(`${v[1]} – ${t}`));
+    if (v[1] !== v[2]) c.push(`${v[2]} – ${v[1]}`);
+    if (wp[0] && wpp[0]) c.push(`${wp[0]} – ${wpp[0]}`);
+    shuffle(c).forEach(t => t !== sol && out.size < 3 && out.add(t));
+  }
+  return shuffle([sol, ...out]);
+}
 // Alles zu den Verben passiert in der Karte auf der Englisch-Startseite: 1. Üben, 2. Verbenauswahl.
 function withLang(id, f) { const old = S.cur; S.cur = id; try { return f(); } finally { S.cur = old; } }
 function verbCard() {
@@ -1975,7 +2031,7 @@ function verbCard() {
   return `<section class="panel vcard">
       <h2>Unregelmäßige Verben</h2>
       <div class="vsec"><h3>1. Üben</h3>
-        ${cs.length ? `${kastenHtml(counts, true, "Verben pro Fach")}
+        ${cs.length ? `${kastenHtml(counts, false, "Verben pro Fach")}
           ${sortN >= 5 && sortN === fresh && fresh >= 10 ? `<p class="small"><b>Kennst du schon viele Verben?</b> Sortier sie zuerst. Was du schon kannst, fliegt gleich nach hinten.</p>
             <button class="btn" id="verbSort">Verben sortieren</button>` : ""}
           <p class="muted small">${what ? `Heute dran: ${what}` : "Heute alles geschafft."}${lim > VERB_NEW ? ` Du bist schnell: ${lim} neue Verben pro Tag!` : ""}</p>
