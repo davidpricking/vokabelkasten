@@ -420,7 +420,7 @@ function renderAddLang(first) {
 
 // ---------- Der Karteikasten als Bild ----------
 // Jedes Fach ist ein Abteil mit Trennkarte und Kartenstapel; der Stapel wächst mit der Wurzel der Anzahl.
-function pileH(n, mini) { return n ? Math.min(mini ? 17 : 46, 3 + Math.round(Math.sqrt(n) * (mini ? 2.6 : 5))) : 0; }
+function pileH(n, mini) { return n ? Math.min(mini ? 24 : 46, 3 + Math.round(Math.sqrt(n) * (mini ? 3.4 : 5))) : 0; }
 function kastenHtml(counts, mini, label = "Karten pro Fach") {
   return `<div class="kasten${mini ? " mini" : ""}" role="img" aria-label="${label}: ${counts.map((n, i) => `${i ? "Fach " + i : "neu"} ${n}`).join(", ")}">${counts.map((n, i) =>
     `<div class="fach" data-f="${i}"><span class="tab">${i === 0 ? "neu" : i}</span><i class="pile" style="height:${pileH(n, mini)}px"></i><b class="cnt">${n}</b>
@@ -430,38 +430,69 @@ function setFach(f, delta, bump) {
   const el = $(`.kasten.mini [data-f="${f}"]`); if (!el) return;
   const b = $(".cnt", el), n = Math.max(0, +b.textContent + delta);
   b.textContent = n; $(".pile", el).style.height = pileH(n, true) + "px";
+  b.classList.remove("tick"); void b.offsetWidth; b.classList.add("tick");
   if (bump) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
 }
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-// Die Karte kommt aus ihrem Fach geflogen ...
-function liftCard(f) {
-  const card = $("#icard"), src = $(`.kasten.mini [data-f="${f}"]`);
-  if (src) src.classList.add("from");
-  if (!card) return;
-  if (!src || reduced() || !card.animate) { card.classList.add("pop"); return; }
-  const a = src.getBoundingClientRect(), b = card.getBoundingClientRect();
-  const dx = a.left + a.width / 2 - (b.left + b.width / 2), dy = a.top + a.height / 2 - (b.top + b.height / 2);
-  card.animate([{ transform: `translate(${dx}px,${dy}px) scale(.1)`, opacity: 0 }, { transform: "translateY(-6px) scale(1.02)", opacity: 1, offset: .7 }, { transform: "none" }],
-    { duration: 480, easing: "cubic-bezier(.2,.7,.3,1)" });
-}
-// ... und nach der Antwort in hohem Bogen in ihr neues Fach. Falsche Antworten wackeln erst und fliegen dann zurück.
-function flyCard(from, to, ok, word) {
-  const box = $(".kasten.mini"); if (!box) return;
-  setFach(from, -1, false);
-  const target = $(`[data-f="${to}"]`, box), card = $("#icard");
-  const land = () => { setFach(to, 1, true); sound("land"); };
-  if (reduced() || !card || !card.animate) return land();
-  const a = card.getBoundingClientRect(), b = target.getBoundingClientRect();
-  const x0 = a.left + a.width / 2, y0 = a.top + 70, dx = b.left + b.width / 2 - x0, dy = b.top + b.height * .35 - y0;
+// Jeder Weg (heraus und zurück) dauert 1,5 Sekunden, so wie David es gewählt hat.
+const FLY = 1500;
+let flight = null;   // laufende Animation; eine neue Karte bricht sie ab, der neu gezeichnete Kasten stimmt dann schon
+function stopFlight() { if (!flight) return; flight.forEach(x => x.remove()); flight = null; }
+function slipIn(fach, cls) { const s = document.createElement("i"); s.className = "slip " + cls; s.setAttribute("aria-hidden", "true"); fach.append(s); return s; }
+function flyer(word, cls) {
   const el = document.createElement("div");
-  el.className = "flyer " + (ok ? "good" : "bad"); el.textContent = word; el.setAttribute("aria-hidden", "true");
-  el.style.left = x0 + "px"; el.style.top = y0 + "px"; document.body.append(el);
-  const T = (x, y, s, r) => ({ transform: `translate(-50%,-50%) translate(${x}px,${y}px) scale(${s}) rotate(${r}deg)` });
-  const kf = ok
-    ? [T(0, 0, 1, 0), { ...T(dx * .45, dy * .5 - 80, .75, -14), offset: .55 }, T(dx, dy, .2, 0)]
-    : [T(0, 0, 1, 0), { ...T(-12, 0, 1, -5), offset: .07 }, { ...T(12, 0, 1, 5), offset: .14 }, { ...T(-8, 0, 1, -3), offset: .21 }, { ...T(0, 0, 1, 0), offset: .28 },
-       { ...T(dx * .5, dy * .5 - 40, .7, 12), offset: .65 }, T(dx, dy, .2, 0)];
-  el.animate(kf, { duration: ok ? 650 : 950, easing: "cubic-bezier(.45,0,.25,1)" }).onfinish = () => { el.remove(); land(); };
+  el.className = "flyer " + cls; el.textContent = word; el.setAttribute("aria-hidden", "true");
+  el.style.left = el.style.top = "0px"; document.body.append(el); return el;
+}
+const animTo = (el, kf, dur, easing) => el.animate(kf, { duration: dur, easing, fill: "forwards" }).finished;
+// Die Karte steigt aus ihrem Fach (das Fach leuchtet, die Zahl zählt runter) und fliegt groß in die Mitte ...
+async function liftCard(f, word) {
+  stopFlight();
+  const card = $("#icard"), src = $(`.kasten.mini [data-f="${f}"]`);
+  if (!card || !src) return;
+  src.classList.add("from"); setFach(f, -1, false);
+  if (reduced() || !card.animate) { card.classList.add("pop"); return; }
+  card.style.visibility = "hidden";
+  const slip = slipIn(src, ""); let mine = flight = [slip];
+  try {
+    await animTo(slip, [{ transform: "none" }, { transform: `translateY(-${src.offsetHeight * .8}px) rotate(-4deg)` }], FLY * .4, "cubic-bezier(.3,0,.3,1)");
+    if (flight !== mine) return;
+    const a = slip.getBoundingClientRect(), q = $(".q", card) || card, b = q.getBoundingClientRect(); slip.remove();
+    const fl = flyer(word, ""); flight = mine = [fl];
+    const w = fl.offsetWidth, hh = fl.offsetHeight;
+    const T = (x, y, s, r) => ({ transform: `translate(${x - w / 2}px,${y - hh / 2}px) scale(${s}) rotate(${r}deg)` });
+    await animTo(fl, [T(a.left + a.width / 2, a.top + a.height / 2, .25, -4), { ...T((a.left + b.left + b.width / 2) / 2, Math.min(a.top, b.top) - 30, .8, 4), offset: .5 },
+      T(b.left + b.width / 2, b.top + b.height / 2, 1.15, 0)], FLY * .6, "cubic-bezier(.3,.6,.3,1)");
+    fl.remove();
+  } catch (e) { /* abgebrochen */ }
+  if (flight === mine) flight = null;
+  card.style.visibility = ""; card.classList.add("pop");
+}
+// ... und nach der Antwort im Bogen über ihr neues Fach und hinein. Falsche Antworten wackeln erst.
+async function flyCard(from, to, ok, word) {
+  const box = $(".kasten.mini"); if (!box) return;
+  const target = $(`[data-f="${to}"]`, box), card = $("#icard");
+  $$(".fach.from", box).forEach(x => x.classList.remove("from"));
+  const land = () => { setFach(to, 1, true); target.classList.remove("from"); sound("land"); };
+  stopFlight();
+  if (reduced() || !card || !card.animate) return land();
+  target.classList.add("from");
+  const q = $(".q", card) || card, a = q.getBoundingClientRect();
+  const fl = flyer(word, ok ? "good" : "bad"); let mine = flight = [fl];
+  const w = fl.offsetWidth, hh = fl.offsetHeight;
+  const b = target.getBoundingClientRect(), x0 = a.left + a.width / 2, y0 = a.top + a.height / 2, x1 = b.left + b.width / 2, y1 = b.top;
+  const T = (x, y, s, r) => ({ transform: `translate(${x - w / 2}px,${y - hh / 2}px) scale(${s}) rotate(${r}deg)` });
+  const shake = ok ? [] : [{ ...T(x0 - 12, y0, 1, -5), offset: .06 }, { ...T(x0 + 12, y0, 1, 5), offset: .12 }, { ...T(x0, y0, 1, 0), offset: .18 }];
+  try {
+    await animTo(fl, [T(x0, y0, 1, 0), ...shake, { ...T((x0 + x1) / 2 + (ok ? 30 : -30), Math.min(y0, y1) - 60, .7, ok ? 10 : -10), offset: .55 }, T(x1, y1, .25, 0)],
+      FLY * .65, "cubic-bezier(.45,0,.3,1)");
+    if (flight !== mine) return;
+    fl.remove();
+    const slip = slipIn(target, ok ? "good" : "bad"); flight = mine = [slip];
+    await animTo(slip, [{ transform: `translateY(-${target.offsetHeight * .8}px)` }, { transform: "none" }], FLY * .35, "cubic-bezier(.5,0,.8,.6)");
+    if (flight !== mine) return;
+    slip.remove(); flight = null; land();
+  } catch (e) { /* abgebrochen */ }
 }
 
 // ---------- Startseite ----------
@@ -634,7 +665,7 @@ function roundHead() {
       <div class="bar"><i style="width:${pct}%"></i></div>
       ${R.combo >= 3 ? `<span class="combo" aria-label="${R.combo} richtig hintereinander">×${R.combo}</span>` : ""}
       <span class="small muted" style="font-variant-numeric:tabular-nums">${R.done.size}/${R.total}</span></div>
-    ${R.practice ? "" : kastenHtml(levelCounts(), true)}`;
+    ${kastenHtml(levelCounts(), true)}`;
 }
 function bindQuit() { $("#quit").onclick = () => { clearTimeout(R.timer); stopListening(); tick(); save(); R = null; renderHome(); }; }
 
@@ -668,7 +699,7 @@ function renderCard() {
   bindQuit();
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
   if (dir === "en-de" && canHear() && !useChoice) say(card.en);
-  liftCard(card.level);
+  liftCard(card.level, q);
   const area = $("#answerArea");
   const done = (result, typed) => answered(card, result, sol, dir, typed);
   if (mode === "choice") {
@@ -898,7 +929,8 @@ function answered(card, result, sol, dir, typed) {
   if (moved && to > from && result === "good") dl.up = (dl.up || 0) + 1;
   monsterHit(card, from, to, result, moved);
   if (result !== "bad" && firstTime) dl.combo = Math.max(dl.combo || 0, R.combo);
-  if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; flyCard(from, to, result !== "bad", card.en); }
+  if (moved) { if (to > from && result === "good") R.up++; else if (to < from) R.down++; }
+  flyCard(from, to, result !== "bad", card.en);   // jede gezogene Karte geht sichtbar zurück, auch beim freien Üben
   sound(result === "bad" ? "bad" : "good");
   const where = slipped ? `Zurück in Fach ${to}, kommt morgen wieder.` : rested ? `Bleibt in Fach ${to}, kommt ${whenText(card)} wieder.` : !moved ? "" : from === 0 ? `Ab in Fach ${to}, kommt ${whenText(card)} wieder.`
     : to > from ? `Weiter in Fach ${to}, kommt ${whenText(card)} wieder.` : to < from ? `Zurück in Fach ${to}, kommt morgen wieder.` : `Bleibt in Fach ${to}, kommt ${whenText(card)} wieder.`;
@@ -929,7 +961,7 @@ function answered(card, result, sol, dir, typed) {
 function nextButton(auto) {
   const nx = $("#next"); nx.focus({ preventScroll: true }); nx.onclick = renderCard;
   if (!auto) return;
-  R.timer = setTimeout(renderCard, 1700);
+  R.timer = setTimeout(renderCard, reduced() ? 1700 : FLY + 400);
   $(".feedback").addEventListener("click", () => { clearTimeout(R.timer); nx.classList.remove("auto"); });
 }
 function renderRoundTask() {
@@ -1143,7 +1175,7 @@ function renderPlace() {
   const t0 = Date.now();
   $("#quit").onclick = $("#stop").onclick = () => { stopListening(); tick(); save(); P = null; renderHome(); };
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
-  liftCard(0);
+  liftCard(0, card.en);
   const go = (how, btn) => {
     stopListening(); $$("#icard button").forEach(b => b.disabled = true); tick();
     $$("[data-o]").forEach(b => { if (b.dataset.o === card.de) b.classList.add("right"); });
@@ -1153,7 +1185,7 @@ function renderPlace() {
     P.queue.shift(); S.xp++; save();
     flyCard(0, card.level, how !== "unknown", card.en);
     sound(how === "unknown" ? "tap" : "good");
-    setTimeout(renderPlace, reduced() ? 150 : how === "unknown" ? 1100 : 720);
+    setTimeout(renderPlace, reduced() ? 150 : FLY + 200);
   };
   $$("[data-o]").forEach(b => b.onclick = () => go(b.dataset.o === card.de ? (Date.now() - t0 <= PLACE_FAST ? "known" : "unsure") : "unknown", b));
   $("#no").onclick = () => go("unknown");
