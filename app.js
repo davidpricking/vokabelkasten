@@ -800,7 +800,8 @@ function renderCard() {
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
   if (dir === "en-de" && canHear() && !useChoice) say(card.en);
   liftCard(card.level, q);
-  if (vf && mode === "choice") return verbSlotsUi($("#answerArea"), vf, (ok, typed) => answered(card, ok ? "good" : "bad", sol, dir, typed));
+  // Verben: Modus wählt das Kind im Verben-Menü (S.verbMode): Formen ziehen oder selbst schreiben
+  if (vf) return (S.verbMode === "type" ? verbTypeUi : verbSlotsUi)($("#answerArea"), vf, (res, typed) => answered(card, res === true ? "good" : res === false ? "bad" : res, sol, dir, typed));
   const area = $("#answerArea");
   const done = (result, typed) => answered(card, result, sol, dir, typed);
   if (mode === "choice") {
@@ -2013,6 +2014,24 @@ function verbOpts(v) {
   }
   return shuffle([sol, ...out]);
 }
+// Formen selbst schreiben: ein Eingabefeld je Form. Ein Tippfehler (1 Buchstabe) zählt als „fast“.
+function verbTypeUi(area, v, done) {
+  const ks = S.verbPP ? [1, 2] : [1], names = { 1: "simple past", 2: "past participle" };
+  area.replaceChildren(h(`<form class="vslots" id="vtype" autocomplete="off">${ks.map((k, j) => `<label class="vslot"><span class="vlab">${names[k]}</span>
+      <input class="input vin" data-j="${j}" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="${j < ks.length - 1 ? "next" : "done"}"></label>`).join("")}
+    <button class="btn wide" type="submit">Prüfen</button></form>`));
+  const ins = $$(".vin", area); setTimeout(() => ins[0].focus(), 50);
+  ins.forEach((x, j) => x.onkeydown = e => { if (e.key === "Enter" && j < ins.length - 1) { e.preventDefault(); ins[j + 1].focus(); } });
+  $("#vtype").onsubmit = e => {
+    e.preventDefault();
+    if (ins.some(x => !x.value.trim())) { const x = ins.find(x => !x.value.trim()); x.focus(); return; }
+    const res = ks.map((k, j) => { const t = ins[j].value.trim().toLowerCase().replace(/\s+/g, " "), ok = [v[k], ...(VERB_ALSO[v[0]] || [])].flatMap(x => x.split("/"));
+      return ok.includes(t) ? "good" : v[k].length > 3 && lev(t, v[k]) <= 1 ? "near" : "bad"; });
+    ins.forEach((x, j) => { x.disabled = true; x.classList.add(res[j] === "good" ? "ok" : res[j] === "near" ? "near" : "no"); });
+    $("button", area).disabled = true;
+    done(res.includes("bad") ? false : res.includes("near") ? "near" : true, ins.map(x => x.value.trim()).join(" – "));
+  };
+}
 // Formen an die richtige Stelle ziehen (oder antippen): Felder für simple past (und past participle), darunter ein Pool mit ähnlichen Formen.
 function verbSlotsUi(area, v, done) {
   const ks = S.verbPP ? [1, 2] : [1], names = { 1: "simple past", 2: "past participle" };
@@ -2088,12 +2107,15 @@ function renderVerbMenu() {
     <section><div class="spread"><h2>Dein Verben-Kasten</h2><span class="muted small">${cs.length} Verben</span></div>${kastenHtml(counts)}</section>
     ${cs.length ? `<section class="hero"><b class="herotitle">${what ? "Heute dran" : "Heute alles geschafft!"}</b>
       <span class="muted small">${what || "Freies Üben geht immer."}${lim > VERB_NEW ? ` Du bist schnell: ${lim} neue Verben pro Tag!` : ""}</span>
+      <div class="chips vmode" role="radiogroup" aria-label="So übst du">${[["drag", "Ziehen"], ["type", "Selbst schreiben"]].map(([k, t]) =>
+        `<button class="chip" role="radio" data-vmode="${k}" aria-checked="${(S.verbMode || "drag") === k}" aria-pressed="${(S.verbMode || "drag") === k}">${t}</button>`).join("")}</div>
       <button class="btn big wide" id="verbGo">${what ? "Üben" : "Frei üben"}</button></section>` : `<p class="muted">Wähl zuerst aus, welche Verben du lernen willst.</p>`}
     <button class="btn ghost wide" id="verbPick">Verbenauswahl</button>
     <p class="muted small" style="text-align:center">${cs.length} von ${IRREG.length} Verben ausgewählt · ${S.verbPP ? "mit" : "ohne"} past participle</p>`));
   $("#back").onclick = () => renderHome();
+  $$("[data-vmode]").forEach(b => b.onclick = () => { S.verbMode = b.dataset.vmode; save(); keepScroll(renderVerbMenu); });
   bindVerbs();
-  window.scrollTo(0, 0);
+  if (!keepScroll.on) window.scrollTo(0, 0);
 }
 // Die Englisch-Sprache, zu der der Verben-Kasten gehört
 function verbHome() { const e = S.langs.find(l => l.kind !== "verbs" && /^en/.test(l.code || "")) || S.langs.find(l => /^englisch/i.test(l.name)); return e && e.id; }

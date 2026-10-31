@@ -607,3 +607,9 @@ body.weltopen .confetti{z-index:60}
 .vchip{border:2px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;font:700 1.2rem var(--hand);color:var(--ink);touch-action:none;user-select:none}
 .vghost{position:fixed;z-index:50;margin:0;transform:translate(-50%,-115%) scale(1.15);pointer-events:none;box-shadow:0 10px 24px #0005;border-color:var(--accent);background:var(--card)}
 .vchip.dragging{opacity:.4}
+.vmode{justify-content:center}
+.vmode .chip{flex:1;justify-content:center}
+.vin{font:700 1.3rem var(--hand);text-align:center}
+.vin.ok{border-color:var(--good);background:var(--good-bg)}
+.vin.near{border-color:var(--marker)}
+.vin.no{border-color:var(--bad);background:var(--bad-bg)}
