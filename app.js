@@ -91,6 +91,8 @@ function migrate(s) {
     s.cards.forEach(c => c.lang = "en"); s.cur = "en";
   }
   if (s.langs.length && !s.langs.some(l => l.id === s.cur)) s.cur = s.langs[0].id;
+  // Ältere Sprachen ohne Sprachcode bekommen ihn nach dem Namen (sonst fehlen Aussprache, Fehlerfallen und die Verben-Karte)
+  s.langs.forEach(l => { if (!l.code && !l.kind) { const p = LANG_PRESETS.find(x => x.name.toLowerCase() === String(l.name).trim().toLowerCase()); if (p && p.code) l.code = p.code; } });
   return s;
 }
 function load() {
@@ -1866,7 +1868,7 @@ function toggleVerb(v) {
   save(); return true;
 }
 function verbCard() {
-  if (L().kind === "verbs" || !isEn()) return "";
+  if (L().kind === "verbs" || !(isEn() || /^englisch/i.test(L().name))) return "";
   const l = verbLang(), cs = verbCards();
   const counts = Array(8).fill(0); cs.forEach(c => counts[c.level]++);
   return `<section class="panel">
