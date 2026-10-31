@@ -2066,10 +2066,11 @@ function verbCard() {
   const what = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nw && `${nw} ${nw === 1 ? "neues Verb" : "neue Verben"}`].filter(Boolean).join(" · ");
   const lim = l ? withLang(l.id, () => (newLeft(), verbNewLimit(l))) : VERB_NEW;
   // Startseite: nur Überschrift und Kasten. Antippen öffnet das Verben-Menü (Üben, Verbenauswahl).
-  return `<button class="panel vcard" id="verbMenu" aria-label="Unregelmäßige Verben öffnen">
+  return `<section class="panel vcard">
       <div class="spread"><h2>Unregelmäßige Verben</h2><span class="muted small">${cs.length ? (what ? "Heute dran" : "✓ heute geschafft") : "noch keine"}</span></div>
       ${kastenHtml(counts, false, "Verben pro Fach")}
-    </button>`;
+      <button class="btn wide" id="verbMenu">Öffnen</button>
+    </section>`;
 }
 function renderVerbMenu() {
   const l = verbLang(), cs = verbCards(), counts = Array(8).fill(0); cs.forEach(c => counts[c.level]++);
