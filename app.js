@@ -800,7 +800,8 @@ function renderCard() {
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
   if (dir === "en-de" && canHear() && !useChoice) say(card.en);
   liftCard(card.level, q);
-  if (vf && mode === "choice") return verbSlotsUi($("#answerArea"), vf, (ok, typed) => answered(card, ok ? "good" : "bad", sol, dir, typed));
+  // Verben: Modus wählt das Kind im Verben-Menü (S.verbMode): Formen ziehen oder selbst schreiben
+  if (vf) return (S.verbMode === "type" ? verbTypeUi : verbSlotsUi)($("#answerArea"), vf, (res, typed) => answered(card, res === true ? "good" : res === false ? "bad" : res, sol, dir, typed));
   const area = $("#answerArea");
   const done = (result, typed) => answered(card, result, sol, dir, typed);
   if (mode === "choice") {
@@ -2013,6 +2014,24 @@ function verbOpts(v) {
   }
   return shuffle([sol, ...out]);
 }
+// Formen selbst schreiben: ein Eingabefeld je Form. Ein Tippfehler (1 Buchstabe) zählt als „fast“.
+function verbTypeUi(area, v, done) {
+  const ks = S.verbPP ? [1, 2] : [1], names = { 1: "simple past", 2: "past participle" };
+  area.replaceChildren(h(`<form class="vslots" id="vtype" autocomplete="off">${ks.map((k, j) => `<label class="vslot"><span class="vlab">${names[k]}</span>
+      <input class="input vin" data-j="${j}" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="${j < ks.length - 1 ? "next" : "done"}"></label>`).join("")}
+    <button class="btn wide" type="submit">Prüfen</button></form>`));
+  const ins = $$(".vin", area); setTimeout(() => ins[0].focus(), 50);
+  ins.forEach((x, j) => x.onkeydown = e => { if (e.key === "Enter" && j < ins.length - 1) { e.preventDefault(); ins[j + 1].focus(); } });
+  $("#vtype").onsubmit = e => {
+    e.preventDefault();
+    if (ins.some(x => !x.value.trim())) { const x = ins.find(x => !x.value.trim()); x.focus(); return; }
+    const res = ks.map((k, j) => { const t = ins[j].value.trim().toLowerCase().replace(/\s+/g, " "), ok = [v[k], ...(VERB_ALSO[v[0]] || [])].flatMap(x => x.split("/"));
+      return ok.includes(t) ? "good" : v[k].length > 3 && lev(t, v[k]) <= 1 ? "near" : "bad"; });
+    ins.forEach((x, j) => { x.disabled = true; x.classList.add(res[j] === "good" ? "ok" : res[j] === "near" ? "near" : "no"); });
+    $("button", area).disabled = true;
+    done(res.includes("bad") ? false : res.includes("near") ? "near" : true, ins.map(x => x.value.trim()).join(" – "));
+  };
+}
 // Formen an die richtige Stelle ziehen (oder antippen): Felder für simple past (und past participle), darunter ein Pool mit ähnlichen Formen.
 function verbSlotsUi(area, v, done) {
   const ks = S.verbPP ? [1, 2] : [1], names = { 1: "simple past", 2: "past participle" };
@@ -2031,22 +2050,28 @@ function verbSlotsUi(area, v, done) {
   const put = (i, j) => { if (j == null) j = slot.indexOf(null); if (j < 0) j = slot.length - 1; slot[j] = i; sound("tap"); draw(); };
   $$(".vdrop", area).forEach(d => d.onclick = () => { slot[+d.dataset.s] = null; draw(); });
   // Ziehen mit Finger oder Maus; ein kurzer Tipp legt die Form ins nächste freie Feld
+  // Die Form klebt beim Ziehen sichtbar am Finger (gleich ab dem Antippen); ein kurzer Tipp ohne Ziehen legt sie ins nächste freie Feld
   $$(".vchip", area).forEach(el => el.onpointerdown = e => {
     if (el.disabled) return;
-    const i = +el.dataset.c, x0 = e.clientX, y0 = e.clientY; let ghost = null;
+    e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    const i = +el.dataset.c, x0 = e.clientX, y0 = e.clientY; let moved = false;
+    const ghost = el.cloneNode(true); ghost.classList.add("vghost"); ghost.removeAttribute("data-c"); document.body.append(ghost);
+    const at = (x, y) => { ghost.style.left = x + "px"; ghost.style.top = y + "px"; };
+    at(x0, y0); el.classList.add("dragging");
+    const overAt = (x, y) => $$(".vdrop", area).find(d => { const r = d.getBoundingClientRect(); return x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 6 && y <= r.bottom + 6; });
     const move = ev => {
-      if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 8) return;
-      if (!ghost) { ghost = el.cloneNode(true); ghost.classList.add("vghost"); document.body.append(ghost); }
-      ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px";
-      $$(".vdrop", area).forEach(d => { const r = d.getBoundingClientRect(); d.classList.toggle("over", ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom); });
+      if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) moved = true;
+      at(ev.clientX, ev.clientY);
+      const o = overAt(ev.clientX, ev.clientY); $$(".vdrop", area).forEach(d => d.classList.toggle("over", d === o));
     };
-    const up = ev => {
-      removeEventListener("pointermove", move); removeEventListener("pointerup", up);
-      if (!ghost) return put(i);
-      ghost.remove(); const over = $(".vdrop.over", area); $$(".vdrop", area).forEach(d => d.classList.remove("over"));
-      if (over) put(i, +over.dataset.s);
+    const end = (ev, cancel) => {
+      el.onpointermove = el.onpointerup = el.onpointercancel = null;
+      ghost.remove(); el.classList.remove("dragging"); $$(".vdrop", area).forEach(d => d.classList.remove("over"));
+      if (cancel) return;
+      if (!moved) return put(i);
+      const o = overAt(ev.clientX, ev.clientY); if (o) put(i, +o.dataset.s);
     };
-    addEventListener("pointermove", move); addEventListener("pointerup", up);
+    el.onpointermove = move; el.onpointerup = ev => end(ev); el.onpointercancel = ev => end(ev, true);
   });
   $("#vcheck").onclick = () => {
     const got = slot.map(c => chips.find(x => x.i === c).t), ok = ks.every((k, j) => got[j] === v[k]);
@@ -2082,12 +2107,15 @@ function renderVerbMenu() {
     <section><div class="spread"><h2>Dein Verben-Kasten</h2><span class="muted small">${cs.length} Verben</span></div>${kastenHtml(counts)}</section>
     ${cs.length ? `<section class="hero"><b class="herotitle">${what ? "Heute dran" : "Heute alles geschafft!"}</b>
       <span class="muted small">${what || "Freies Üben geht immer."}${lim > VERB_NEW ? ` Du bist schnell: ${lim} neue Verben pro Tag!` : ""}</span>
+      <div class="chips vmode" role="radiogroup" aria-label="So übst du">${[["drag", "Ziehen"], ["type", "Selbst schreiben"]].map(([k, t]) =>
+        `<button class="chip" role="radio" data-vmode="${k}" aria-checked="${(S.verbMode || "drag") === k}" aria-pressed="${(S.verbMode || "drag") === k}">${t}</button>`).join("")}</div>
       <button class="btn big wide" id="verbGo">${what ? "Üben" : "Frei üben"}</button></section>` : `<p class="muted">Wähl zuerst aus, welche Verben du lernen willst.</p>`}
     <button class="btn ghost wide" id="verbPick">Verbenauswahl</button>
     <p class="muted small" style="text-align:center">${cs.length} von ${IRREG.length} Verben ausgewählt · ${S.verbPP ? "mit" : "ohne"} past participle</p>`));
   $("#back").onclick = () => renderHome();
+  $$("[data-vmode]").forEach(b => b.onclick = () => { S.verbMode = b.dataset.vmode; save(); keepScroll(renderVerbMenu); });
   bindVerbs();
-  window.scrollTo(0, 0);
+  if (!keepScroll.on) window.scrollTo(0, 0);
 }
 // Die Englisch-Sprache, zu der der Verben-Kasten gehört
 function verbHome() { const e = S.langs.find(l => l.kind !== "verbs" && /^en/.test(l.code || "")) || S.langs.find(l => /^englisch/i.test(l.name)); return e && e.id; }
