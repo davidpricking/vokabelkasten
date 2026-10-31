@@ -581,3 +581,15 @@ body.weltopen .confetti{z-index:60}
 .panel.toggle{flex-direction:row;align-items:center}
 .vcard .vsec{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
 .vcard .vsec h3{margin:0}
+/* Spielen und sammeln: kompakte Kacheln statt langer Karten */
+.play{display:flex;flex-direction:column;gap:12px}
+.btn.gold{background:linear-gradient(180deg,#FFD43B,#F2A900);color:#3A2A00;box-shadow:0 3px 0 #B57F00}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:12px;font:inherit;min-height:92px}
+.tile:active{transform:translateY(1px)}
+.tile .ti{font-size:1.6rem;line-height:1;height:30px;display:flex;align-items:flex-end}
+.tile .ti svg{height:28px;width:auto}
+.tile b{font-family:var(--display);font-size:1rem}
+.tile.hot{border-color:var(--marker);box-shadow:0 0 0 2px var(--marker)}
+.tnews{position:absolute;top:8px;right:8px;background:var(--marker);color:#3A2A00;font-size:.75rem;font-weight:700;border-radius:999px;padding:2px 8px}
+.backup{border-color:var(--marker)}
