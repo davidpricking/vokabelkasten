@@ -8,7 +8,7 @@ const INTERVAL = [0, 1, 2, 4, 8, 16, 30, 180];          // Grammatik-Kasten: Tag
 const FACH_MAX = [0, 2, 5, 10, 21, 45, 120, Infinity];  // Abstand in Tagen bis einschließlich dieses Fachs
 const FACH_LABEL = ["neu", "1–2 Tage", "3–5 Tage", "1 Woche", "2–3 Wochen", "1 Monat", "2–4 Monate", "½ Jahr"];
 const FACH_IN = ["", "morgen", "in 2 Tagen", "in 4 Tagen", "in 8 Tagen", "in 16 Tagen", "in 1 Monat", "in ½ Jahr"];
-const VERB_DUE = 15, VERB_NEW = 5;                     // Verben sind ein Zusatz-Kasten mit eigenem, kleinerem Tageslimit
+const VERB_DUE = 15, VERB_NEW = 5, VERB_NEW_MAX = 10;  // Verben: Zusatz-Kasten mit eigenem Limit, das mit dem Kind mitwächst
 const DUE_SHOW = 30;                                   // höchstens so viele Wiederholungen pro Tag, der Rest wartet unsichtbar
 const NEW_GATE = 20;                                   // neue Wörter nur, solange weniger Wiederholungen offen sind
 const DAY_BUDGET = 15 * 60;                            // nach 15 Minuten Übungszeit kommen heute keine neuen Wörter mehr
@@ -171,11 +171,22 @@ function dueCards() { const now = Date.now(); return cardsL().filter(c => c.leve
 // Tagesbudget: höchstens DUE_SHOW Wiederholungen am Tag; was darüber liegt, wartet unsichtbar auf morgen
 // Jeder Kasten (Sprache, Verben) hat sein eigenes Limit, damit viele fällige Verben keine Englisch-Wörter verdrängen
 function perLang(k) { const d = dayLog(); return (d[k] || (d[k] = {})); }
-function dueLeft() { return Math.max(0, (L().kind === "verbs" ? VERB_DUE : DUE_SHOW) - (perLang("revBy")[S.cur] || 0)); }
+// Verben: normal 15 Wiederholungen; ist Englisch für heute erledigt, dürfen es bis zu 30 sein
+function dueLeft() { return Math.max(0, (L().kind === "verbs" ? (englishDone() ? DUE_SHOW : VERB_DUE) : DUE_SHOW) - (perLang("revBy")[S.cur] || 0)); }
+function englishDone() { const id = verbHome(); return !!id && withLang(id, () => todoCount() === 0); }
+// Neue Verben pro Tag: startet bei 5. Wer gestern die neuen Verben gut konnte (ab 80 % beim ersten Versuch), bekommt 2 mehr, bis 10;
+// unter 60 % geht es wieder 2 runter, nie unter 5. Mit „Noch 5 Verben“ (l.extra) kann man freiwillig mehr holen.
+function verbNewLimit(l) { return l.vnew || VERB_NEW; }
+function verbDayRoll(l) {
+  const st = l.vstat; l.extra = 0;
+  if (st && st.n >= 5) { const r = st.ok / st.n; l.vnew = r >= .8 ? Math.min(VERB_NEW_MAX, (l.vnew || VERB_NEW) + 2) : r < .6 ? Math.max(VERB_NEW, (l.vnew || VERB_NEW) - 2) : (l.vnew || VERB_NEW); }
+  l.vstat = { ok: 0, n: 0 };
+}
 function dueToday() { return dueCards().slice(0, dueLeft()); }
 // Neue Wörter nur, wenn kein Stau da ist und die 15 Minuten noch nicht um sind
-function newAllowed() { return dueCards().length < NEW_GATE && dayLog().sec < DAY_BUDGET ? newLeft() : 0; }
-function newLeft() { const l = L(); if (l.newDay !== today()) { l.newDay = today(); l.newCount = 0; } return Math.max(0, (l.kind === "verbs" ? Math.min(VERB_NEW, S.newPerDay) : S.newPerDay) - l.newCount); }
+function newAllowed() { const l = L(), extra = l.kind === "verbs" && l.extraDay === today(); return dueCards().length < NEW_GATE && (extra || dayLog().sec < DAY_BUDGET) ? newLeft() : 0; }
+function newLeft() { const l = L(); if (l.newDay !== today()) { l.newDay = today(); l.newCount = 0; if (l.kind === "verbs") verbDayRoll(l); }
+  return Math.max(0, (l.kind === "verbs" ? verbNewLimit(l) + (l.extra || 0) : S.newPerDay) - l.newCount); }
 function levelCounts() { const n = Array(8).fill(0); cardsL().forEach(c => { if (c.level || !isPaused(c)) n[c.level]++; }); return n; }
 // ---------- FSRS (Free Spaced Repetition Scheduler, Version 5, Standardgewichte) ----------
 const FW = [0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621];
@@ -222,7 +233,8 @@ function grade(card, result) {
   else if (result === "bad") card.level = Math.max(1, card.level - 2);
   else card.level = Math.max(1, card.level);
   card.due = today() + iv * DAY;
-  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++; } else { const dl = dayLog(), rb = perLang("revBy"); dl.rev = (dl.rev || 0) + 1; rb[S.cur] = (rb[S.cur] || 0) + 1; }
+  if (wasNew) { newLeft(); L().newCount++; dayLog().learned++;
+    if (L().kind === "verbs") { const v = L().vstat || (L().vstat = { ok: 0, n: 0 }); v.n++; if (result === "good") v.ok++; } const pu = L().pos && L().pos.u; if (pu && card.unit !== pu) { const ob = perLang("oldBy"); ob[S.cur] = (ob[S.cur] || 0) + 1; } } else { const dl = dayLog(), rb = perLang("revBy"); dl.rev = (dl.rev || 0) + 1; rb[S.cur] = (rb[S.cur] || 0) + 1; }
 }
 // Freies Üben, richtig: Wort bleibt im Fach, seine Wartezeit beginnt von vorn
 function rest(card) { fInit(card); card.due = today() + (card.ivl || INTERVAL[card.level] || 1) * DAY; card.seen = Date.now(); }
@@ -368,7 +380,7 @@ async function decodePack(code) {
   let bytes = unb64u(code.slice(1));
   if (code[0] === "z") bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined, part: r[6] ? String(r[6]).slice(0, 8) : undefined, nf: r[7] ? 1 : undefined }));
+  const rows = w => (w || []).filter(r => r && r[0] && r[1]).map(r => ({ en: String(r[0]), de: String(r[1]), ex: String(r[2] || ""), mn: mnList(r[3]), dx: dxList(r[4]), tags: Array.isArray(r[5]) ? r[5].map(normTag).filter(Boolean).slice(0, 5) : undefined, part: r[6] ? String(r[6]).slice(0, 8) : undefined, nf: r[7] ? 1 : undefined, imp: r[8] > 0 ? Math.min(100, +r[8] || 0) : undefined }));
   const units = (Array.isArray(obj.u) ? obj.u.map(u => ({ name: String(u.n || "Unit"), rows: rows(u.w) })) : [{ name: String(obj.n || "Neue Unit"), rows: rows(obj.w) }])
     .filter(u => u.rows.length);
   return { title: String(obj.t || obj.n || ""), lang: String(obj.l || "Englisch"), code: String(obj.c ?? "en-GB"), units, isBook: Array.isArray(obj.u), paused: (obj.p || []).map(String) };
@@ -570,6 +582,7 @@ function renderHomeView() {
     </section>
     ${backupCard()}
     ${posCard()}
+    ${catchupCard()}
     ${placeU && lang.kind !== "verbs" ? `<section class="panel place">
       <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
       <p class="muted small">Beim Sortieren tippst du nur die richtige Bedeutung an. Was du schon kannst, fliegt gleich nach hinten. So lernst du nur, was wirklich neu ist.</p>
@@ -609,6 +622,7 @@ function renderHomeView() {
   $$("[data-tag]").forEach(b => b.onclick = () => startRound(TAG + b.dataset.tag));
   $$("[data-place]").forEach(b => b.onclick = () => startPlace(b.dataset.place));
   bindBackup();
+  $$("[data-catch]").forEach(b => b.onclick = () => { L().catchup = +b.dataset.catch; save(); keepScroll(renderHome); });
   if (!keepScroll.on) window.scrollTo(0, 0);
 }
 // ---------- Lernstand sichern: einmal pro Woche freundlich erinnern ----------
@@ -1136,20 +1150,38 @@ function isPaused(c) {
   const n = l.upto && l.upto[c.unit];
   return n != null && ordOf(c) >= n;
 }
-// Neue Wörter: zuerst aus der Unit, die in der Schule gerade dran ist, dann der Rest der Reihe nach
-function newCards() {
+// Neue Wörter: zuerst aus der Unit, die in der Schule gerade dran ist.
+// „Altes nachholen“: Aus früheren Units kommen pro Tag nur ein paar (L().catchup, Standard 3), die wichtigsten zuerst (card.imp).
+// Ist die aktuelle Unit schon ganz gelernt, füllen alte Wörter den Rest des Tages auf. all = alle freien neuen Wörter.
+const CATCHUP = 3;
+function catchup() { return L().catchup ?? CATCHUP; }
+function oldNew() { const u = L().pos && L().pos.u; return u ? cardsL().filter(c => c.level === 0 && c.unit !== u && !isPaused(c)) : []; }
+function newCards(all) {
   const cs = cardsL().filter(c => c.level === 0 && !isPaused(c)), u = L().pos && L().pos.u;
-  return u ? cs.filter(c => c.unit === u).concat(cs.filter(c => c.unit !== u)) : cs;
+  if (!u) return cs;
+  const cur = cs.filter(c => c.unit === u), old = cs.filter(c => c.unit !== u).sort((a, b) => (b.imp ?? 50) - (a.imp ?? 50));
+  if (all) return cur.concat(old);
+  const n = newLeft(), quota = catchup() ? Math.max(0, catchup() - (perLang("oldBy")[S.cur] || 0)) : 0;
+  const q = Math.min(old.length, catchup() ? Math.max(quota, n - cur.length) : 0);
+  return cur.slice(0, Math.max(0, n - q)).concat(old.slice(0, q));
+}
+function catchupCard() {
+  if (L().kind === "verbs" || !L().pos) return "";
+  const old = oldNew().length; if (!old) return "";
+  const k = catchup();
+  return `<section class="panel catchup"><div class="spread"><div><span class="eyebrow">Altes nachholen</span><br><b>Noch ${old} ${old === 1 ? "Wort" : "Wörter"} aus früheren Units</b></div></div>
+    <div class="chips" role="group" aria-label="Alte Wörter pro Tag">${[[0, "Aus"], [3, "3 pro Tag"], [5, "5 pro Tag"], [10, "10 pro Tag"]].map(([n, t]) => `<button class="chip" data-catch="${n}" aria-pressed="${k === n}">${t}</button>`).join("")}</div>
+    <p class="muted small">Die aktuellen Wörter kommen zuerst. Von den alten kommen die wichtigsten zuerst: häufig im echten Englisch, fett im Buch, kommen im Buch öfter vor.</p></section>`;
 }
 function setPos(u, n) {
-  const l = L(), us = unitList(), i = us.indexOf(u), len = unitCards(u).length, before = newCards().length;
+  const l = L(), us = unitList(), i = us.indexOf(u), len = unitCards(u).length, before = newCards(true).length;
   n = Math.max(0, Math.min(n, len));
   l.skip = (l.skip || []).filter(x => x !== u);
   l.pos = { u, n }; l.upto = {}; l.paused = [];
   us.forEach((x, j) => { if (j > i || (j < i && l.skip.includes(x))) l.paused.push(x); });
   if (n < len) l.upto[u] = n;
   save();
-  return newCards().length - before;
+  return newCards(true).length - before;
 }
 function posLabel() {
   const p = L().pos; if (!p) return "";
@@ -1760,7 +1792,7 @@ function addCards(unit, list, book) {
   let added = 0;
   list.forEach(r => {
     const k = norm(r.en) + "|" + norm(r.de), old = existing.get(k);
-    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; if (r.part) old.part = r.part; if (book) old.book = book; if (r.nf) old.nf = 1; else if (book) delete old.nf; } return; }
+    if (existing.has(k)) { if (old) { if (r.mn) old.mn = r.mn; if (r.dx) old.dx = r.dx; if (r.ex && !old.ex) old.ex = r.ex.trim(); if (r.tags) old.tags = [...new Set([...(old.tags || []), ...r.tags])]; if (r.part) old.part = r.part; if (r.imp) old.imp = r.imp; if (book) old.book = book; if (r.nf) old.nf = 1; else if (book) delete old.nf; } return; }
     existing.set(k, null);
     const c = { id: uid(), en: r.en.trim(), de: r.de.trim(), ex: (r.ex || "").trim(), unit, lang: S.cur, level: 0, due: 0 };
     if (r.mn) c.mn = r.mn;
@@ -1768,6 +1800,7 @@ function addCards(unit, list, book) {
     if (r.tags && r.tags.length) c.tags = r.tags;
     if (r.part) c.part = r.part;
     if (r.nf) c.nf = 1;
+    if (r.imp) c.imp = r.imp;
     if (book) c.book = book;
     S.cards.push(c); added++;
   });
@@ -1937,12 +1970,17 @@ function verbCard() {
   const counts = Array(8).fill(0); cs.forEach(c => counts[c.level]++);
   const due = l ? withLang(l.id, () => dueToday().length) : 0, nw = l ? withLang(l.id, () => Math.min(newAllowed(), newCards().length)) : 0;
   const what = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nw && `${nw} ${nw === 1 ? "neues Verb" : "neue Verben"}`].filter(Boolean).join(" · ");
+  const sortN = l ? withLang(l.id, () => placeable(VERB_UNIT).length) : 0, fresh = cs.filter(c => !c.level).length, lim = l ? withLang(l.id, () => (newLeft(), verbNewLimit(l))) : VERB_NEW;
+  const more = !what && fresh > 0;
   return `<section class="panel vcard">
       <h2>Unregelmäßige Verben</h2>
       <div class="vsec"><h3>1. Üben</h3>
         ${cs.length ? `${kastenHtml(counts, true, "Verben pro Fach")}
-          <p class="muted small">${what ? `Heute dran: ${what}` : "Heute alles geschafft. Freies Üben geht immer."}</p>
-          <button class="btn" id="verbGo">${what ? "Verben üben" : "Frei üben"}</button>`
+          ${sortN >= 5 && sortN === fresh && fresh >= 10 ? `<p class="small"><b>Kennst du schon viele Verben?</b> Sortier sie zuerst. Was du schon kannst, fliegt gleich nach hinten.</p>
+            <button class="btn" id="verbSort">Verben sortieren</button>` : ""}
+          <p class="muted small">${what ? `Heute dran: ${what}` : "Heute alles geschafft."}${lim > VERB_NEW ? ` Du bist schnell: ${lim} neue Verben pro Tag!` : ""}</p>
+          <div class="row"><button class="btn${sortN >= 5 && sortN === fresh && fresh >= 10 ? " ghost" : ""}" id="verbGo">${what ? "Verben üben" : "Frei üben"}</button>
+            ${more ? `<button class="btn ghost" id="verbMore">Noch 5 Verben</button>` : ""}</div>`
         : `<p class="muted small">Wähl unten zuerst Verben aus.</p>`}
       </div>
       <div class="vsec"><h3>2. Verbenauswahl</h3>
@@ -1959,6 +1997,8 @@ function verbHome() { const e = S.langs.find(l => l.kind !== "verbs" && /^en/.te
 function bindVerbs() {
   if ($("#verbPick")) $("#verbPick").onclick = () => renderVerbs();
   if ($("#vall")) $("#vall").onclick = () => allVerbs(() => keepScroll(renderHome));
+  if ($("#verbSort")) $("#verbSort").onclick = () => { S.cur = verbLang().id; save(); startPlace(VERB_UNIT); };
+  if ($("#verbMore")) $("#verbMore").onclick = () => { const l = verbLang(); S.cur = l.id; newLeft(); l.extra = (l.extra || 0) + 5; l.extraDay = today(); save(); startRound(null); };
   if ($("#verbGo")) $("#verbGo").onclick = () => {
     const l = verbLang(); S.cur = l.id; save();
     const todo = dueToday().length + Math.min(newAllowed(), newCards().length);
