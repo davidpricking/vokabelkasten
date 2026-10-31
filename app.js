@@ -689,7 +689,7 @@ function renderCard() {
 function tileTarget(sol) { return sol.split(/\s*[,;]\s*|\s+\/\s+/)[0].replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim() || sol.trim(); }
 const DECOYS = "eaiotnsrhldcumwfgypbvk";
 // Fehlerfallen: Buchstaben, die deutsche Kinder an dieser Stelle gern verwechseln (friend → i/e, yes → j, very → w).
-// Höchstens die Hälfte der Extra-Kacheln sind Fallen, damit ein ähnlicher Buchstabe nicht immer falsch ist.
+// Höchstens 3 der 5 Extra-Kacheln sind Fallen, damit ein ähnlicher Buchstabe nicht immer falsch ist.
 const TRAPS = [[/e/, "i"], [/i/, "e"], [/y/, "i"], [/y/, "j"], [/a/, "e"], [/u/, "a"], [/o/, "u"], [/w/, "v"], [/v/, "w"], [/c/, "k"], [/k/, "c"],
   [/th/, "d"], [/th/, "s"], [/sh/, "c"], [/ch/, "s"], [/ph/, "f"], [/qu/, "k"], [/s/, "z"], [/z/, "s"], [/er\b/, "a"], [/ou/, "a"]];
 function trapLetters(word) {
@@ -704,7 +704,7 @@ function tilesUi(area, sol, level, done) {
   const chars = [...body], isLetter = ch => /\p{L}/u.test(ch);
   const letters = chars.filter(isLetter);
   if (letters.length > 22) return keyboardUi(area, sol, "de-en", done);
-  const n = level >= 4 ? 4 : 2, decoys = shuffle(isEn() ? trapLetters(body) : []).slice(0, Math.ceil(n / 2));
+  const n = 5, decoys = shuffle(isEn() ? trapLetters(body) : []).slice(0, 3);   // am Ende bleiben 5 Buchstaben übrig
   while (decoys.length < n) { const d = pick([...DECOYS]); if (!decoys.includes(d)) decoys.push(d); }
   const pool = shuffle([...letters, ...decoys]).map(ch => ({ ch, used: false }));
   const holes = letters.length, filled = [];
