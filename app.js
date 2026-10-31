@@ -378,6 +378,7 @@ const ICON = {
 function renderHome() {
   if (!S.onboarded) return renderWelcome();
   if (!S.langs.length) return renderAddLang(true);
+  if (L().kind === "verbs") { const id = verbHome(); if (id) { S.cur = id; save(); } }   // Verben laufen über die Karte auf der Englisch-Seite
   renderHomeView();
 }
 function renderWelcome() {
@@ -529,7 +530,7 @@ function renderHomeView() {
   app.replaceChildren(h(`
     <div class="spread">
       <nav class="langs" aria-label="Sprachen">
-        ${S.langs.map(l => `<button class="langflag" data-lang="${l.id}" aria-pressed="${l.id === S.cur}" title="${esc(l.name)}" aria-label="${esc(l.name)}">${flagOf(l)}</button>`).join("")}
+        ${S.langs.filter(l => l.kind !== "verbs").map(l => `<button class="langflag" data-lang="${l.id}" aria-pressed="${l.id === S.cur || (lang.kind === "verbs" && l.id === verbHome())}" title="${esc(l.name)}" aria-label="${esc(l.name)}">${flagOf(l)}</button>`).join("")}
         <button class="langflag add" id="addLang" title="Sprache hinzufügen" aria-label="Sprache hinzufügen">+</button>
       </nav>
       <div class="row" style="gap:6px;flex-wrap:nowrap">
@@ -548,7 +549,7 @@ function renderHomeView() {
       <button class="btn big wide" id="go">${todo ? "Los geht's" : all.length ? "Freies Üben" : "Vokabeln hinzufügen"}</button>
       ${todo && all.length ? `<button class="link" id="free">Lieber frei üben</button>` : ""}
     </section>
-    ${lang.kind === "verbs" ? verbPanel() : posCard()}
+    ${posCard()}
     ${counterCard()}
     ${placeU && lang.kind !== "verbs" ? `<section class="panel place">
       <h3>Kannst du schon Wörter aus „${esc(placeU)}“?</h3>
@@ -1867,30 +1868,55 @@ function toggleVerb(v) {
   } else S.cards.push({ id: uid(), en: verbText(v), de: v[3], ex: v[4] || "", unit: VERB_UNIT, lang: l.id, level: 0, due: 0, vb: v[0] });
   save(); return true;
 }
+// Alles zu den Verben passiert in der Karte auf der Englisch-Startseite: 1. Üben, 2. Verbenauswahl.
+function withLang(id, f) { const old = S.cur; S.cur = id; try { return f(); } finally { S.cur = old; } }
 function verbCard() {
   if (L().kind === "verbs" || !(isEn() || /^englisch/i.test(L().name))) return "";
   const l = verbLang(), cs = verbCards();
   const counts = Array(8).fill(0); cs.forEach(c => counts[c.level]++);
-  return `<section class="panel">
-      <div class="spread"><div><h2>Unregelmäßige Verben</h2><p class="muted small">${cs.length ? `${cs.length} Verben in ihrem eigenen Kasten` : `${IRREG.length} Verben zum Auswählen`}</p></div>
-        <button class="btn small" id="verbPick">Auswählen</button></div>
-      ${cs.length ? kastenHtml(counts, true, "Verben pro Fach") + `<button class="btn ghost" id="verbGo">Zum Verben-Kasten</button>` : ""}
-      <p class="muted small">${S.verbPP ? "Abgefragt werden alle drei Formen (mit past participle)." : "Abgefragt werden Grundform und simple past. Das past participle schaltest du unter „Auswählen“ dazu."}</p>
+  const due = l ? withLang(l.id, () => dueToday().length) : 0, nw = l ? withLang(l.id, () => Math.min(newAllowed(), newCards().length)) : 0;
+  const what = [due && `${due} ${due === 1 ? "Wiederholung" : "Wiederholungen"}`, nw && `${nw} ${nw === 1 ? "neues Verb" : "neue Verben"}`].filter(Boolean).join(" · ");
+  return `<section class="panel vcard">
+      <h2>Unregelmäßige Verben</h2>
+      <div class="vsec"><h3>1. Üben</h3>
+        ${cs.length ? `${kastenHtml(counts, true, "Verben pro Fach")}
+          <p class="muted small">${what ? `Heute dran: ${what}` : "Heute alles geschafft. Freies Üben geht immer."}</p>
+          <button class="btn" id="verbGo">${what ? "Verben üben" : "Frei üben"}</button>`
+        : `<p class="muted small">Wähl unten zuerst Verben aus.</p>`}
+      </div>
+      <div class="vsec"><h3>2. Verbenauswahl</h3>
+        <p class="muted small">${cs.length} von ${IRREG.length} Verben ausgewählt</p>
+        <label class="toggle"><span><b>Mit past participle</b><br><span class="muted small">Dann fragt die App alle drei Formen ab, zum Beispiel go – went – gone. Beim Einschalten fangen alle Verben wieder von vorn an.</span></span>
+          <input type="checkbox" id="verbPP" ${S.verbPP ? "checked" : ""}></label>
+        <div class="row"><button class="btn ghost" id="verbPick">Verben auswählen</button>
+          <button class="btn ghost" id="vall">${cs.length === IRREG.length ? "Alle abwählen" : "Alle auswählen"}</button></div>
+      </div>
     </section>`;
 }
-function verbPanel() {
-  const n = verbCards().length;
-  return `<section class="panel">
-      <div class="spread"><div><b>Deine Verben</b><p class="muted small">${n} von ${IRREG.length} ausgewählt</p></div>
-        <button class="btn small" id="verbPick">Auswählen</button></div>
-      <label class="toggle"><span><b>Mit past participle</b><br><span class="muted small">Dann fragt die App alle drei Formen ab, zum Beispiel go – went – gone. Beim Einschalten fangen alle Verben wieder von vorn an.</span></span>
-        <input type="checkbox" id="verbPP" ${S.verbPP ? "checked" : ""}></label>
-    </section>`;
-}
+// Die Englisch-Sprache, zu der der Verben-Kasten gehört
+function verbHome() { const e = S.langs.find(l => l.kind !== "verbs" && /^en/.test(l.code || "")) || S.langs.find(l => /^englisch/i.test(l.name)); return e && e.id; }
 function bindVerbs() {
   if ($("#verbPick")) $("#verbPick").onclick = () => renderVerbs();
-  if ($("#verbGo")) $("#verbGo").onclick = () => { S.cur = verbLang().id; save(); renderHome(); window.scrollTo(0, 0); };
+  if ($("#vall")) $("#vall").onclick = () => allVerbs(() => keepScroll(renderHome));
+  if ($("#verbGo")) $("#verbGo").onclick = () => {
+    const l = verbLang(); S.cur = l.id; save();
+    const todo = dueToday().length + Math.min(newAllowed(), newCards().length);
+    startRound(todo ? null : FREE);
+  };
   bindVerbPP(() => keepScroll(renderHome));
+}
+function allVerbs(redraw) {
+  const have = new Set(verbCards().map(c => c.vb));
+  {
+    const l = verbLang(true), all = have.size < IRREG.length;
+    if (all) { IRREG.forEach(v => { if (!have.has(v[0])) S.cards.push({ id: uid(), en: verbText(v), de: v[3], ex: v[4] || "", unit: VERB_UNIT, lang: l.id, level: 0, due: 0, vb: v[0] }); }); }
+    else {
+      const learned = verbCards().filter(c => c.level > 0).length;
+      if (!confirm(learned ? `Alle Verben herausnehmen? ${learned} davon hast du schon geübt, ihr Fortschritt geht verloren.` : "Alle Verben wieder herausnehmen?")) return;
+      S.cards = S.cards.filter(c => !(c.lang === l.id && c.vb));
+    }
+    save(); toast(all ? `Alle ${IRREG.length} Verben sind im Kasten. Pro Tag kommen nur ein paar neue dran.` : "Alle Verben herausgenommen."); redraw();
+  }
 }
 function bindVerbPP(redraw) {
   if ($("#verbPP")) $("#verbPP").onchange = e => {
@@ -1913,20 +1939,10 @@ function renderVerbs() {
     <nav class="abc" aria-label="Zum Buchstaben springen">${"abcdefghijklmnopqrstuvwxyz".split("").map(ch => letters.includes(ch) ? `<button data-abc="${ch}">${ch.toUpperCase()}</button>` : `<span>${ch.toUpperCase()}</span>`).join("")}</nav>
     ${letters.map(ch => `<h3 class="abch" id="vl-${ch}">${ch.toUpperCase()}</h3><div class="vlist">${IRREG.filter(v => v[0][0] === ch).map(row).join("")}</div>`).join("")}
     <div class="vbar"><span id="vcount">${have.size} ausgewählt</span><button class="btn" id="vdone">Fertig</button></div>`));
-  const back = () => { if (verbLang() && have.size && L().kind !== "verbs") { S.cur = verbLang().id; save(); } renderHome(); window.scrollTo(0, 0); };
-  $("#back").onclick = () => { renderHome(); window.scrollTo(0, 0); };
-  $("#vdone").onclick = back;
+  const back = () => { renderHome(); const c = $(".vcard"); c ? c.scrollIntoView({ block: "start" }) : window.scrollTo(0, 0); };
+  $("#back").onclick = $("#vdone").onclick = back;
   bindVerbPP(() => keepScroll(renderVerbs));
-  $("#vall").onclick = () => {
-    const l = verbLang(true), all = have.size < IRREG.length;
-    if (all) { IRREG.forEach(v => { if (!have.has(v[0])) S.cards.push({ id: uid(), en: verbText(v), de: v[3], ex: v[4] || "", unit: VERB_UNIT, lang: l.id, level: 0, due: 0, vb: v[0] }); }); }
-    else {
-      const learned = verbCards().filter(c => c.level > 0).length;
-      if (!confirm(learned ? `Alle Verben herausnehmen? ${learned} davon hast du schon geübt, ihr Fortschritt geht verloren.` : "Alle Verben wieder herausnehmen?")) return;
-      S.cards = S.cards.filter(c => !(c.lang === l.id && c.vb));
-    }
-    save(); toast(all ? `Alle ${IRREG.length} Verben sind im Kasten. Pro Tag kommen nur ein paar neue dran.` : "Alle Verben herausgenommen."); keepScroll(renderVerbs);
-  };
+  $("#vall").onclick = () => allVerbs(() => keepScroll(renderVerbs));
   $$("[data-abc]").forEach(b => b.onclick = () => $("#vl-" + b.dataset.abc).scrollIntoView({ behavior: "smooth", block: "start" }));
   $$("[data-verb]").forEach(b => b.onclick = () => {
     const v = IRREG.find(x => x[0] === b.dataset.verb);
@@ -2312,7 +2328,7 @@ function renderSettings(msg) {
     </section>
     <section class="panel">
       <h3>Deine Sprachen</h3>
-      ${S.langs.map(l => `<div class="spread"><span><span class="flag">${flagOf(l)}</span> ${esc(l.name)} <span class="muted small">· ${S.cards.filter(c => c.lang === l.id).length} Wörter</span></span>
+      ${S.langs.filter(l => l.kind !== "verbs").map(l => `<div class="spread"><span><span class="flag">${flagOf(l)}</span> ${esc(l.name)} <span class="muted small">· ${S.cards.filter(c => c.lang === l.id).length} Wörter</span></span>
         ${confirmLangDelete === l.id
           ? `<span class="row small" style="gap:8px">Mit allen Wörtern löschen?<button class="link" data-ldel-yes="${l.id}">Ja</button><button class="link" data-ldel-no>Nein</button></span>`
           : `<button class="link" data-ldel="${l.id}">Löschen</button>`}</div>`).join("")}

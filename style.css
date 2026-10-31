@@ -579,3 +579,5 @@ body.weltopen .confetti{z-index:60}
 .vpp{opacity:.4}
 .vbar{position:sticky;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--paper);padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))}
 .panel.toggle{flex-direction:row;align-items:center}
+.vcard .vsec{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.vcard .vsec h3{margin:0}
