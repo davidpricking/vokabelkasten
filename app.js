@@ -1875,6 +1875,7 @@ function verbCard() {
       <div class="spread"><div><h2>Unregelmäßige Verben</h2><p class="muted small">${cs.length ? `${cs.length} Verben in ihrem eigenen Kasten` : `${IRREG.length} Verben zum Auswählen`}</p></div>
         <button class="btn small" id="verbPick">Auswählen</button></div>
       ${cs.length ? kastenHtml(counts, true, "Verben pro Fach") + `<button class="btn ghost" id="verbGo">Zum Verben-Kasten</button>` : ""}
+      <p class="muted small">${S.verbPP ? "Abgefragt werden alle drei Formen (mit past participle)." : "Abgefragt werden Grundform und simple past. Das past participle schaltest du unter „Auswählen“ dazu."}</p>
     </section>`;
 }
 function verbPanel() {
@@ -1889,10 +1890,13 @@ function verbPanel() {
 function bindVerbs() {
   if ($("#verbPick")) $("#verbPick").onclick = () => renderVerbs();
   if ($("#verbGo")) $("#verbGo").onclick = () => { S.cur = verbLang().id; save(); renderHome(); window.scrollTo(0, 0); };
+  bindVerbPP(() => keepScroll(renderHome));
+}
+function bindVerbPP(redraw) {
   if ($("#verbPP")) $("#verbPP").onchange = e => {
     const on = e.target.checked, n = verbCards().length;
     if (on && n && !confirm(`Mit past participle fangen alle ${n} Verben wieder von vorn an. Einschalten?`)) { e.target.checked = false; return; }
-    setVerbPP(on); toast(on ? "Ab jetzt mit allen drei Formen." : "Ab jetzt nur Grundform und simple past."); keepScroll(renderHome);
+    setVerbPP(on); toast(on ? "Ab jetzt mit allen drei Formen." : "Ab jetzt nur Grundform und simple past."); redraw();
   };
 }
 function renderVerbs() {
@@ -1903,12 +1907,26 @@ function renderVerbs() {
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Unregelmäßige Verben</h2></div>
     <p class="muted">Tipp ein Verb an, dann kommt es in deinen Verben-Kasten. Nochmal antippen nimmt es wieder heraus.${S.verbPP ? "" : " Die grauen dritten Formen kommen dazu, wenn du „Mit past participle“ einschaltest."}</p>
+    <label class="toggle panel"><span><b>Mit past participle</b><br><span class="muted small">Dann fragt die App alle drei Formen ab, zum Beispiel go – went – gone. Beim Einschalten fangen alle Verben wieder von vorn an.</span></span>
+      <input type="checkbox" id="verbPP" ${S.verbPP ? "checked" : ""}></label>
+    <div class="row"><button class="btn ghost small" id="vall">${have.size === IRREG.length ? "Alle abwählen" : "Alle auswählen"}</button></div>
     <nav class="abc" aria-label="Zum Buchstaben springen">${"abcdefghijklmnopqrstuvwxyz".split("").map(ch => letters.includes(ch) ? `<button data-abc="${ch}">${ch.toUpperCase()}</button>` : `<span>${ch.toUpperCase()}</span>`).join("")}</nav>
     ${letters.map(ch => `<h3 class="abch" id="vl-${ch}">${ch.toUpperCase()}</h3><div class="vlist">${IRREG.filter(v => v[0][0] === ch).map(row).join("")}</div>`).join("")}
     <div class="vbar"><span id="vcount">${have.size} ausgewählt</span><button class="btn" id="vdone">Fertig</button></div>`));
   const back = () => { if (verbLang() && have.size && L().kind !== "verbs") { S.cur = verbLang().id; save(); } renderHome(); window.scrollTo(0, 0); };
   $("#back").onclick = () => { renderHome(); window.scrollTo(0, 0); };
   $("#vdone").onclick = back;
+  bindVerbPP(() => keepScroll(renderVerbs));
+  $("#vall").onclick = () => {
+    const l = verbLang(true), all = have.size < IRREG.length;
+    if (all) { IRREG.forEach(v => { if (!have.has(v[0])) S.cards.push({ id: uid(), en: verbText(v), de: v[3], ex: v[4] || "", unit: VERB_UNIT, lang: l.id, level: 0, due: 0, vb: v[0] }); }); }
+    else {
+      const learned = verbCards().filter(c => c.level > 0).length;
+      if (!confirm(learned ? `Alle Verben herausnehmen? ${learned} davon hast du schon geübt, ihr Fortschritt geht verloren.` : "Alle Verben wieder herausnehmen?")) return;
+      S.cards = S.cards.filter(c => !(c.lang === l.id && c.vb));
+    }
+    save(); toast(all ? `Alle ${IRREG.length} Verben sind im Kasten. Pro Tag kommen nur ein paar neue dran.` : "Alle Verben herausgenommen."); keepScroll(renderVerbs);
+  };
   $$("[data-abc]").forEach(b => b.onclick = () => $("#vl-" + b.dataset.abc).scrollIntoView({ behavior: "smooth", block: "start" }));
   $$("[data-verb]").forEach(b => b.onclick = () => {
     const v = IRREG.find(x => x[0] === b.dataset.verb);
@@ -1917,7 +1935,7 @@ function renderVerbs() {
     b.setAttribute("aria-pressed", String(have.has(v[0]))); b.querySelector("i").textContent = have.has(v[0]) ? "✓" : "+";
     $("#vcount").textContent = `${have.size} ausgewählt`;
   });
-  window.scrollTo(0, 0);
+  if (!keepScroll.on) window.scrollTo(0, 0);
 }
 function grammarCard() {
   const d = gData(); if (!d) return "";
