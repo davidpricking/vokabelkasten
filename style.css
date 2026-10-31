@@ -73,7 +73,7 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 /* Der Karteikasten: Abteile mit Trennkarte, Kartenstapel und Vorderwand mit der Anzahl */
 .kasten{--h:104px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;padding:8px 6px 0;margin-bottom:20px;
   background:var(--box-in);border:2px solid var(--box-edge);border-radius:12px 12px 6px 6px;box-shadow:0 8px 16px -10px #0006}
-.kasten.mini{--h:50px;margin-bottom:0;padding:4px 4px 0;border-radius:9px 9px 4px 4px;box-shadow:none}
+.kasten.mini{--h:66px;margin-bottom:0;padding:4px 4px 0;border-radius:9px 9px 4px 4px;box-shadow:none}
 .fach{position:relative;height:var(--h);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:0}
 .fach .tab{position:absolute;top:0;left:6%;right:6%;height:60%;background:var(--tab);border-radius:6px 6px 0 0;z-index:1;
   font:600 .7rem/1.4 var(--display);text-align:center;color:var(--box-ink);transition:background .2s}
@@ -90,6 +90,12 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .fach[data-f="5"] .tab{background:var(--t5)}.fach[data-f="6"] .tab{background:var(--t6)}.fach[data-f="7"] .tab{background:var(--t7)}
 .fach.from .tab{background:var(--marker);color:#3A2F00}
 .fach.bump{animation:bump .5s ease}
+.fach .cnt.tick{animation:tick .45s ease}
+@keyframes tick{40%{transform:scale(1.45);color:var(--marker)}}
+/* Kärtchen, das aus dem Fach steigt oder hineinrutscht: zwischen Stapel und Vorderwand */
+.slip{position:absolute;left:10%;right:10%;height:22px;bottom:calc(var(--h) * .38);z-index:2;background:var(--card);border:1.5px solid var(--line);border-radius:3px;box-shadow:0 2px 6px #0003;pointer-events:none}
+.slip.good{border-color:var(--good)}.slip.bad{border-color:var(--bad)}
+.fach.from .tab{box-shadow:0 0 0 2px var(--marker),0 0 14px 3px color-mix(in srgb,var(--marker) 70%,transparent);transform:translateY(-3px)}
 @keyframes bump{25%{transform:translateY(4px) scaleX(1.06)}55%{transform:translateY(-3px)}80%{transform:translateY(1px)}}
 .flyer{position:fixed;z-index:20;pointer-events:none;background:var(--card);border:2px solid var(--good);color:var(--ink);border-radius:10px;padding:10px 16px;
   font:600 1.2rem var(--display);white-space:nowrap;box-shadow:0 10px 24px -8px #0005;max-width:70vw;overflow:hidden;text-overflow:ellipsis}
