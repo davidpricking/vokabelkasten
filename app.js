@@ -2758,6 +2758,22 @@ async function boot() {
   renderHome();
 }
 boot();
-if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+// Neue Fassung: beim Start und jedes Mal, wenn die App wieder in den Vordergrund kommt, nachsehen.
+// Ist eine neue Fassung aktiv, lädt die App sich einmal neu, aber nicht mitten in einer Runde.
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  const hadCtrl = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
+  let reloading = false;
+  const reloadSoon = () => {
+    if (reloading) return;
+    if (R || document.visibilityState === "visible" && !$(".hero")) { setTimeout(reloadSoon, 5000); return; }   // nur auf der Startseite oder im Hintergrund neu laden
+    reloading = true; location.reload();
+  };
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadCtrl) reloadSoon(); });
+}
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 })();

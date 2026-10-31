@@ -1,6 +1,6 @@
 // Offline-Cache: Die App lädt beim ersten Besuch alle Dateien und läuft danach ohne Internet.
 // Bei jeder Änderung an einer Datei VERSION erhöhen, damit Geräte die neue Fassung holen.
-const VERSION = "v35";
+const VERSION = "v36";
 const FILES = [
   "./", "index.html", "style.css", "grammar.js", "verbs.js", "app.js", "manifest.webmanifest", "vendor/qrcode.js",
   "fonts/bricolage.woff2", "fonts/kalam-400.woff2", "fonts/kalam-700.woff2", "fonts/atkinson-400.woff2", "fonts/atkinson-700.woff2",
@@ -10,7 +10,8 @@ const FILES = [
 ];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: "reload" holt jede Datei frisch vom Server, nicht aus dem Browser-Zwischenspeicher (sonst landet ein altes app.js im neuen Cache)
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(f => new Request(f, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", e => {
