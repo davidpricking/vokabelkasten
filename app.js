@@ -800,12 +800,7 @@ function renderCard() {
   if ($("#hear")) $("#hear").onclick = () => say(card.en);
   if (dir === "en-de" && canHear() && !useChoice) say(card.en);
   liftCard(card.level, q);
-  if (vf && mode === "choice") { const opts = verbOpts(vf);
-    $("#answerArea").replaceChildren(h(`<div class="choices">${opts.map((o, i) => `<button class="choice" data-i="${i}">${esc(o)}</button>`).join("")}</div>`));
-    $$(".choice").forEach(b => b.onclick = () => { const ok = opts[+b.dataset.i] === sol;
-      $$(".choice").forEach(x => { if (opts[+x.dataset.i] === sol) x.classList.add("right"); }); if (!ok) b.classList.add("wrong");
-      answered(card, ok ? "good" : "bad", sol, dir, ok ? "" : opts[+b.dataset.i]); });
-    return; }
+  if (vf && mode === "choice") return verbSlotsUi($("#answerArea"), vf, (ok, typed) => answered(card, ok ? "good" : "bad", sol, dir, typed));
   const area = $("#answerArea");
   const done = (result, typed) => answered(card, result, sol, dir, typed);
   if (mode === "choice") {
@@ -1975,7 +1970,7 @@ function toggleVerb(v) {
 // Frage: Grundform (go), Antwort: simple past (went) oder mit past participle (went – gone).
 // Falsche Antworten sind immer ähnlich: falsch regelmäßig (goed), nach dem Muster anderer Verben (think → thank wie drink → drank),
 // die andere Form (gone statt went), die Grundform selbst.
-const VERB_ALSO = { be: ["were"], get: ["gotten"], dive: ["dove"], prove: ["proved", "proven"], show: ["showed"], hang: ["hanged"], light: ["lighted"],
+const VERB_ALSO = { be: ["were"], bear: ["born"], get: ["gotten"], dive: ["dove"], prove: ["proved", "proven"], show: ["showed"], hang: ["hanged"], light: ["lighted"],
   burn: ["burned"], dream: ["dreamed"], learn: ["learned"], lean: ["leaned"], leap: ["leaped"], smell: ["smelled"], spell: ["spelled"], spill: ["spilled"],
   spoil: ["spoiled"], kneel: ["kneeled"], sew: ["sewed"], mow: ["mowed"], swell: ["swelled"], knit: ["knitted"], speed: ["speeded"], spit: ["spit"], wake: ["waked"] };
 function verbOf(card) { return card.vb && IRREG.find(v => v[0] === card.vb); }
@@ -1995,7 +1990,7 @@ function verbWrong(v, k) {   // k = 1 simple past, 2 past participle; gibt ähnl
     const from = o[0].slice(i), to = o[k].slice(i);
     if (from.length >= 2 && to && b.endsWith(from) && b.length > from.length) add(b.slice(0, -from.length) + to, 3 + from.length);
   });
-  add(regPast(b), 4);
+  if (b.length > 2) add(regPast(b), 4);
   add(v[3 - k], 3);
   if (v[k] !== b) add(b, 2);
   add(v[k].replace(/ought$/, "aught"), 3); add(v[k].replace(/aught$/, "ought"), 3);
@@ -2017,6 +2012,49 @@ function verbOpts(v) {
     shuffle(c).forEach(t => t !== sol && out.size < 3 && out.add(t));
   }
   return shuffle([sol, ...out]);
+}
+// Formen an die richtige Stelle ziehen (oder antippen): Felder für simple past (und past participle), darunter ein Pool mit ähnlichen Formen.
+function verbSlotsUi(area, v, done) {
+  const ks = S.verbPP ? [1, 2] : [1], names = { 1: "simple past", 2: "past participle" };
+  const pool = [...new Set(ks.map(k => v[k]))];   // jede Form gibt es nur einmal; sie bleibt unten stehen und kann in beide Felder
+  ks.forEach(k => verbWrong(v, k).filter(t => !pool.includes(t)).slice(0, S.verbPP ? 2 : 4).forEach(t => pool.length < (S.verbPP ? 6 : 5) && !pool.includes(t) && pool.push(t)));
+  const chips = shuffle(pool.map((t, i) => ({ t, i }))), slot = ks.map(() => null);
+  // Formen bleiben unten im Pool: Ziehen legt nur eine Kopie ins Feld
+  area.replaceChildren(h(`<div class="vslots">${ks.map((k, j) => `<div class="vslot" data-s="${j}"><span class="vlab">${names[k]}</span><button class="vdrop" data-s="${j}" aria-label="${names[k]}"></button></div>`).join("")}</div>
+    <div class="vpool">${chips.map(c => `<button class="vchip" data-c="${c.i}">${esc(c.t)}</button>`).join("")}</div>
+    <button class="btn wide" id="vcheck" disabled>Prüfen</button>`));
+  const chipEl = i => $(`.vchip[data-c="${i}"]`, area), drop = j => $(`.vdrop[data-s="${j}"]`, area);
+  const draw = () => {
+    slot.forEach((c, j) => { const d = drop(j); d.textContent = c == null ? "" : chips.find(x => x.i === c).t; d.classList.toggle("full", c != null); });
+    $("#vcheck").disabled = slot.some(c => c == null);
+  };
+  const put = (i, j) => { if (j == null) j = slot.indexOf(null); if (j < 0) j = slot.length - 1; slot[j] = i; sound("tap"); draw(); };
+  $$(".vdrop", area).forEach(d => d.onclick = () => { slot[+d.dataset.s] = null; draw(); });
+  // Ziehen mit Finger oder Maus; ein kurzer Tipp legt die Form ins nächste freie Feld
+  $$(".vchip", area).forEach(el => el.onpointerdown = e => {
+    if (el.disabled) return;
+    const i = +el.dataset.c, x0 = e.clientX, y0 = e.clientY; let ghost = null;
+    const move = ev => {
+      if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 8) return;
+      if (!ghost) { ghost = el.cloneNode(true); ghost.classList.add("vghost"); document.body.append(ghost); }
+      ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px";
+      $$(".vdrop", area).forEach(d => { const r = d.getBoundingClientRect(); d.classList.toggle("over", ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom); });
+    };
+    const up = ev => {
+      removeEventListener("pointermove", move); removeEventListener("pointerup", up);
+      if (!ghost) return put(i);
+      ghost.remove(); const over = $(".vdrop.over", area); $$(".vdrop", area).forEach(d => d.classList.remove("over"));
+      if (over) put(i, +over.dataset.s);
+    };
+    addEventListener("pointermove", move); addEventListener("pointerup", up);
+  });
+  $("#vcheck").onclick = () => {
+    const got = slot.map(c => chips.find(x => x.i === c).t), ok = ks.every((k, j) => got[j] === v[k]);
+    $$("button", area).forEach(b => b.disabled = true);
+    ks.forEach((k, j) => drop(j).classList.add(got[j] === v[k] ? "right" : "wrong"));
+    done(ok, got.join(" – "));
+  };
+  draw();
 }
 // Alles zu den Verben passiert in der Karte auf der Englisch-Startseite: 1. Üben, 2. Verbenauswahl.
 function withLang(id, f) { const old = S.cur; S.cur = id; try { return f(); } finally { S.cur = old; } }

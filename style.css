@@ -594,3 +594,15 @@ body.weltopen .confetti{z-index:60}
 .tnews{position:absolute;top:8px;right:8px;background:var(--marker);color:#3A2A00;font-size:.75rem;font-weight:700;border-radius:999px;padding:2px 8px}
 .backup{border-color:var(--marker)}
 .vcard .kasten .when{display:none}
+/* Verben: Formen in Felder ziehen */
+.vslots{display:flex;flex-direction:column;gap:10px}
+.vslot{display:flex;flex-direction:column;gap:4px}
+.vlab{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.vdrop{min-height:56px;border:2px dashed var(--line);border-radius:12px;background:transparent;font:700 1.35rem var(--hand);color:var(--ink);transition:border-color .2s,background .2s}
+.vdrop.full{border-style:solid;border-color:var(--accent);background:var(--card)}
+.vdrop.over{border-color:var(--marker);background:color-mix(in srgb,var(--marker) 25%,transparent)}
+.vdrop.right{border-color:var(--good);background:var(--good-bg)}
+.vdrop.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.vpool{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.vchip{border:2px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;font:700 1.2rem var(--hand);color:var(--ink);touch-action:none;user-select:none}
+.vghost{position:fixed;z-index:50;transform:translate(-50%,-60%) scale(1.08);pointer-events:none;box-shadow:0 8px 20px #0004}
