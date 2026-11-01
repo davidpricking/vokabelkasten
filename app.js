@@ -1110,12 +1110,12 @@ function renderRoundTask() {
     tick();
     const first = !(item in R.first);
     dayLog().gram++;
-    if (first) { taskDone(); R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); }
+    if (first) { taskDone(); R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); gCatNote(t, +ti, ok); }
     R.queue.shift();
     if (ok) { R.done.add(item); if (first) { R.combo++; R.best = Math.max(R.best, R.combo); } }
     else { R.combo = 0; R.queue.splice(Math.min(R.queue.length, 3), 0, item); }
     sound(ok ? "good" : "bad");
-    $("#fb").replaceChildren(h(taskFeedback(ok, full, why, t) + `<button class="btn wide${ok ? " auto" : ""}" id="next" style="margin-top:12px">Weiter</button>`));
+    $("#fb").replaceChildren(h(taskFeedback(ok, full, why, t) + (ok ? "" : gTip(t, +ti)) + `<button class="btn wide${ok ? " auto" : ""}" id="next" style="margin-top:12px">Weiter</button>`));
     bindSay($("#fb"));
     if ($("#say2")) $("#say2").onclick = () => say(full);
     addXp(ok ? (first ? 10 : 4) : 0);
@@ -1955,11 +1955,32 @@ function gDue() {
   const st = gStore(), now = Date.now();
   return d.topics.filter(t => gReady(t) && gUnlocked(t) && st[t.id] && st[t.id].box && st[t.id].due <= now).sort((a, b) => st[a.id].due - st[b.id].due);
 }
-// Ein fälliges Thema kommt immer ganz (alle Aufgaben) ans Ende der Tagesrunde.
+// Ein fälliges Thema kommt immer ganz ans Ende der Tagesrunde.
 function grammarItems() {
   const t = gDue()[0]; if (!t) return [];
-  return shuffle(t.tasks.map((_, i) => i)).map(i => `g|${t.id}|${i}`);
+  return gPick(t).map(i => `g|${t.id}|${i}`);
 }
+// Themen mit Fragenpool (cats/bank): pro Runde 10–15 Fragen, jede Kategorie mindestens einmal,
+// Kategorien mit Fehlern bekommen eine zweite Frage. Fehlerwert je Kategorie in S.gcat (0 … 1, halbiert sich bei jeder richtigen Antwort).
+const G_MIN = 10, G_MAX = 15;
+function gCatStore(id) { const a = S.gcat || (S.gcat = {}), b = a[S.cur] || (a[S.cur] = {}); return b[id] || (b[id] = {}); }
+function gCatNote(t, i, ok) {
+  if (!t.catOf) return; const k = t.catOf[i], cs = gCatStore(t.id);
+  cs[k] = (cs[k] || 0) * .5 + (ok ? 0 : 1);
+}
+function gWeak(t) { const cs = gCatStore(t.id); return Object.keys(t.cats || {}).filter(k => (cs[k] || 0) >= .4); }
+function gPick(t) {
+  if (!t.catOf) return shuffle(t.tasks.map((_, i) => i));
+  const by = {}; t.catOf.forEach((k, i) => (by[k] = by[k] || []).push(i));
+  Object.values(by).forEach(a => shuffle(a));
+  const weak = gWeak(t), cats = shuffle(Object.keys(by)).sort((a, b) => weak.includes(b) - weak.includes(a));
+  const n = Math.min(G_MAX, Math.max(G_MIN, cats.length + weak.length)), pick = [];
+  cats.forEach(k => { if (pick.length < n) pick.push(by[k].shift()); });
+  weak.forEach(k => { if (pick.length < n && by[k] && by[k].length) pick.push(by[k].shift()); });
+  const rest = shuffle(Object.values(by).flat()); while (pick.length < n && rest.length) pick.push(rest.shift());
+  return shuffle(pick);
+}
+function gTip(t, i) { const c = t.catOf && t.cats && t.cats[t.catOf[i]]; return c ? `<p class="small gtip"><b>${esc(c.n)}:</b> ${gmark(c.tip)}</p>` : ""; }
 // Ins nächste Fach geht es erst nach der ganzen Runde, mit höchstens einem Fehler beim ersten Versuch.
 const G_MAX_ERR = 1;
 function gMove(id, ok) {
@@ -2342,7 +2363,8 @@ function renderTopic(id) {
     <header><h1>${esc(t.t)}</h1><p class="muted">${esc(t.de)}</p></header>
     <section class="panel">${explainHtml(t)}</section>
     ${t.rez ? `<p class="muted small">Dieses Thema sollst du laut Bildungsplan vor allem erkennen. Die Aufgaben sind deshalb zum Auswählen.</p>` : ""}
-    <button class="btn wide" id="go">Üben: ${t.tasks.length} Aufgaben</button>
+    <button class="btn wide" id="go">Üben: ${t.catOf ? `${G_MIN}–${G_MAX} Aufgaben` : `${t.tasks.length} Aufgaben`}</button>
+    ${t.catOf ? `<p class="muted small" style="text-align:center">Jede Runde mischt neu aus ${t.tasks.length} Fragen zu ${Object.keys(t.cats).length} Fehlerquellen. Was dir schwerfällt, kommt öfter.</p>` : ""}
     ${r ? `<p class="muted small" style="text-align:center">Beste Runde: ${Math.round(r.best * 100)} % ${gStars(r)}</p>` : ""}`));
   $("#back").onclick = renderGrammar;
   $("#go").onclick = () => startGrammar(t);
@@ -2350,7 +2372,8 @@ function renderTopic(id) {
   window.scrollTo(0, 0);
 }
 function startGrammar(t) {
-  G = { t, queue: shuffle(t.tasks.map((_, i) => i)), total: t.tasks.length, done: new Set(), first: {}, good: 0, last: Date.now(), newBadges: [] };
+  const q = gPick(t);
+  G = { t, queue: q, total: q.length, done: new Set(), first: {}, good: 0, last: Date.now(), newBadges: [], miss: new Set() };
   renderTask();
 }
 // Vergleich ohne Groß-/Kleinschreibung, Satzzeichen am Ende und mit einheitlichen Apostrophen.
@@ -2471,10 +2494,10 @@ function gAnswered(ok, full, why) {
   tick();
   const i = G.queue.shift(), firstTime = !(i in G.first);
   dayLog().gram++;
-  if (firstTime) { G.first[i] = ok; if (ok) G.good++; }
+  if (firstTime) { G.first[i] = ok; if (ok) G.good++; gCatNote(G.t, i, ok); if (!ok && G.t.catOf) G.miss.add(G.t.catOf[i]); }
   if (ok) G.done.add(i); else G.queue.splice(Math.min(G.queue.length, 3), 0, i);
   sound(ok ? "good" : "bad");
-  $("#fb").replaceChildren(h(taskFeedback(ok, full, why)));
+  $("#fb").replaceChildren(h(taskFeedback(ok, full, why) + (ok ? "" : gTip(G.t, i))));
   $("#fb").append(h(`<button class="btn wide" id="next" style="margin-top:12px">Weiter</button>`));
   if ($("#say2")) $("#say2").onclick = () => say(full);
   addXp(ok ? (firstTime ? 10 : 4) : 0);
@@ -2496,6 +2519,7 @@ function renderGSummary() {
     <div class="score">${g}/${n}</div>
     <p>${g === n ? (S.name ? `Stark, ${esc(S.name)}! Alles beim ersten Versuch richtig.` : "Alles beim ersten Versuch richtig.") : "beim ersten Versuch richtig. Die anderen hast du am Ende auch geschafft."}</p>
     <p class="gstars big" aria-label="Sterne">${gStars(st[t.id])}</p>
+    ${G.miss && G.miss.size ? `<div class="panel gfocus"><p class="eyebrow">Darauf achtest du nächstes Mal</p>${[...G.miss].map(k => `<p class="small"><b>${esc(t.cats[k].n)}:</b> ${gmark(t.cats[k].tip)}</p>`).join("")}</div>` : ""}
     <p class="small">Im Grammatik-Kasten liegt das Thema jetzt in Fach ${box} und meldet sich ${FACH_IN[box]} in deiner Tagesrunde.</p>
     ${G.newBadges && G.newBadges.length ? `<div class="newbadges">${G.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
