@@ -1,6 +1,7 @@
 // Grammatik-Themen nach dem Bildungsplan Baden-Württemberg (Gymnasium, G9, Fassung V3.0 vom 23. März 2026).
 // Der Bildungsplan nennt nur Doppelklassen (5/6, 7/8 …). Klasse 5 folgt der Reihenfolge des Lehrwerks
-// Camden Town 5 (Gymnasium), Theme 1 bis 6. Die übrigen Themen von 5/6 stehen vorläufig unter Klasse 6.
+// Camden Town 5 (Gymnasium), Theme 1 bis 6, Klasse 6 der Reihenfolge von Camden Town 6 (Inhaltsverzeichnis).
+// part: "A"/"B" = Part im Theme; das Thema kommt in die Tagesrunde, sobald dieser Part bei „Wir sind bei“ erreicht ist.
 // Die Zuordnung lässt sich pro Thema über "band" ändern.
 //
 // Aufbau eines Themas:
@@ -55,7 +56,9 @@ window.GRAMMAR = {
       "beautifully": "wunderschön", "quietly": "leise", "carefully": "vorsichtig", "hard": "hart, fleißig", "hardly": "kaum", "cancel": "absagen",
       "apologise": "sich entschuldigen", "novel": "Roman", "heat": "erhitzen, Hitze", "melt": "schmelzen", "pass": "bestehen", "study": "lernen", "tall": "groß (Körper)",
       "travel": "reisen", "lottery": "Lotterie", "earlier": "früher", "hurt": "weh tun", "match": "Spiel", "parent": "Elternteil",
-      "brother": "Bruder"
+      "brother": "Bruder", "allowed": "erlaubt (be allowed to = dürfen)", "able": "fähig (be able to = können)", "could": "konnte, könnte",
+      "twice": "zweimal", "as": "so … wie (as … as)", "uniform": "Uniform", "museum": "Museum", "photos": "Fotos", "wait": "warten",
+      "early": "früh", "light": "Ampel, Licht", "road": "Straße", "cross": "überqueren"
     },
     bands: [
       { id: "ct-1", group: "Klasse 5 · Camden Town", label: "Theme 1 · New in Camden" },
@@ -64,7 +67,14 @@ window.GRAMMAR = {
       { id: "ct-4", group: "Klasse 5 · Camden Town", label: "Theme 4 · Birthdays" },
       { id: "ct-5", group: "Klasse 5 · Camden Town", label: "Theme 5 · Pets and animals" },
       { id: "ct-6", group: "Klasse 5 · Camden Town", label: "Theme 6 · Holidays in Britain", note: "Im Buch freiwillig. Keine neue Grammatik, nur Wiederholung",
-        review: ["simplepresent", "presentprog", "questions", "bequestions"] },
+        review: ["simplepresent", "questions", "whquestions", "presentprog", "bequestions", "bewh"] },
+      { id: "ct6-1", group: "Klasse 6 · Camden Town", label: "Theme 1 · Back to Camden Town" },
+      { id: "ct6-2", group: "Klasse 6 · Camden Town", label: "Theme 2 · Celebrations" },
+      { id: "ct6-3", group: "Klasse 6 · Camden Town", label: "Theme 3 · London" },
+      { id: "ct6-4", group: "Klasse 6 · Camden Town", label: "Theme 4 · School clubs" },
+      { id: "ct6-5", group: "Klasse 6 · Camden Town", label: "Theme 5 · Out and about" },
+      { id: "ct6-6", group: "Klasse 6 · Camden Town", label: "Theme 6 · Summer in the city", note: "Im Buch freiwillig. Keine neue Grammatik, nur Wiederholung",
+        review: ["simplepast", "pastquestions", "whquestions"] },
       { id: "6", label: "Klasse 6", note: "Bildungsplan Klassen 5/6, Reihenfolge ist ein Vorschlag" },
       { id: "7/8", label: "Klassen 7/8" },
       { id: "9/10", label: "Klassen 9/10" },
@@ -109,7 +119,7 @@ window.GRAMMAR = {
           ["pick", "I've got ___ idea!", ["an", "a"], "idea fängt mit einem Vokal-Laut an."],
           ["pick", "There's ___ elephant in the zoo.", ["an", "a"], "elephant fängt mit einem Vokal-Laut an."]
         ] },
-      { id: "tobe", band: "ct-1", t: "Personal pronouns and to be", de: "ich, du, er … und sein",
+      { id: "tobe", part: "A", band: "ct-1", t: "Personal pronouns and to be", de: "ich, du, er … und sein",
         explain: [
           "Personalpronomen: **I, you, he, she, it, we, you, they**. I schreibst du immer groß.",
           "**he** steht für Jungen und Männer, **she** für Mädchen und Frauen, **it** für Dinge: Where's my bag? – **It** is under the desk.",
@@ -127,23 +137,51 @@ window.GRAMMAR = {
           ["pick", "___ am in class 5b.", ["I", "Me", "My"]],
           ["pick", "You and Ben ___ in my team.", ["are", "is", "am"], "You and Ben = ihr, also are."]
         ] },
-      { id: "bequestions", band: "ct-1", t: "Questions with to be", de: "Fragen mit am, is, are",
+      { id: "bequestions", part: "A", band: "ct-1", t: "Questions and short answers with to be", de: "Ja/Nein-Fragen mit am, is, are",
         explain: [
           "Bei Fragen mit to be tauschen Subjekt und Verb die Plätze: You **are** hungry. → **Are you** hungry?",
           "Kurzantworten: Are you hungry? – Yes, I **am**. / No, I**'m not**. Is it red? – Yes, it **is**. / No, it **isn't**.",
-          "Fragewörter stehen ganz vorn: **What** is your name? **Where** is the mouse? **How old** are you? **Who** is that? **When** is your birthday?",
-          "Kurz: What's, Where's, Who's."
+          "Bei Mehrzahl und you heißt es **are**: **Are** they at home? **Are** you ready?",
+          "In der Kurzantwort mit Yes keine Kurzform: Yes, I **am**. Yes, she **is**. Mit No darf sie kurz sein: No, she **isn't**."
         ],
-        ex: [["**Are** you hungry? – Yes, I **am**.", "Hast du Hunger? – Ja."], ["**How old** are you?", "Wie alt bist du?"], ["**Where's** the mouse?", "Wo ist die Maus?"]],
+        ex: [["**Are** you hungry? – Yes, I **am**.", "Hast du Hunger? – Ja."], ["**Is** Tom your brother? – No, he **isn't**.", "Ist Tom dein Bruder? – Nein."]],
         tasks: [
           ["pick", "___ you twelve?", ["Are", "Is", "Am"], "Zu you gehört are."],
           ["pick", "___ your sister at home?", ["Is", "Are", "Am"], "your sister = she, also is."],
           ["pick", "Are you from London? – No, ___.", ["I'm not", "I amn't", "I not"], "Verneint: I'm not."],
-          ["pick", "___ old are you? – I'm eleven.", ["How", "What", "Who"], "Wie alt = How old."],
-          ["pick", "___ is your teacher? – Mr Brown.", ["Who", "Where", "How"], "Die Antwort ist eine Person: who."],
-          ["gap", "___ is my pencil? – It's on the desk.", "Where", "Die Antwort ist ein Ort: where.", ["What", "Who"]],
-          ["order", "Where is your school bag?"],
+          ["pick", "Is Ben your friend? – Yes, he ___.", ["is", "'s", "are"], "Mit Yes keine Kurzform: Yes, he is."],
+          ["pick", "Is it cold today? – No, it ___.", ["isn't", "aren't", "not"], "it → isn't."],
+          ["pick", "Wie fragst du richtig?", ["Are you ready?", "You are ready?", "Do you are ready?"], "are tauscht mit you die Plätze, kein do."],
+          ["order", "Is your mum at home?", "Is vorn, dann your mum, dann at home."],
           ["pick", "Are your parents at work? – Yes, they ___.", ["are", "is", "am"]]
+        ] },
+      { id: "bewh", band: "ct-1", part: "B", t: "Questions with question words and to be", de: "Fragen mit What, Where, Who … und to be",
+        vgl: [
+          "Wie im Deutschen steht das Fragewort ganz vorn, danach kommt das Verb: **Wo ist** die Maus? → **Where is** the mouse?",
+          "Die Reihenfolge ist also gleich: **Fragewort – am/is/are – Person/Ding**. Typischer Fehler: ~~Where the mouse is?~~ Das Verb muss **vor** die Person."
+        ],
+        vglEx: [["**Where is** the mouse?", "**Wo ist** die Maus?"], ["**How old are** you?", "**Wie alt bist** du?"], ["**Who is** that?", "**Wer ist** das?"]],
+        anim: [{ a: "The mouse is under the bed.", b: "Where is the mouse?", hint: "**Fragewort** vorn, dann **is**, dann die Person oder das Ding." }],
+        explain: [
+          "Bauplan: **Fragewort + am/is/are + Person oder Ding**: **Where is** your bag? **What is** your name? **How old are** you?",
+          "Die wichtigsten Fragewörter: **What** (was), **Where** (wo), **Who** (wer), **When** (wann), **How old** (wie alt), **What colour** (welche Farbe).",
+          "Kurzformen: **What's**, **Where's**, **Who's**: What's your name? Where's my pen?",
+          "Die Antwort verrät das Fragewort: ein Ort → where, eine Person → who, eine Zeit → when."
+        ],
+        aus: [
+          "**How old** gehört zusammen, wie bei uns „wie alt“: **How old** is your brother? Falsch ist ~~How is your brother old?~~",
+          "„Wie heißt du?“ fragt man mit **What**: **What's** your name? Falsch ist ~~How is your name?~~"
+        ],
+        ex: [["**What's** your name?", "Wie heißt du?"], ["**Where are** my shoes?", "Wo sind meine Schuhe?"], ["**When is** your birthday?", "Wann hast du Geburtstag?"]],
+        tasks: [
+          ["pick", "___ is your name? – Sophie.", ["What", "How", "Who"], "„Wie heißt du?“ = What's your name?"],
+          ["pick", "___ old are you? – I'm eleven.", ["How", "What", "When"], "Wie alt = How old."],
+          ["pick", "___ is your teacher? – Mr Brown.", ["Who", "Where", "What"], "Die Antwort ist eine Person: who."],
+          ["pick", "___ is my pencil? – It's on the desk.", ["Where", "What", "Who"], "Die Antwort ist ein Ort: where."],
+          ["pick", "___ is your birthday? – In May.", ["When", "Where", "Who"], "Die Antwort ist eine Zeit: when."],
+          ["pick", "Where ___ my shoes?", ["are", "is", "am"], "my shoes = Mehrzahl, also are."],
+          ["pick", "Wie fragst du richtig?", ["Where is the cat?", "Where the cat is?", "Where is cat the?"], "Fragewort, dann is, dann the cat."],
+          ["order", "What colour is your bike?", "Fragewort (What colour), dann is, dann your bike."]
         ] },
       { id: "thereis", band: "ct-1", t: "There is / there are", de: "Es gibt …",
         explain: [
@@ -163,7 +201,7 @@ window.GRAMMAR = {
           ["order", "There are two beds in my room."],
           ["pick", "Are there any apples? – Yes, there ___.", ["are", "is"]]
         ] },
-      { id: "prepositions", band: "ct-1", t: "Prepositions of place", de: "Wo ist etwas?",
+      { id: "prepositions", part: "B", band: "ct-1", t: "Prepositions of place", de: "Wo ist etwas?",
         explain: [
           "Präpositionen sagen, wo etwas ist: **in** (in), **on** (auf), **under** (unter), **next to** (neben), **behind** (hinter), **in front of** (vor), **between** (zwischen).",
           "Was an der Wand hängt, ist **on** the wall.",
@@ -180,7 +218,7 @@ window.GRAMMAR = {
           ["pick", "The bus stop is ___ the school. (vor)", ["in front of", "before", "behind"], "vor einem Ort = in front of."],
           ["pick", "There's a poster ___ the wall. (an)", ["on", "at", "in"], "an der Wand = on the wall."]
         ] },
-      { id: "possessives", band: "ct-1", t: "Possessive determiners", de: "mein, dein, sein …",
+      { id: "possessives", part: "B", band: "ct-1", t: "Possessive determiners", de: "mein, dein, sein …",
         explain: [
           "Possessivbegleiter sagen, wem etwas gehört: I → **my**, you → **your**, he → **his**, she → **her**, it → **its**, we → **our**, you → **your**, they → **their**.",
           "**his** gehört zu einem Jungen oder Mann, **her** zu einem Mädchen oder einer Frau.",
@@ -199,7 +237,7 @@ window.GRAMMAR = {
           ["pick", "Max and I are friends. ___ favourite colour is blue.", ["Our", "Their", "My"], "Max and I = wir, also our."]
         ] },
       // ---------- Klasse 5, Theme 2 ----------
-      { id: "commands", band: "ct-2", t: "Commands and requests", de: "Aufforderungen und Bitten",
+      { id: "commands", part: "A", band: "ct-2", t: "Commands and requests", de: "Aufforderungen und Bitten",
         explain: [
           "Eine Aufforderung beginnt mit dem **Verb in der Grundform**, ohne you: **Open** your books! **Listen**!",
           "Verneint sagst du **Don't**: **Don't** run! **Don't** be late!",
@@ -217,7 +255,7 @@ window.GRAMMAR = {
           ["order", "Don't touch the cake."],
           ["pick", "Sit down, ___.", ["please", "thanks", "sorry"], "Bitten mit please."]
         ] },
-      { id: "can", band: "ct-2", t: "can / can't", de: "können und dürfen",
+      { id: "can", part: "A", band: "ct-2", t: "can / can't", de: "können und dürfen",
         explain: [
           "Mit **can** sagst du, was jemand kann oder darf: I **can** swim. **Can** I go to the toilet?",
           "can bleibt bei allen Personen gleich, auch bei he, she, it ohne -s: She **can** sing.",
@@ -235,7 +273,7 @@ window.GRAMMAR = {
           ["order", "Can you play basketball?"],
           ["pick", "Tom ___ come to the party. He's ill.", ["can't", "doesn't can", "not can"], "Verneint: can't, ohne do."]
         ] },
-      { id: "havegot", band: "ct-2", t: "have got / has got", de: "haben, besitzen",
+      { id: "havegot", part: "B", band: "ct-2", t: "have got / has got", de: "haben, besitzen",
         explain: [
           "Mit **have got** sagst du, was jemand hat: I**'ve got** a dog. We**'ve got** maths today.",
           "Bei he, she, it heißt es **has got**: She**'s got** a new bike. Achtung: he's got = he has got.",
@@ -272,7 +310,7 @@ window.GRAMMAR = {
           ["pick", "That's my ___ room. (Ich habe zwei Brüder.)", ["brothers'", "brother's", "brothers's"], "Zwei Brüder: Mehrzahl auf -s, nur Apostroph."]
         ] },
       // ---------- Klasse 5, Theme 3 ----------
-      { id: "simplepresent", band: "ct-3", t: "Simple present", de: "Gewohnheiten und Tatsachen",
+      { id: "simplepresent", part: "A", band: "ct-3", t: "Simple present", de: "Gewohnheiten und Tatsachen",
         explain: [
           "Das simple present benutzt du für Gewohnheiten, Regeln und Dinge, die immer so sind. Signalwörter: always, usually, often, sometimes, never, every day.",
           "Bei **he, she, it** hängst du ein **-s** an: I play → she play**s**. Merksatz: „He, she, it – das s muss mit!“",
@@ -290,7 +328,7 @@ window.GRAMMAR = {
           ["pick", "It ___ a lot in Wales.", ["rains", "rain"], "it → das s muss mit."],
           ["order", "She always reads in bed.", "always steht vor dem Verb."]
         ] },
-      { id: "negations", band: "ct-3", t: "Negations", de: "Verneinung",
+      { id: "negations", part: "A", band: "ct-3", t: "Negations", de: "Verneinung",
         explain: [
           "Im simple present verneinst du mit **don't** (do not) oder **doesn't** (does not) und dem Verb ohne -s: I **don't like** fish. She **doesn't like** fish.",
           "Mit am, is, are hängst du **not** an: I'm **not**, he **isn't**, they **aren't**.",
@@ -307,7 +345,7 @@ window.GRAMMAR = {
           ["order", "My brother doesn't eat meat."],
           ["pick", "They ___ live in London.", ["don't", "doesn't", "aren't"], "Bei they nimmst du don't."]
         ] },
-      { id: "adverbsfreq", band: "ct-3", t: "Adverbs of place, time and frequency", de: "Wo, wann, wie oft",
+      { id: "adverbsfreq", part: "A", band: "ct-3", t: "Adverbs of place, time and frequency", de: "Wo, wann, wie oft",
         explain: [
           "Häufigkeitsadverbien sagen, wie oft etwas passiert: **always** (immer), **usually** (normalerweise), **often** (oft), **sometimes** (manchmal), **never** (nie).",
           "Sie stehen **vor dem Vollverb**: I **often play** tennis.",
@@ -325,7 +363,7 @@ window.GRAMMAR = {
           ["pick", "They play football ___.", ["there every day", "every day there"], "Ort vor Zeit."],
           ["order", "He is usually at home."]
         ] },
-      { id: "shortanswers", band: "ct-3", t: "Short answers", de: "Kurzantworten",
+      { id: "shortanswers", part: "A", band: "ct-3", t: "Short answers", de: "Kurzantworten",
         explain: [
           "Auf Ja/Nein-Fragen antwortest du im Englischen nicht nur mit Yes oder No. Du nimmst das **Hilfsverb aus der Frage** wieder auf.",
           "**Do** you like cats? – Yes, I **do**. / No, I **don't**.",
@@ -343,26 +381,55 @@ window.GRAMMAR = {
           ["pick", "Have you got a pet? – Yes, I ___.", ["have", "got", "do"], "Have you got … ? – Yes, I have."],
           ["gap", "Does your dog bark a lot? – Yes, it ___.", "does", "", ["is", "do"]]
         ] },
-      { id: "questions", band: "ct-3", t: "Questions", de: "Fragen stellen",
+      { id: "questions", part: "A", band: "ct-3", t: "Questions with do/does", de: "Ja/Nein-Fragen mit do und does",
         explain: [
           "Fragen im simple present baust du mit **do** oder **does**: **Do** you like pizza? **Does** she like pizza?",
           "Nach does steht das Verb **ohne -s**: Does he **play** tennis? (nicht: Does he plays)",
-          "Ein Fragewort steht ganz vorn: **Where** do you live? **What** does she want? **When** is your birthday?",
+          "Kurzantworten: Yes, I **do**. / No, I **don't**. Yes, she **does**. / No, she **doesn't**.",
           "Mit am, is, are und can brauchst du kein do: **Are** you ready? **Is** he at home? **Can** you swim?"
         ],
-        ex: [["**Do** you **like** cats?", "Magst du Katzen?"], ["**Where does** your aunt **live**?", "Wo wohnt deine Tante?"], ["**Is** your dog old?", "Ist dein Hund alt?"]],
+        ex: [["**Do** you **like** cats?", "Magst du Katzen?"], ["**Does** your aunt **live** in London? – Yes, she **does**.", "Wohnt deine Tante in London? – Ja."], ["**Is** your dog old?", "Ist dein Hund alt?"]],
         tasks: [
           ["pick", "___ you like football?", ["Do", "Does", "Are"], "Bei you nimmst du do."],
           ["pick", "___ your brother play the guitar?", ["Does", "Do", "Is"], "your brother = he, also does."],
           ["pick", "___ she at home?", ["Is", "Does", "Do"], "Mit be (is) brauchst du kein do."],
-          ["gap", "Where ___ you live?", "do", "Bei you nimmst du do.", ["does", "are"]],
-          ["gap", "What time ___ the film start?", "does", "the film = it, also does.", ["do", "is"]],
+          ["pick", "___ they play tennis?", ["Do", "Does", "Are"], "they → do."],
+          ["pick", "___ the bus stop here?", ["Does", "Do", "Is"], "the bus = it, also does."],
           ["pick", "Does he ___ chips?", ["like", "likes"], "Nach does steht das Verb ohne -s."],
-          ["pick", "___ is your birthday? – In May.", ["When", "Who", "Where"], "Die Antwort ist eine Zeit, also when."],
-          ["order", "Where does your aunt live?", "Fragewort, dann does, dann Person, dann Verb."]
+          ["pick", "Wie fragst du richtig?", ["Do you like dogs?", "Like you dogs?", "You like dogs?"], "Do vorn, dann you, dann das Verb."],
+          ["order", "Does your cat like fish?", "Does, dann die Person, dann das Verb ohne -s."]
+        ] },
+      { id: "whquestions", band: "ct-3", part: "B", t: "Questions with question words", de: "Where do you …? – Fragen mit Fragewort",
+        vgl: [
+          "Im Deutschen: Fragewort, dann Verb: **Wo wohnst** du? Im Englischen kommt zwischen Fragewort und Person noch **do** oder **does**: **Where do** you live?",
+          "Bauplan wie ein Zug mit vier Wagen: **Fragewort – do/does – Person – Verb**. Fehlt ein Wagen, ist der Satz kaputt.",
+          "Typische Fehler: ~~Where you live?~~ (do fehlt) und ~~Where does she lives?~~ (das -s ist doppelt, does hat es schon)."
+        ],
+        vglEx: [["**Where do** you **live**?", "**Wo wohnst** du?"], ["**What does** she **eat** for breakfast?", "**Was isst** sie zum Frühstück?"], ["**When do** they **play** football?", "**Wann spielen** sie Fußball?"]],
+        anim: [{ a: "Do you live in London?", b: "Where do you live?", hint: "Das **Fragewort** kommt einfach vorne dran. Der Rest bleibt." }],
+        explain: [
+          "Bauplan: **Fragewort + do/does + Person + Verb**: **Where do** you **live**? **What does** your dad **do**?",
+          "Bei he, she, it nimmst du **does**, und das Verb bleibt **ohne -s**: What does she **like**? (nicht: likes)",
+          "Fragewörter: **What** (was), **Where** (wo), **When** (wann), **Who** (wen), **Why** (warum), **How** (wie), **What time** (um wie viel Uhr), **How often** (wie oft).",
+          "Mit am, is, are und can brauchst du auch hier kein do: Where **is** she? What **can** you do?"
+        ],
+        aus: [
+          "Fragt das Fragewort nach dem, **der etwas tut**, gibt es kein do: **Who lives** here? (Wer wohnt hier?) Falsch ist ~~Who does live here?~~",
+          "**What time** und **How often** gehören zusammen, danach kommt wie immer do/does: **How often do** you play tennis?"
+        ],
+        ex: [["**Where do** you **live**?", "Wo wohnst du?"], ["**What time does** the film **start**?", "Um wie viel Uhr fängt der Film an?"], ["**Why do** you **like** cats?", "Warum magst du Katzen?"]],
+        tasks: [
+          ["pick", "Where ___ you live?", ["do", "does", "are"], "Bei you nimmst du do."],
+          ["pick", "What ___ your sister like?", ["does", "do", "is"], "your sister = she, also does."],
+          ["pick", "When does the bus ___?", ["come", "comes", "coming"], "Nach does steht das Verb ohne -s."],
+          ["pick", "Wie fragst du richtig?", ["Where does Tom live?", "Where Tom lives?", "Where does Tom lives?"], "Fragewort – does – Person – Verb ohne -s."],
+          ["pick", "___ do you go to bed? – At nine o'clock.", ["What time", "Where", "Who"], "Die Antwort ist eine Uhrzeit: What time."],
+          ["pick", "___ do you play tennis? – Twice a week.", ["How often", "How old", "When"], "Die Antwort sagt, wie oft: How often."],
+          ["pick", "What ___ they do after school?", ["do", "does", "are"], "they → do."],
+          ["order", "What time does your school start?", "Fragewort (What time), dann does, dann your school, dann start."]
         ] },
       // ---------- Klasse 5, Theme 4 ----------
-      { id: "presentprog", band: "ct-4", t: "Present progressive", de: "Was gerade passiert",
+      { id: "presentprog", part: "A", band: "ct-4", t: "Present progressive", de: "Was gerade passiert",
         explain: [
           "Mit dem present progressive sagst du, was **gerade jetzt** passiert. Signalwörter: now, right now, at the moment, Look!, Listen!",
           "Form: **am/is/are + Verb mit -ing**: I **am reading**. She **is playing**. They **are running**.",
@@ -380,7 +447,36 @@ window.GRAMMAR = {
           ["gap", "What ___ you doing?", "are", "", ["do", "is"]],
           ["pick", "Mum ___ dinner right now.", ["is making", "is makeing", "makes"], "make → making, das e fällt weg."]
         ] },
-      { id: "someany", band: "ct-4", t: "some/any", de: "etwas, einige, keine",
+      { id: "simplecontrast", band: "ct-4", part: "A", t: "Simple present or present progressive?", de: "Immer wieder oder gerade jetzt?",
+        vgl: [
+          "Im Deutschen sagen wir für beides dasselbe: „Ich spiele Fußball.“ Das kann heißen: jeden Samstag. Oder: gerade jetzt.",
+          "Englisch trennt das genau: **immer wieder, normalerweise** → simple present: I **play** football every Saturday. **Gerade jetzt** → present progressive: I**'m playing** football now.",
+          "Probe: Kannst du „gerade“ einsetzen? Dann -ing. Passt „immer“, „oft“ oder „jeden Tag“? Dann simple present."
+        ],
+        vglEx: [["I **play** football every Saturday.", "Ich spiele **jeden Samstag** Fußball."], ["Look! I**'m playing** football.", "Schau! Ich spiele **gerade** Fußball."]],
+        anim: [{ a: "I play football every Saturday.", b: "I'm playing football now.", hint: "**every Saturday** = immer wieder. **now** = gerade jetzt, also **am + -ing**." }],
+        explain: [
+          "**Simple present** für Gewohnheiten und Dinge, die immer so sind. Signalwörter: **always, usually, often, sometimes, never, every day, on Mondays**.",
+          "**Present progressive** für das, was **jetzt gerade** passiert. Signalwörter: **now, right now, at the moment, Look!, Listen!**",
+          "Oft stehen beide in einem Satz: My dad usually **drives** to work, but today he**'s walking**.",
+          "Erst das Signalwort suchen, dann die Zeit wählen."
+        ],
+        aus: [
+          "Wörter für Gefühle und Wissen stehen fast nie mit -ing, auch nicht jetzt gerade: I **like** this song. I **know** the answer. Falsch ist ~~I'm liking~~, ~~I'm knowing~~.",
+          "Dazu gehören **like, love, hate, want, need, know, understand**."
+        ],
+        ex: [["I usually **walk** to school, but today I**'m taking** the bus.", "Normalerweise gehe ich zu Fuß, aber heute nehme ich den Bus."], ["Listen! The baby **is crying**.", "Hör mal! Das Baby weint."], ["She **plays** the piano every day.", "Sie spielt jeden Tag Klavier."]],
+        tasks: [
+          ["pick", "Look! The dog ___ in the garden.", ["is running", "runs", "run"], "Look! = gerade jetzt, also is running."],
+          ["pick", "We ___ pizza every Friday.", ["eat", "are eating", "eats"], "every Friday = immer wieder: simple present."],
+          ["pick", "Be quiet! I ___ my homework.", ["'m doing", "do", "does"], "Gerade jetzt: am doing."],
+          ["pick", "My sister often ___ to music.", ["listens", "is listening", "listen"], "often = Gewohnheit, she → listens."],
+          ["pick", "Listen! Someone ___ the piano.", ["is playing", "plays", "play"], "Listen! = gerade jetzt."],
+          ["pick", "I ___ this song. It's great!", ["like", "'m liking", "likes"], "like steht nicht mit -ing."],
+          ["pick", "Tom usually walks to school, but today he ___ the bus.", ["is taking", "takes", "take"], "today = heute, gerade anders als sonst."],
+          ["pick", "What ___ you doing at the moment?", ["are", "do", "does"], "at the moment = gerade jetzt: are … doing."]
+        ] },
+      { id: "someany", part: "B", band: "ct-4", t: "some/any", de: "etwas, einige, keine",
         explain: [
           "**some** steht meist in **bejahten** Sätzen: I've got **some** apples.",
           "**any** steht in **Fragen** und **verneinten** Sätzen: Have you got **any** apples? I haven't got **any** apples.",
@@ -398,7 +494,7 @@ window.GRAMMAR = {
           ["pick", "There isn't ___ bread left.", ["any", "some"]],
           ["pick", "Can I have ___ water, please?", ["some", "any"], "Bitte: some, auch in der Frage."]
         ] },
-      { id: "conjunctions", band: "ct-4", t: "Conjunctions", de: "and, but, or, because, so",
+      { id: "conjunctions", part: "B", band: "ct-4", t: "Conjunctions", de: "and, but, or, because, so",
         explain: [
           "Konjunktionen verbinden Sätze: **and** (und), **but** (aber), **or** (oder), **because** (weil), **so** (also, deshalb).",
           "**because** nennt den Grund: I'm happy **because** it's my birthday.",
@@ -435,7 +531,7 @@ window.GRAMMAR = {
           ["pick", "The dog is hungry. Give ___ some food.", ["it", "its", "it's"]],
           ["gap", "This present is for ___. (sie, Mehrzahl)", "them", "", ["they", "their"]]
         ] },
-      { id: "modals", band: "ct-5", t: "Modal verbs", de: "must, mustn't, should, shouldn't",
+      { id: "modals", part: "A", band: "ct-5", t: "Modal verbs", de: "must, mustn't, should, shouldn't",
         explain: [
           "Modalverben sagen, ob man etwas kann, muss, darf oder sollte: **can** (kann, darf), **must** (muss), **mustn't** (darf nicht), **should** (sollte), **shouldn't** (sollte nicht).",
           "Wie bei can: kein -s bei he, she, it und danach die Grundform ohne to: He **must go** home.",
@@ -453,7 +549,7 @@ window.GRAMMAR = {
           ["gap", "You ___ feed your pet every day. (musst)", "must", "", ["mustn't", "should not"]],
           ["order", "You shouldn't take your pet to school."]
         ] },
-      { id: "wordorder", band: "ct-5", t: "Word order (SPO)", de: "Satzstellung",
+      { id: "wordorder", part: "B", band: "ct-5", t: "Word order (SPO)", de: "Satzstellung",
         explain: [
           "Im englischen Satz gilt fast immer: **S**ubjekt – **P**rädikat (Verb) – **O**bjekt.",
           "Das gilt auch, wenn der Satz mit einer Zeitangabe beginnt, anders als im Deutschen: Heute **spiele ich** Fußball. → Today **I play** football.",
@@ -471,7 +567,7 @@ window.GRAMMAR = {
           ["pick", "We play ___.", ["in the garden every day", "every day in the garden"], "Ort vor Zeit."],
           ["order", "She meets her friends in the park after school.", "Ort (in the park) vor Zeit (after school)."]
         ] },
-      { id: "thisthat", band: "ct-5", t: "this, that, these, those", de: "dieser hier, der dort",
+      { id: "thisthat", part: "B", band: "ct-5", t: "this, that, these, those", de: "dieser hier, der dort",
         explain: [
           "**this** (dieser, diese, dieses hier) und **these** (diese hier) zeigen auf etwas in der Nähe.",
           "**that** (der, die, das dort) und **those** (die dort) zeigen auf etwas weiter weg.",
@@ -488,44 +584,73 @@ window.GRAMMAR = {
           ["pick", "I like ___ T-shirt. (dieses hier)", ["this", "these", "that"]],
           ["pick", "___ are my friends Tom and Ben. (diese hier)", ["These", "This", "That"]]
         ] },
-      // ---------- Klasse 6 ----------
-      { id: "simplepast", band: "6", t: "Simple past", de: "Was früher passiert ist",
+      // ---------- Klasse 6, Camden Town 6 (Reihenfolge wie im Buch) ----------
+      { id: "simplepast", band: "ct6-1", part: "A", t: "Simple past", de: "Was früher passiert ist",
         explain: [
           "Mit dem simple past erzählst du, was in der Vergangenheit passiert und abgeschlossen ist. Signalwörter: yesterday, last week, two days ago, in 2020.",
           "Regelmäßige Verben bekommen **-ed**: play → play**ed**, live → live**d**, stop → sto**pped**, cry → cr**ied**.",
           "Unregelmäßige Verben lernst du auswendig: go → **went**, see → **saw**, have → **had**, be → **was/were**.",
-          "Fragen und Verneinung bildest du mit **did** und der Grundform: **Did** you **see** it? I **didn't see** it."
+          "Verneinung mit **didn't** und der Grundform: I **didn't see** it. She **didn't go**. Bei was/were: I **wasn't**, they **weren't**."
         ],
-        ex: [["Yesterday we **played** football.", "Gestern haben wir Fußball gespielt."], ["Last summer I **went** to Spain.", "Letzten Sommer bin ich nach Spanien gefahren."], ["**Did** you **like** the film?", "Hat dir der Film gefallen?"]],
+        ex: [["Yesterday we **played** football.", "Gestern haben wir Fußball gespielt."], ["Last summer I **went** to Spain.", "Letzten Sommer bin ich nach Spanien gefahren."], ["I **didn't like** the film.", "Der Film hat mir nicht gefallen."]],
         tasks: [
           ["gap", "Yesterday we ___ football. (play)", "played", "", ["play", "plaied"]],
           ["gap", "Last summer I ___ to Spain. (go)", "went", "go ist unregelmäßig: went.", ["goed", "go"]],
           ["gap", "She ___ a fox in the park. (see)", "saw", "see ist unregelmäßig: saw.", ["seed", "see"]],
           ["gap", "The baby ___ all night. (cry)", "cried", "Konsonant + y wird zu -ied.", ["cryed", "crys"]],
           ["pick", "I ___ tired yesterday.", ["was", "were", "am"], "I → was."],
-          ["pick", "___ you watch the match last night?", ["Did", "Do", "Was"], "Frage in der Vergangenheit: did."],
+          ["pick", "She didn't ___ her homework.", ["do", "did", "does"], "Nach didn't steht die Grundform."],
           ["pick", "We didn't ___ the bus.", ["catch", "caught", "catched"], "Nach didn't steht die Grundform."],
           ["gap", "They ___ at home last weekend. (nicht sein)", "weren't|were not", "they → were, verneint weren't.", ["wasn't", "didn't be"]]
         ] },
-      { id: "countable", band: "6", t: "Countable and uncountable nouns", de: "Zählbar oder nicht",
-        explain: [
-          "Zählbare Nomen kannst du zählen: one apple, two apples.",
-          "Nicht zählbare Nomen haben **keine Mehrzahl** und **kein a/an**: water, milk, money, bread, information, homework, advice, furniture, news.",
-          "Achtung: Manches ist im Deutschen zählbar, im Englischen nicht. Informationen → **information**, Hausaufgaben → **homework**, Ratschläge → **advice**.",
-          "Wenn du doch zählen willst: **a piece of** cake, **a bottle of** water, **a glass of** milk."
+      { id: "pastquestions", band: "ct6-1", part: "B", t: "Simple past: questions", de: "Fragen mit did",
+        vgl: [
+          "Im Deutschen tauschen wir nur: Du spieltest. → **Spieltest du**? Oder wir sagen: **Hast du** gespielt?",
+          "Im Englischen braucht die Frage **did**: **Did** you play? Did ist wie das Paket „Vergangenheit“. Weil did die Vergangenheit schon trägt, steht das Verb in der **Grundform**.",
+          "Typische Fehler: ~~Did you went?~~ (Vergangenheit doppelt) und ~~Went you to the park?~~ (did fehlt)."
         ],
-        ex: [["My **homework is** easy today.", "Meine Hausaufgaben sind heute leicht."], ["Can I have **a glass of** milk?", "Kann ich ein Glas Milch haben?"]],
+        vglEx: [["**Did** you **see** the film?", "**Hast** du den Film **gesehen**?"], ["Where **did** you **go**?", "Wo **bist** du **hingegangen**?"], ["**Were** you at home?", "**Warst** du zu Hause?"]],
+        anim: [{ a: "You went to the park.", b: "Did you go to the park?", hint: "**did** nimmt sich die Vergangenheit: aus went wird wieder **go**." }],
+        explain: [
+          "Ja/Nein-Fragen: **Did + Person + Grundform**: **Did** you **like** the film? **Did** she **go** to school?",
+          "Did bleibt bei allen Personen gleich: did I, did you, did he, did they.",
+          "Kurzantworten: Yes, I **did**. / No, I **didn't**.",
+          "Mit Fragewort: **Fragewort + did + Person + Grundform**: **Where did** you **go**? **What did** you **eat**?"
+        ],
+        aus: [
+          "Bei **was/were** brauchst du kein did, da tauschen nur die Plätze: **Were** you tired? **Was** it cold? Falsch ist ~~Did you be tired?~~",
+          "Auch bei **could** kein did: **Could** you see the stage?",
+          "Fragt das Fragewort nach dem, der etwas tat, gibt es kein did: **Who won** the match? Falsch ist ~~Who did win the match?~~"
+        ],
+        ex: [["**Did** you **have** a nice weekend? – Yes, I **did**.", "Hattest du ein schönes Wochenende? – Ja."], ["**What did** you **do** yesterday?", "Was hast du gestern gemacht?"], ["**Was** the party good?", "War die Party gut?"]],
         tasks: [
-          ["pick", "My ___ is too difficult.", ["homework", "homeworks"], "homework hat keine Mehrzahl."],
-          ["pick", "Can you give me some ___?", ["advice", "advices"], "advice hat keine Mehrzahl."],
-          ["pick", "I'd like ___ water.", ["a glass of", "a", "an"], "water ist nicht zählbar."],
-          ["pick", "The furniture in my room ___ new.", ["is", "are"], "furniture ist nicht zählbar, also is."],
-          ["pick", "There ___ two apples on the table.", ["are", "is"], "apples ist zählbar und Mehrzahl."],
-          ["gap", "Can I have a ___ of cake? (Stück)", "piece", "", ["much", "many"]],
-          ["pick", "I need some ___ about the trip.", ["information", "informations"], "information hat keine Mehrzahl."],
-          ["pick", "I've got ___ good news!", ["some", "a"], "news ist nicht zählbar."]
+          ["pick", "___ you watch the match last night?", ["Did", "Do", "Were"], "Frage in der Vergangenheit: did."],
+          ["pick", "Did she ___ to the party?", ["go", "went", "goes"], "Nach did steht die Grundform."],
+          ["pick", "Did you like the film? – Yes, I ___.", ["did", "liked", "do"], "Kurzantwort: Yes, I did."],
+          ["pick", "Where ___ you go on holiday?", ["did", "were", "do"], "Fragewort, dann did."],
+          ["pick", "___ you tired after the trip?", ["Were", "Did", "Was"], "Bei be kein did: Were you …?"],
+          ["pick", "Wie fragst du richtig?", ["What did you buy?", "What did you bought?", "What you bought?"], "Fragewort – did – Person – Grundform."],
+          ["pick", "Did Tom call you? – No, he ___.", ["didn't", "doesn't", "wasn't"], "Kurzantwort verneint: No, he didn't."],
+          ["order", "When did you get home?", "Fragewort (When), dann did, dann you, dann get home."]
         ] },
-      { id: "quantifiers", band: "6", t: "Quantifiers", de: "much, many, a little, a few",
+      { id: "goingto", band: "ct6-2", part: "A", t: "going to-future", de: "Pläne und Absichten",
+        explain: [
+          "Mit **going to** sprichst du über **Pläne**: I**'m going to** visit my aunt next week.",
+          "Und über etwas, das man **schon kommen sieht**: Look at the clouds! It**'s going to** rain.",
+          "Form: **am/is/are + going to + Grundform**."
+        ],
+        ex: [["I**'m going to** learn the guitar.", "Ich werde Gitarre lernen."], ["Watch out! You**'re going to** fall!", "Pass auf! Du fällst gleich!"]],
+        tasks: [
+          ["gap", "I ___ going to buy a new bike.", "am|'m", "", ["is", "are"]],
+          ["gap", "My sister ___ going to learn Spanish.", "is|'s", "", ["are", "am"]],
+          ["pick", "We are going to ___ a party.", ["have", "having", "has"], "Nach going to steht die Grundform."],
+          ["gap", "Look at that boy! He ___ fall! (going to)", "is going to|'s going to", "", ["will going to", "is go to"]],
+          ["pick", "___ you going to watch the match?", ["Are", "Do", "Will"], "Frage: Are you going to … ?"],
+          ["order", "I am going to visit my grandma."],
+          ["pick", "They ___ going to stay at home.", ["are", "is"]],
+          ["gap", "What ___ you going to do this weekend?", "are", "", ["is", "do"]]
+        ] },
+      { id: "quantifiers", band: "ct6-2", part: "A", t: "Quantifiers", de: "much, many, a little, a few",
         explain: [
           "**many** und **a few** stehen bei zählbaren Nomen in der Mehrzahl: many friends, a few apples.",
           "**much** und **a little** stehen bei nicht zählbaren Nomen: much money, a little milk.",
@@ -543,42 +668,122 @@ window.GRAMMAR = {
           ["pick", "There are ___ people at the party.", ["a lot of", "much"], "a lot of passt zu allem."],
           ["gap", "How ___ is the T-shirt? – It's £10.", "much", "", ["many", "more"]]
         ] },
-      { id: "presentperfect", band: "6", t: "Present perfect simple", de: "Schon passiert, wichtig für jetzt",
+      { id: "countable", band: "ct6-2", part: "A", t: "Countable and uncountable nouns", de: "Zählbar oder nicht",
+        explain: [
+          "Zählbare Nomen kannst du zählen: one apple, two apples.",
+          "Nicht zählbare Nomen haben **keine Mehrzahl** und **kein a/an**: water, milk, money, bread, information, homework, advice, furniture, news.",
+          "Achtung: Manches ist im Deutschen zählbar, im Englischen nicht. Informationen → **information**, Hausaufgaben → **homework**, Ratschläge → **advice**.",
+          "Wenn du doch zählen willst: **a piece of** cake, **a bottle of** water, **a glass of** milk."
+        ],
+        ex: [["My **homework is** easy today.", "Meine Hausaufgaben sind heute leicht."], ["Can I have **a glass of** milk?", "Kann ich ein Glas Milch haben?"]],
+        tasks: [
+          ["pick", "My ___ is too difficult.", ["homework", "homeworks"], "homework hat keine Mehrzahl."],
+          ["pick", "Can you give me some ___?", ["advice", "advices"], "advice hat keine Mehrzahl."],
+          ["pick", "I'd like ___ water.", ["a glass of", "a", "an"], "water ist nicht zählbar."],
+          ["pick", "The furniture in my room ___ new.", ["is", "are"], "furniture ist nicht zählbar, also is."],
+          ["pick", "There ___ two apples on the table.", ["are", "is"], "apples ist zählbar und Mehrzahl."],
+          ["gap", "Can I have a ___ of cake? (Stück)", "piece", "", ["much", "many"]],
+          ["pick", "I need some ___ about the trip.", ["information", "informations"], "information hat keine Mehrzahl."],
+          ["pick", "I've got ___ good news!", ["some", "a"], "news ist nicht zählbar."]
+        ] },
+      { id: "comparison", band: "ct6-2", part: "B", t: "Comparison of adjectives", de: "Steigerung und Vergleich",
+        explain: [
+          "Kurze Adjektive und solche auf -y: **-er** und **the -est**: small – small**er** – the small**est**, happy – happ**ier** – the happ**iest**, big – bi**gg**er – the bi**gg**est.",
+          "Lange Adjektive: **more** und **the most**: interesting – **more** interesting – **the most** interesting.",
+          "Unregelmäßig: good – **better** – the **best**, bad – **worse** – the **worst**.",
+          "Die Steigerung kommt nur **einmal**: bigger oder more interesting, nie ~~more bigger~~. Wie man damit vergleicht (than, as … as), kommt im nächsten Thema."
+        ],
+        ex: [["An elephant is **bigger than** a dog.", "Ein Elefant ist größer als ein Hund."], ["This is **the best** day ever!", "Das ist der beste Tag überhaupt!"]],
+        tasks: [
+          ["gap", "An elephant is ___ than a dog. (big)", "bigger", "big → bigger mit Doppel-g.", ["biger", "more big"]],
+          ["gap", "This is the ___ day of my life! (happy)", "happiest", "y wird zu i: happiest.", ["happyest", "most happy"]],
+          ["gap", "Maths is ___ than art. (difficult)", "more difficult", "Lange Adjektive: more.", ["difficulter", "most difficult"]],
+          ["gap", "My cake is ___ than yours. (good)", "better", "good – better – best.", ["gooder", "best"]],
+          ["gap", "This is the ___ film I've ever seen. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
+          ["gap", "Summer is ___ than winter. (hot)", "hotter", "Kurzer Vokal: t verdoppeln.", ["hoter", "more hot"]],
+          ["gap", "This is the ___ book in the library. (interesting)", "most interesting", "Lange Adjektive: the most.", ["interestingest", "more interesting"]],
+          ["gap", "This is the ___ mountain in England. (high)", "highest", "", ["higher", "most high"]]
+        ] },
+      { id: "comparesent", band: "ct6-2", part: "B", t: "Comparison sentences", de: "größer als, so groß wie",
+        vgl: [
+          "„als“ beim Vergleich heißt **than**: größer **als** → bigger **than**. Nicht ~~as~~ und nicht ~~then~~ (then heißt „dann“).",
+          "„so … wie“ heißt **as … as**: so groß **wie** → **as** big **as**. „nicht so … wie“ → **not as … as**.",
+          "Wie im Deutschen nur **eine** Steigerung: ~~more bigger~~ ist doppelt, richtig ist **bigger**."
+        ],
+        vglEx: [["Tom is **taller than** Ben.", "Tom ist **größer als** Ben."], ["My bike is **as fast as** yours.", "Mein Rad ist **so schnell wie** deins."], ["Cats are **not as loud as** dogs.", "Katzen sind **nicht so laut wie** Hunde."]],
+        anim: [{ a: "Tom is tall. Ben is tall.", b: "Tom is as tall as Ben.", hint: "Gleich groß? Dann **as … as**." }],
+        explain: [
+          "Verschieden: **Steigerung + than**: London is **bigger than** Leeds. Maths is **more difficult than** art.",
+          "Gleich: **as + Grundform + as**: Ben is **as tall as** his dad.",
+          "Nicht gleich: **not as … as**: My bike is **not as fast as** yours.",
+          "Bei as … as steht das Adjektiv immer in der **Grundform**: as big as, nicht ~~as bigger as~~."
+        ],
+        aus: [
+          "Nach than und as sagt man im Alltag **me, him, her**: She is taller than **me**.",
+          "Steigerung schon mit -er? Dann kein more davor: ~~more taller~~ ist falsch."
+        ],
+        ex: [["An elephant is **heavier than** a horse.", "Ein Elefant ist schwerer als ein Pferd."], ["This test was **as easy as** the last one.", "Dieser Test war so leicht wie der letzte."], ["Today is **not as cold as** yesterday.", "Heute ist es nicht so kalt wie gestern."]],
+        tasks: [
+          ["pick", "Lisa is older ___ her brother.", ["than", "as", "then"], "als = than."],
+          ["pick", "My bike is as fast ___ yours.", ["as", "than", "like"], "so … wie = as … as."],
+          ["pick", "Tom is ___ than Ben.", ["taller", "more taller", "tall"], "Nur eine Steigerung: taller."],
+          ["pick", "Ben is as ___ as his dad.", ["tall", "taller", "tallest"], "Bei as … as die Grundform."],
+          ["pick", "„Katzen sind nicht so laut wie Hunde.“", ["Cats are not as loud as dogs.", "Cats are not so loud than dogs.", "Cats are not louder as dogs."], "nicht so … wie = not as … as."],
+          ["pick", "Maths is ___ difficult than art.", ["more", "most", "as"], "Lange Adjektive: more … than."],
+          ["pick", "This film is better ___ the book.", ["than", "as", "then"], "Steigerung + than."],
+          ["order", "London is bigger than Manchester.", "Steigerung (bigger), dann than."]
+        ] },
+      { id: "presentperfect", band: "ct6-3", part: "A", t: "Present perfect simple", de: "Schon passiert, wichtig für jetzt",
         explain: [
           "Mit dem present perfect sagst du, dass etwas **schon passiert ist** und für **jetzt** wichtig ist. Wann genau, ist egal. Signalwörter: already, ever, never, just, yet.",
           "Form: **have/has + 3. Form** des Verbs: I **have finished**. She **has seen** it.",
           "Regelmäßige Verben: -ed (played). Unregelmäßige aus der Tabelle: go – went – **gone**, see – saw – **seen**, eat – ate – **eaten**.",
           "Kurzformen: I**'ve**, she**'s**, I **haven't**, he **hasn't**."
         ],
-        ex: [["I **have** just **finished** my homework.", "Ich habe gerade meine Hausaufgaben fertig gemacht."], ["**Have** you ever **been** to London?", "Warst du schon einmal in London?"]],
+        ex: [["I **have** just **finished** my homework.", "Ich habe gerade meine Hausaufgaben fertig gemacht."], ["She **hasn't called** yet.", "Sie hat noch nicht angerufen."]],
         tasks: [
           ["gap", "I ___ my homework. (finish)", "have finished|'ve finished", "", ["finished", "have finish"]],
           ["gap", "She ___ this film three times. (see)", "has seen|'s seen", "see – saw – seen.", ["has saw", "have seen"]],
-          ["pick", "Have you ___ been to London?", ["ever", "yet"], "Schon einmal = ever."],
+          ["pick", "I ___ finished my book yet. (noch nicht)", ["haven't", "hasn't", "didn't"], "I → haven't."],
           ["gap", "We have just ___ lunch. (eat)", "eaten", "eat – ate – eaten.", ["ate", "eat"]],
           ["pick", "Tom ___ lost his key.", ["has", "have"], "Tom = he, also has."],
           ["pick", "They have ___ to the beach.", ["gone", "went", "go"], "Nach have steht die 3. Form."],
           ["pick", "I have never ___ a horse.", ["ridden", "rode", "ride"], "ride – rode – ridden."],
           ["gap", "My parents ___ a new car. (buy)", "have bought|'ve bought", "buy – bought – bought.", ["have buyed", "bought"]]
         ] },
-      { id: "goingto", band: "6", t: "going to-future", de: "Pläne und Absichten",
-        explain: [
-          "Mit **going to** sprichst du über **Pläne**: I**'m going to** visit my aunt next week.",
-          "Und über etwas, das man **schon kommen sieht**: Look at the clouds! It**'s going to** rain.",
-          "Form: **am/is/are + going to + Grundform**."
+      { id: "ppquestions", band: "ct6-3", part: "A", t: "Present perfect: questions", de: "Hast du schon einmal …?",
+        vgl: [
+          "Im Deutschen: **Hast du** schon einmal ein Pferd **geritten**? Im Englischen genauso gebaut: **Have you** ever **ridden** a horse?",
+          "Hier ist Englisch einmal leicht: **have/has** kommt einfach nach vorn, kein do. Typischer Fehler: ~~Do you have ever been …?~~",
+          "„schon einmal“ heißt **ever**, „schon“ in der Frage heißt **yet**: Have you finished **yet**? (Bist du schon fertig?)"
         ],
-        ex: [["I**'m going to** learn the guitar.", "Ich werde Gitarre lernen."], ["Watch out! You**'re going to** fall!", "Pass auf! Du fällst gleich!"]],
+        vglEx: [["**Have** you ever **been** to London?", "**Warst** du schon einmal in London?"], ["**Has** she **finished** yet?", "**Ist** sie schon fertig?"]],
+        anim: [{ a: "You have been to London.", b: "Have you ever been to London?", hint: "**have** tauscht mit der Person die Plätze, **ever** kommt vor die 3. Form." }],
+        explain: [
+          "Fragen: **Have/Has + Person + 3. Form**: **Have** you **seen** my bag? **Has** Tom **called**?",
+          "**ever** (schon einmal) steht vor der 3. Form: Have you **ever** eaten sushi?",
+          "**yet** (schon) steht in Fragen am Ende: Have you done your homework **yet**?",
+          "Kurzantworten: Yes, I **have**. / No, I **haven't**. Yes, she **has**. / No, she **hasn't**."
+        ],
+        aus: [
+          "Antwortest du mit „noch nie“, nimmst du **never**: Have you ever been to Scotland? – No, I've **never** been there.",
+          "In der Kurzantwort keine Kurzform bei Yes: Yes, I **have**. Falsch ist ~~Yes, I've.~~"
+        ],
+        ex: [["**Have** you ever **seen** a fox? – Yes, I **have**.", "Hast du schon einmal einen Fuchs gesehen? – Ja."], ["**Has** your dad **cooked** dinner yet?", "Hat dein Papa schon das Abendessen gekocht?"]],
         tasks: [
-          ["gap", "I ___ going to buy a new bike.", "am|'m", "", ["is", "are"]],
-          ["gap", "My sister ___ going to learn Spanish.", "is|'s", "", ["are", "am"]],
-          ["pick", "We are going to ___ a party.", ["have", "having", "has"], "Nach going to steht die Grundform."],
-          ["gap", "Look at that boy! He ___ fall! (going to)", "is going to|'s going to", "", ["will going to", "is go to"]],
-          ["pick", "___ you going to watch the match?", ["Are", "Do", "Will"], "Frage: Are you going to … ?"],
-          ["order", "I am going to visit my grandma."],
-          ["pick", "They ___ going to stay at home.", ["are", "is"]],
-          ["gap", "What ___ you going to do this weekend?", "are", "", ["is", "do"]]
+          ["pick", "___ you ever been to London?", ["Have", "Has", "Did"], "you → have."],
+          ["pick", "___ Emma finished her homework?", ["Has", "Have", "Is"], "Emma = she, also has."],
+          ["pick", "Have you ___ eaten fish and chips?", ["ever", "yet", "never"], "schon einmal = ever."],
+          ["pick", "Have you done your homework ___?", ["yet", "ever", "never"], "„schon“ in der Frage, am Ende: yet."],
+          ["pick", "Has he seen the film? – No, he ___.", ["hasn't", "haven't", "didn't"], "he → hasn't."],
+          ["pick", "Have they ___ the new museum?", ["visited", "visit", "visiting"], "Nach have steht die 3. Form."],
+          ["pick", "Wie fragst du richtig?", ["Have you ever ridden a horse?", "Do you have ever ridden a horse?", "Have you ever rode a horse?"], "have vorn, dann ever, dann die 3. Form ridden."],
+          ["order", "Has your brother ever been to Scotland?", "Has, dann die Person, dann ever, dann been."]
         ] },
-      { id: "will", band: "6", t: "will-future", de: "Vorhersagen und spontane Entschlüsse",
+      { id: "ppsp", band: "ct6-3", part: "B", t: "Present perfect or simple past", de: "Welche Zeit passt?" },
+      { id: "qtags", band: "ct6-3", part: "B", t: "Question tags", de: "…, oder? / …, nicht wahr?" },
+      { id: "posspron", band: "ct6-3", part: "B", t: "Possessive pronouns", de: "mine, yours, his …" },
+      { id: "will", band: "ct6-4", part: "A", t: "will-future", de: "Vorhersagen und spontane Entschlüsse",
         explain: [
           "Mit **will** sagst du voraus, was passieren wird: I think it **will** rain tomorrow.",
           "Auch für spontane Entschlüsse: The phone is ringing. – I**'ll** get it!",
@@ -596,25 +801,7 @@ window.GRAMMAR = {
           ["pick", "It's cold in here. – OK, I ___ close the window.", ["'ll", "am"], "Spontaner Entschluss: I'll."],
           ["gap", "___ you help me, please? (werden)", "Will", "", ["Do", "Are"]]
         ] },
-      { id: "comparison", band: "6", t: "Comparison of adjectives", de: "Steigerung und Vergleich",
-        explain: [
-          "Kurze Adjektive und solche auf -y: **-er** und **the -est**: small – small**er** – the small**est**, happy – happ**ier** – the happ**iest**, big – bi**gg**er – the bi**gg**est.",
-          "Lange Adjektive: **more** und **the most**: interesting – **more** interesting – **the most** interesting.",
-          "Unregelmäßig: good – **better** – the **best**, bad – **worse** – the **worst**.",
-          "Vergleich mit **than** (als): Tom is taller **than** Ben. Gleich: **as … as**: Ben is **as** tall **as** his dad."
-        ],
-        ex: [["An elephant is **bigger than** a dog.", "Ein Elefant ist größer als ein Hund."], ["This is **the best** day ever!", "Das ist der beste Tag überhaupt!"]],
-        tasks: [
-          ["gap", "An elephant is ___ than a dog. (big)", "bigger", "big → bigger mit Doppel-g.", ["biger", "more big"]],
-          ["gap", "This is the ___ day of my life! (happy)", "happiest", "y wird zu i: happiest.", ["happyest", "most happy"]],
-          ["gap", "Maths is ___ than art. (difficult)", "more difficult", "Lange Adjektive: more.", ["difficulter", "most difficult"]],
-          ["gap", "My cake is ___ than yours. (good)", "better", "good – better – best.", ["gooder", "best"]],
-          ["gap", "This is the ___ film I've ever seen. (bad)", "worst", "bad – worse – worst.", ["baddest", "worse"]],
-          ["pick", "Lisa is older ___ her brother.", ["than", "as", "then"], "als = than."],
-          ["pick", "My bike is as fast ___ yours.", ["as", "than"], "as … as."],
-          ["gap", "This is the ___ mountain in England. (high)", "highest", "", ["higher", "most high"]]
-        ] },
-      { id: "adverbsmanner", band: "6", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
+      { id: "adverbsmanner", band: "ct6-4", part: "B", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
         explain: [
           "Ein Adjektiv beschreibt ein Nomen: a **quiet** girl. Ein Adverb beschreibt, **wie** jemand etwas tut: She speaks **quietly**.",
           "Meist hängt man **-ly** an: slow → slow**ly**, careful → careful**ly**, happy → happ**ily**.",
@@ -633,18 +820,76 @@ window.GRAMMAR = {
           ["pick", "Lisa works ___. She is always busy.", ["hard", "hardly"], "hard bleibt hard. hardly heißt kaum."]
         ] },
 
+      { id: "modalsubst", band: "ct6-5", part: "A", t: "Modal verbs and substitutes", de: "have to, be able to, be allowed to",
+        vgl: [
+          "Im Deutschen haben „müssen, können, dürfen“ alle Zeiten: ich **musste**, ich **konnte**, ich **durfte**.",
+          "Im Englischen fehlen die meisten: must, can, may haben (fast) keine Vergangenheit und keine Zukunft. Dann springt ein **Ersatz** ein:",
+          "müssen → **have to** (I **had to**, I'**ll have to**), können → **be able to** (I **was able to**, I'**ll be able to**), dürfen → **be allowed to** (I **was allowed to**).",
+          "Typischer Fehler: ~~I musted~~ oder ~~I will can~~. Richtig: I **had to**, I **will be able to**."
+        ],
+        vglEx: [["Yesterday I **had to** help my mum.", "Gestern **musste** ich meiner Mama helfen."], ["I**'ll be able to** swim soon.", "Ich **werde** bald schwimmen **können**."], ["We **weren't allowed to** take photos.", "Wir **durften** keine Fotos machen."]],
+        anim: [{ a: "I must help my mum.", b: "Yesterday I had to help my mum.", hint: "must hat keine Vergangenheit: **had to** springt ein." }],
+        explain: [
+          "**have to / has to** = müssen. Vergangenheit: **had to**. Zukunft: **will have to**. She **has to** feed the cat. We **had to** wait.",
+          "**be able to** = können. I **was able to** finish. Zukunft: I **will be able to** come. In der Vergangenheit geht auch **could**: I **could** swim when I was five.",
+          "**be allowed to** = dürfen. We **are allowed to** stay up late. We **weren't allowed to** go out.",
+          "Die Ersatzformen bauen auf be und have: Die Form von **be/have** ändert sich, der Rest bleibt."
+        ],
+        aus: [
+          "Bei have to braucht die Frage **do/does/did**: **Do** you **have to** go? **Did** you **have to** wait?",
+          "Bei he/she/it heißt es **has to**: He **has to** go. Falsch ist ~~He have to go.~~"
+        ],
+        ex: [["My brother **has to** tidy his room.", "Mein Bruder muss sein Zimmer aufräumen."], ["Last year I **wasn't able to** ride a bike.", "Letztes Jahr konnte ich noch nicht Rad fahren."], ["**Are** we **allowed to** use our phones?", "Dürfen wir unsere Handys benutzen?"]],
+        tasks: [
+          ["pick", "Yesterday I ___ help my dad in the garden. (musste)", ["had to", "musted", "must"], "must hat keine Vergangenheit: had to."],
+          ["pick", "My sister ___ feed the cat every day.", ["has to", "have to", "has"], "my sister = she, also has to."],
+          ["pick", "Next year I ___ swim. (werde können)", ["will be able to", "will can", "can will"], "Zukunft von can: will be able to."],
+          ["pick", "We ___ take photos in the museum. (durften nicht)", ["weren't allowed to", "didn't may", "mustn't"], "dürfen in der Vergangenheit: was/were allowed to."],
+          ["pick", "___ you have to wear a uniform at your school?", ["Do", "Are", "Have"], "Frage mit have to: do/does."],
+          ["pick", "Tomorrow we ___ get up early. (werden müssen)", ["will have to", "will must", "must will"], "Zukunft von must: will have to."],
+          ["pick", "When I was six, I ___ ride a bike. (konnte)", ["could", "can", "canned"], "können in der Vergangenheit: could oder was able to."],
+          ["order", "Are we allowed to use our phones?", "Are, dann we, dann allowed to, dann das Verb."]
+        ] },
+      { id: "mustnt", band: "ct6-5", part: "A", t: "mustn't or don't have to?", de: "nicht dürfen oder nicht müssen",
+        vgl: [
+          "Die gemeinste Falle im Englischen: **mustn't** klingt wie „muss nicht“, heißt aber **„darf nicht“**.",
+          "„muss nicht“ heißt **don't have to** (oder needn't): Du **musst** nicht kommen. → You **don't have to** come.",
+          "Merke: **mustn't = Verbot** (Stoppschild). **don't have to = keine Pflicht** (du kannst, aber musst nicht)."
+        ],
+        vglEx: [["You **mustn't** run here.", "Du **darfst** hier **nicht** rennen."], ["You **don't have to** run.", "Du **musst nicht** rennen."], ["She **doesn't have to** come.", "Sie **muss nicht** kommen."]],
+        anim: [{ a: "You mustn't come.", b: "You don't have to come.", hint: "**mustn't** = darfst nicht (Verbot). **don't have to** = musst nicht (freiwillig)." }],
+        explain: [
+          "**mustn't** = Verbot: You **mustn't** use your phone in class. (Du darfst nicht.)",
+          "**don't have to / doesn't have to** = keine Pflicht: It's Sunday. You **don't have to** get up early. (Du musst nicht, darfst aber.)",
+          "Frage dich: Ist es **verboten**? → mustn't. Ist es nur **nicht nötig**? → don't have to.",
+          "Bei he, she, it: He **doesn't have to** go."
+        ],
+        aus: [
+          "Vergangenheit von beidem: Verbot → **wasn't allowed to**. Keine Pflicht → **didn't have to**: I **didn't have to** wait. (Ich musste nicht warten.)",
+          "**needn't** heißt auch „muss nicht“: You **needn't** come."
+        ],
+        ex: [["You **mustn't** feed the animals.", "Du darfst die Tiere nicht füttern."], ["You **don't have to** bring food. There's a café.", "Du musst kein Essen mitbringen. Es gibt ein Café."]],
+        tasks: [
+          ["pick", "You ___ feed the animals at the zoo. It's not allowed.", ["mustn't", "don't have to"], "Verboten: mustn't."],
+          ["pick", "It's Saturday. We ___ go to school.", ["don't have to", "mustn't"], "Nicht nötig, aber nicht verboten: don't have to."],
+          ["pick", "„Du musst nicht helfen.“ heißt:", ["You don't have to help.", "You mustn't help.", "You must not help."], "muss nicht = don't have to."],
+          ["pick", "„Du darfst hier nicht rauchen.“ heißt:", ["You mustn't smoke here.", "You don't have to smoke here.", "You don't must smoke here."], "darf nicht = mustn't."],
+          ["pick", "My brother ___ do the washing-up today. Mum is doing it.", ["doesn't have to", "mustn't", "don't have to"], "Keine Pflicht, he → doesn't have to."],
+          ["pick", "You ___ cross the road when the light is red.", ["mustn't", "don't have to"], "Verboten: mustn't."],
+          ["pick", "You ___ bring a drink. We've got lots.", ["don't have to", "mustn't"], "Nicht nötig: don't have to."],
+          ["pick", "Yesterday I ___ wait for the bus. My dad picked me up.", ["didn't have to", "mustn't", "wasn't allowed to"], "Keine Pflicht in der Vergangenheit: didn't have to."]
+        ] },
+      { id: "if12", band: "ct6-5", part: "B", t: "Conditional clauses I and II", de: "if-Sätze Typ 1 und 2" },
+      { id: "adverbscomp", band: "ct6-5", part: "B", t: "Comparison of adverbs", de: "Handlungen vergleichen" },
       // ---------- Klassen 7/8 (Übungen folgen) ----------
       { id: "zeroarticle1", band: "7/8", t: "(Zero) article", de: "Artikel bei Gebäuden, Institutionen, Namen" },
-      { id: "if12", band: "7/8", t: "Conditional clauses I and II", de: "if-Sätze Typ 1 und 2" },
       { id: "adverbialclauses", band: "7/8", t: "Adverbial clauses", de: "Nebensätze für Zeit, Grund, Folge, Zweck, Gegensatz" },
       { id: "relative", band: "7/8", t: "Relative clauses", de: "Relativsätze mit who, which, that, whose" },
-      { id: "ppsp", band: "7/8", t: "Present perfect / simple past", de: "Die beiden Zeiten im Vergleich" },
       { id: "ppprog", band: "7/8", t: "Present perfect progressive", de: "Seit wann etwas andauert" },
       { id: "pastprog", band: "7/8", t: "Past progressive", de: "Was gerade passierte, als …" },
       { id: "pastperfect", band: "7/8", t: "Past perfect", de: "Vorvergangenheit" },
       { id: "pastperfectprog", band: "7/8", rez: true, t: "Past perfect progressive", de: "Verlaufsform der Vorvergangenheit" },
       { id: "adverbsdegree", band: "7/8", t: "Adverbs of manner and degree", de: "Adverbien bilden und steigern" },
-      { id: "adverbscomp", band: "7/8", t: "Comparison of adverbs", de: "Handlungen vergleichen" },
       { id: "passive1", band: "7/8", rez: true, t: "Passive voice", de: "Passiv mit und ohne by" },
       { id: "reported", band: "7/8", t: "Reported speech", de: "Indirekte Rede mit Zeitverschiebung, Fragen und Aufforderungen" },
 
@@ -826,7 +1071,7 @@ window.GRAMMAR = {
     bequestions: [
       "Wie im Deutschen tauschen bei der Frage Verb und Person die Plätze: Du bist zwölf. → **Bist du** zwölf? / You are twelve. → **Are you** twelve?",
       "Das funktioniert im Englischen nur mit am, is, are (und can, have got). Bei anderen Verben braucht man do/does, das kommt später.",
-      "Fragewörter stehen wie bei uns vorne: **Wo** bist du? → **Where** are you?"
+      "Typischer Fehler: ~~Do you are twelve?~~ Bei am, is, are gibt es kein do."
     ],
     thereis: [
       "„Es gibt“ heißt nicht ~~It gives~~! Englisch sagt **there is** (eins) und **there are** (mehrere).",
@@ -887,7 +1132,7 @@ window.GRAMMAR = {
     questions: [
       "Im Deutschen tauschen wir einfach: Du spielst. → **Spielst du**? Im Englischen geht das bei normalen Verben nicht. Falsch ist ~~Play you football?~~",
       "Man braucht **do** oder **does** vorne: **Do** you play football? **Does** he play football?",
-      "Bei does verliert das Verb sein -s: Does he **play**? Fragewörter kommen davor: **Where does** she live?"
+      "Bei does verliert das Verb sein -s: Does he **play**? Falsch ist ~~Does he plays?~~"
     ],
     presentprog: [
       "**Gibt es das im Deutschen?** Nicht als eigene Zeit. Wir sagen „Ich lese“ und hängen höchstens „gerade“ an. Aber in manchen Gegenden sagt man „**Ich bin am Lesen**“, und genau so ist das Englische gebaut!",
@@ -929,8 +1174,8 @@ window.GRAMMAR = {
       "**Gibt es das im Deutschen?** Ja, das ist unser **Präteritum**: ich spiel**te**, ich **ging**. Gebaut wird es fast wie bei uns, aus einem Wort: Regelmäßig mit Endung (spiel**te** → play**ed**), unregelmäßig mit einem neuen Wort (ging → **went**, sah → **saw**).",
       "**Der große Unterschied:** Wenn wir erzählen, sagen wir meist das Perfekt: Ich **habe** gestern Fußball **gespielt**. Englisch nimmt dafür das simple past: Yesterday I **played** football.",
       "**Merke:** Steht eine Zeit in der Vergangenheit dabei (yesterday, last week, two days ago, in 2020), dann nimmst du **immer** das simple past.",
-      "**Fragen und Verneinung:** Wir sagen „Spieltest du?“ und „Ich spielte nicht“. Englisch braucht **did**: **Did** you play? I **didn't** play. Das Verb steht danach in der Grundform, weil did die Vergangenheit schon trägt.",
-      "Typische Fehler: ~~Did you played?~~ und ~~Yesterday I have played.~~"
+      "**Verneinung:** Wir sagen „Ich spielte nicht“. Englisch braucht **didn't**: I **didn't** play. Das Verb steht danach in der Grundform, weil didn't die Vergangenheit schon trägt.",
+      "Typische Fehler: ~~I didn't played.~~ und ~~Yesterday I have played.~~"
     ],
     countable: [
       "Manche Wörter haben im Deutschen eine Mehrzahl, im Englischen aber nicht: die Informationen → **information**, die Hausaufgaben → **homework**, Ratschläge → **advice**, Möbel → **furniture**.",
@@ -964,7 +1209,7 @@ window.GRAMMAR = {
     comparison: [
       "Kurze Wörter steigert man wie im Deutschen mit Endungen: klein, klein**er**, am klein**sten** → small, small**er**, the small**est**.",
       "Lange Wörter bekommen im Englischen **more** und **most**: interessanter → **more** interesting. Falsch ist ~~interestinger~~.",
-      "„als“ heißt beim Vergleich **than**, nicht ~~as~~ und nicht ~~then~~: größer **als** → bigger **than**. „so groß wie“ → **as** big **as**."
+      "Wie im Deutschen gibt es unregelmäßige: gut, besser, am besten → good, **better**, the **best**."
     ],
     adverbsmanner: [
       "Im Deutschen sagt man „Sie ist leise“ und „Sie spricht leise“, beides mit demselben Wort.",
@@ -1147,7 +1392,7 @@ window.GRAMMAR = {
     plural: [["one book, two **books**", "ein Buch, zwei Büch**er**"], ["one cat, three **cats**", "eine Katze, drei Katze**n**"], ["one man, two **men**", "ein Mann, zwei **Männer**"], ["one child, four **children**", "ein Kind, vier Kind**er**"]],
     articles: [["**the** dog, **the** cat, **the** house", "**der** Hund, **die** Katze, **das** Haus"], ["**a** banana, **an** apple", "**eine** Banane, **ein** Apfel"], ["My dad is **a** teacher.", "Mein Vater ist Lehrer."], ["I give **the** dog **the** ball.", "Ich gebe **dem** Hund **den** Ball."]],
     tobe: [["I **am** twelve.", "Ich **bin** zwölf."], ["You **are** my friend. / You **are** my friends.", "Du **bist** mein Freund. / Ihr **seid** meine Freunde."], ["Where is the ball? – **It** is under the bed.", "Wo ist der Ball? – **Er** ist unter dem Bett."], ["We **are** at school.", "Wir **sind** in der Schule."]],
-    bequestions: [["**Are you** twelve?", "**Bist du** zwölf?"], ["**Is she** your sister?", "**Ist sie** deine Schwester?"], ["Where **are you**?", "Wo **bist du**?"], ["**Is it** cold today?", "**Ist es** heute kalt?"]],
+    bequestions: [["**Are you** twelve?", "**Bist du** zwölf?"], ["**Is she** your sister?", "**Ist sie** deine Schwester?"], ["**Is it** cold today?", "**Ist es** heute kalt?"]],
     thereis: [["**There is** a dog in the garden.", "**Es gibt** einen Hund im Garten. / Im Garten ist ein Hund."], ["**There are** two dogs in the garden.", "**Es gibt** zwei Hunde im Garten."], ["**Is there** a park near your house?", "**Gibt es** einen Park in der Nähe von deinem Haus?"], ["**There aren't** any shops here.", "Hier **gibt es** keine Läden."]],
     prepositions: [["The cat is **under** the table.", "Die Katze ist **unter** dem Tisch."], ["The bus stop is **in front of** the school.", "Die Bushaltestelle ist **vor** der Schule."], ["I'm **at** Grandma's.", "Ich bin **bei** Oma."], ["The shop is **opposite** the park.", "Der Laden ist **gegenüber** vom Park."]],
     possessives: [["Tom and **his** dog", "Tom und **sein** Hund"], ["Lisa and **her** dog", "Lisa und **ihr** Hund"], ["**my** brother, **my** sister, **my** books", "**mein** Bruder, **meine** Schwester, **meine** Bücher"], ["The children and **their** teacher", "Die Kinder und **ihre** Lehrerin"]],
