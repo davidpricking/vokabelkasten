@@ -2217,30 +2217,49 @@ function grammarCard() {
       <p class="muted small">${done ? "Fällige Themen hängt die App mit 3 kurzen Aufgaben an deine Tagesrunde." : "Jedes Thema wird erst erklärt, mit Beispielen. Danach kommen 8 kurze Aufgaben, und das Thema zieht in den Kasten ein."}</p>
     </section>`;
 }
+// Übersicht: Buch-Themes als aufklappbare Zeilen, das aktuelle Theme (laut „Wir sind bei“) ist offen.
+// In jedem Theme Zwischenzeilen „Part A/B“; noch nicht erreichte Themen sind blass, aber antippbar.
+const gOpen = new Set();
+function gTheme(b) {
+  const m = /^ct(6)?-(\d+)$/.exec(b.id || ""); if (!m) return null;
+  const bk = new RegExp(`^Camden Town ${m[1] || 5}`), re = new RegExp(`^Theme ${m[2]}\\b`);
+  const cs = cardsL().filter(c => bk.test(c.book || "") && re.test(c.unit));
+  return !cs.length ? "none" : cs.some(c => !isPaused(c)) ? "reached" : "later";
+}
 function renderGrammar() {
   const d = gData(), st = gStore();
+  const state = {}; d.bands.forEach(b => state[b.id] = gTheme(b));
+  const current = {}; d.bands.forEach(b => { if (b.group && state[b.id] === "reached" && d.topics.some(t => t.band === b.id)) current[b.group] = b.id; });
   let group = null;
+  const star = t => `<span class="gstars" aria-label="${st[t.id] ? `beste Runde ${Math.round(st[t.id].best * 100)} Prozent` : "noch nicht geübt"}">${st[t.id] ? gStars(st[t.id]) : "neu"}</span>`;
+  const item = (t, sub) => {
+    const lock = !gUnlocked(t);
+    return `<button class="gtopic${lock ? " glocked" : ""}" data-topic="${t.id}"><span><b>${esc(t.t)}</b><span class="muted small">${sub || esc(t.de)}${t.rez ? " · erkennen" : ""}${lock ? ` · ${t.part ? `ab Part ${t.part}` : "noch nicht dran"}` : ""}</span></span>${star(t)}</button>`;
+  };
+  const withParts = ts => { let last; return ts.map(t => { const p = t.part || ""; const head = p !== last ? `<p class="gpart">${p ? `Part ${p}` : "Intro"}</p>` : ""; last = p; return head + item(t); }).join(""); };
   const bands = d.bands.map(b => {
     const ts = d.topics.filter(t => t.band === b.id);
     const rev = (b.review || []).map(id => d.topics.find(t => t.id === id)).filter(t => t && gReady(t));
     if (!ts.length && !rev.length) return "";
     const head = b.group && b.group !== group ? `<h2 class="ggroup">${esc(b.group)}</h2>` : "";
     group = b.group || null;
-    const H = b.group ? "h3" : "h2";
     const ready = ts.filter(gReady);
-    if (!ts.length) return `${head}<section><h3>${esc(b.label)}</h3>${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}
-      <div class="gtopics">${rev.map(t => `<button class="gtopic" data-topic="${t.id}"><span><b>${esc(t.t)}</b><span class="muted small">Wiederholung · ${esc(t.de)}</span></span>
-        <span class="gstars">${st[t.id] ? gStars(st[t.id]) : "neu"}</span></button>`).join("")}</div></section>`;
-    const item = t => gReady(t)
-      ? `<button class="gtopic" data-topic="${t.id}"><span><b>${esc(t.t)}</b><span class="muted small">${esc(t.de)}${t.rez ? " · erkennen" : ""}</span></span>
-          <span class="gstars" aria-label="${st[t.id] ? `beste Runde ${Math.round(st[t.id].best * 100)} Prozent` : "noch nicht geübt"}">${st[t.id] ? gStars(st[t.id]) : "neu"}</span></button>`
-      : `<li>${esc(t.t)} <span class="muted">· ${esc(t.de)}${t.rez ? " · erkennen" : ""}${t.g8 ? " · nur G8" : ""}</span></li>`;
+    if (b.group) {
+      const list = ts.length ? ready : rev, done = list.filter(t => st[t.id]).length;
+      const info = !list.length ? "Übungen folgen" : state[b.id] === "later" ? "noch nicht dran" : ts.length ? `${done} von ${list.length} geübt` : "Wiederholung";
+      const open = gOpen.has(b.id) || current[b.group] === b.id;
+      const body = ts.length ? withParts(ready) : rev.map(t => item(t, `Wiederholung · ${esc(t.de)}`)).join("");
+      return `${head}<details class="gband${state[b.id] === "later" ? " glater" : ""}" data-band="${b.id}"${open ? " open" : ""}><summary><b>${esc(b.label)}</b><span class="muted small">${info}</span></summary>
+        ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}<div class="gtopics">${body}</div></details>`;
+    }
+    const H = "h2";
+    const li = t => `<li>${esc(t.t)} <span class="muted">· ${esc(t.de)}${t.rez ? " · erkennen" : ""}${t.g8 ? " · nur G8" : ""}</span></li>`;
     return ready.length
       ? `${head}<section><div class="spread"><${H}>${esc(b.label)}</${H}><span class="muted small">${ready.filter(t => st[t.id]).length}/${ready.length}</span></div>
           ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}
-          <div class="gtopics">${ready.map(item).join("")}</div></section>`
+          <div class="gtopics">${ready.map(t => item(t)).join("")}</div></section>`
       : `${head}<details class="panel gsoon"><summary><b>${esc(b.label)}</b> <span class="muted small">· ${ts.length} ${ts.length === 1 ? "Thema" : "Themen"}, Übungen folgen</span></summary>
-          ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}<ul>${ts.map(item).join("")}</ul></details>`;
+          ${b.note ? `<p class="muted small">${esc(b.note)}.</p>` : ""}<ul>${ts.map(li).join("")}</ul></details>`;
   }).join("");
   app.replaceChildren(h(`
     <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><h2>Grammatik ${esc(L().name)}</h2></div>
@@ -2248,6 +2267,7 @@ function renderGrammar() {
     <p class="muted small">Grundlage: ${esc(d.source)}.</p>`));
   $("#back").onclick = renderHome;
   $$("[data-topic]").forEach(b => b.onclick = () => renderTopic(b.dataset.topic));
+  $$("details.gband").forEach(x => x.ontoggle = () => { x.open ? gOpen.add(x.dataset.band) : gOpen.delete(x.dataset.band); });
   window.scrollTo(0, 0);
 }
 function explainHtml(t) {
