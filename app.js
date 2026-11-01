@@ -2689,6 +2689,25 @@ function renderCalendar() {
 // ---------- Einstellungen ----------
 let deferredInstall = null, confirmLangDelete = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; });
+// „Auf Update prüfen“: sw.js frisch vom Server holen und VERSION mit dem Cache vergleichen.
+// Nicht auf reg.update() allein verlassen: Das schlägt auf manchen Handys fehl, obwohl Internet da ist.
+async function checkUpdate() {
+  let have = "", srv = "";
+  try { have = ((await caches.keys()).filter(k => /^v\d+$/.test(k)).sort((a, b) => b.slice(1) - a.slice(1))[0]) || ""; } catch (e) {}
+  try {
+    const r = await fetch("sw.js?u=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    srv = ((await r.text()).match(/VERSION\s*=\s*"(v\d+)"/) || [])[1] || "";
+  } catch (e) { toast("Keine Verbindung zum Server. Bist du online?"); return; }
+  if (!srv) { toast("Version auf dem Server nicht lesbar"); return; }
+  if (have && +srv.slice(1) <= +have.slice(1)) { toast(`Du hast die neueste Version (${srv.slice(1)})`); return; }
+  toast(`Neue Version ${srv.slice(1)} wird geladen …`);
+  try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) {}
+  // Neu laden, sobald der neue Service Worker übernimmt, spätestens nach 15 Sekunden.
+  let done = false; const go = () => { if (!done) { done = true; save(); location.reload(); } };
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("controllerchange", go, { once: true });
+  setTimeout(go, 15000);
+}
 function renderSettings(msg) {
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -2750,10 +2769,7 @@ function renderSettings(msg) {
   `));
   // Version = Name des Offline-Caches aus sw.js (VERSION)
   if (window.caches) caches.keys().then(ks => { const v = ks.filter(k => /^v\d+$/.test(k)).sort((a, b) => b.slice(1) - a.slice(1))[0]; if (v && $("#appVer")) $("#appVer").textContent = "· Version " + v.slice(1); }).catch(() => {});
-  $("#updCheck").onclick = () => {
-    if (!navigator.serviceWorker) { toast("Updates gibt es hier nicht"); return; }
-    navigator.serviceWorker.getRegistration().then(r => r ? r.update().then(() => toast(r.installing || r.waiting ? "Update wird geladen, die App startet gleich neu" : "Du hast die neueste Version")) : toast("Kein Update möglich")).catch(() => toast("Keine Verbindung"));
-  };
+  $("#updCheck").onclick = () => checkUpdate();
   $("#back").onclick = () => { confirmLangDelete = null; renderHome(); };
   if ($("#install")) $("#install").onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => {}); deferredInstall = null; renderSettings(); };
   $$("[data-npd]").forEach(b => b.onclick = () => { S.newPerDay = +b.dataset.npd; save(); keepScroll(renderSettings); });
