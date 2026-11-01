@@ -586,7 +586,7 @@ window.GRAMMAR = {
           ["pick", "___ are my friends Tom and Ben. (diese hier)", ["These", "This", "That"]]
         ] },
       // ---------- Klasse 6, Camden Town 6 (Reihenfolge wie im Buch) ----------
-      { id: "simplepast", band: "ct6-1", part: "A", t: "Simple past", de: "Was früher passiert ist",
+      { id: "simplepast", band: "ct6-1", part: "A", t: "Simple past", de: "Was früher passiert ist", video: "videos/simple-past.mp4",
         explain: [
           "Mit dem simple past erzählst du, was in der Vergangenheit passiert und abgeschlossen ist. Signalwörter: yesterday, last week, two days ago, in 2020.",
           "Regelmäßige Verben bekommen **-ed**: play → play**ed**, live → live**d**, stop → sto**pped**, cry → cr**ied**.",

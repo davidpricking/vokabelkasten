@@ -413,6 +413,7 @@ button.streak{color:var(--ink);cursor:pointer}
 .gstars.big{font-size:2rem}
 .gsoon summary{cursor:pointer}
 .gsoon ul{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:4px;font-size:.92rem}
+.gvideo{margin-bottom:14px}.gvideo video{width:100%;border-radius:12px;background:#000;display:block}
 .gexplain{display:flex;flex-direction:column;gap:10px}
 .gvgl{background:rgba(127,127,127,.08);border-left:4px solid var(--marker);border-radius:10px;padding:12px 14px;margin-bottom:14px}
 .gvgl p{margin:0 0 10px}.gvgl[open] summary{margin-bottom:10px}.gvgl summary{cursor:pointer}.gvgl .eyebrow{margin-top:4px}.gvgl mark{background:var(--marker);color:#2A2200;border-radius:3px;padding:0 2px}
