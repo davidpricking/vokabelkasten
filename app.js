@@ -767,7 +767,7 @@ function startRound(unit) {
     pick = shuffle(cardsL().filter(c => (c.tags || []).includes(t) && (c.level || !isPaused(c)))).sort((a, b) => a.level - b.level).slice(0, 20);
     pick = shuffle(pick).slice(0, ROUND_SIZE);
   } else if (unit) {
-    pick = shuffle(cardsL().filter(c => c.unit === unit)).slice(0, 20);
+    pick = shuffle(cardsL().filter(c => c.unit === unit && (c.level || !isPaused(c)))).slice(0, 20);   // nur, was in der Schule schon dran war
   } else {
     pick = dueToday().slice(0, ROUND_SIZE);
     if (pick.length < ROUND_SIZE) pick = pick.concat(newCards().slice(0, Math.min(newAllowed(), ROUND_SIZE - pick.length)));
@@ -2860,7 +2860,7 @@ function renderDuelSetup() {
   $("#back").onclick = renderHome;
   $("#duelStart").onclick = () => {
     const o = $("#duelOther").value.trim() || "Papa"; S.duelOther = o; save();
-    const all = cardsL().filter(c => c.en && c.de);
+    const all = cardsL().filter(c => c.en && c.de && (c.level || !isPaused(c)));
     const pick = [...shuffle(all.filter(c => c.level > 0)), ...shuffle(all.filter(c => !c.level))].slice(0, DUEL_N);
     D = { m: "duel", p: [newPlayer(me), newPlayer(o === me ? o + " 2" : o)], cur: 0, i: 0, q: makeQuestions(pick) };
     duelHandover();
