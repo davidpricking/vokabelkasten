@@ -777,7 +777,7 @@ function startRound(unit) {
   if (!unit) items.push(...grammarItems());
   if (!items.length) { toast("Noch keine Vokabeln vorhanden"); return; }
   R = { practice: !!unit, unit, queue: items, total: items.length, done: new Set(), first: {}, good: 0, last: Date.now(),
-        combo: 0, best: 0, xp: 0, up: 0, down: 0, sat: 0, gram: {}, timer: 0, newBadges: [] };
+        combo: 0, best: 0, xp: 0, up: 0, down: 0, sat: 0, gram: {}, rc: {}, gused: {}, timer: 0, newBadges: [] };
   renderCard();
 }
 function dirFor() { const d = L().dir; return d === "mix" ? (Math.random() < .5 ? "de-en" : "en-de") : d; }
@@ -1110,8 +1110,14 @@ function renderRoundTask() {
     tick();
     const first = !(item in R.first);
     dayLog().gram++;
-    if (first) { taskDone(); R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); gCatNote(t, +ti, ok); }
+    if (first) { taskDone(); R.first[item] = ok; if (ok) R.good++; R.gram[id] = (R.gram[id] || 0) + (ok ? 0 : 1); }
     R.queue.shift();
+    if (first && t.catOf) {   // nach einem Fehler: gleiche Frage später nochmal und eine neue Frage derselben Fehlerquelle
+      const rc = R.rc || (R.rc = {}), gu = R.gused || (R.gused = {});
+      if (!gu[id]) gu[id] = new Set([...R.queue, item].filter(x => x.startsWith(`g|${id}|`)).map(x => +x.split("|")[2]));
+      const j = gCatAnswer(rc[id] || (rc[id] = {}), t, +ti, ok, gu[id]);
+      if (j >= 0) { R.queue.splice(Math.min(R.queue.length, 5), 0, `g|${id}|${j}`); R.total++; }
+    }
     if (ok) { R.done.add(item); if (first) { R.combo++; R.best = Math.max(R.best, R.combo); } }
     else { R.combo = 0; R.queue.splice(Math.min(R.queue.length, 3), 0, item); }
     sound(ok ? "good" : "bad");
@@ -1126,7 +1132,9 @@ function renderRoundTask() {
 function renderSummary() {
   tick();
   R.finished = true;
-  const gl = Object.entries(R.gram).map(([id, err]) => gMove(id, err <= G_MAX_ERR)).filter(Boolean);
+  const gl = Object.entries(R.gram).map(([id, err]) => { const d = gData(), t = d && d.topics.find(x => x.id === id);
+    if (t && t.cats) { gCatFinish(t, (R.rc || {})[id]); return `Grammatik „${esc(t.t)}“: Fehlerquellen aktualisiert, Lernstand im Grammatik-Kasten.`; }
+    return gMove(id, err <= G_MAX_ERR); }).filter(Boolean);
   const n = R.total, g = R.good, lv = levelOf(S.xp);
   const earned = R.total >= 5 && !R.packed; if (earned) { R.packed = true; S.packQ.push(makePack(R)); }
   if (R.total >= 5 && g === n) dayLog().perfect = 1;
@@ -1955,32 +1963,83 @@ function gDue() {
   const st = gStore(), now = Date.now();
   return d.topics.filter(t => gReady(t) && gUnlocked(t) && st[t.id] && st[t.id].box && st[t.id].due <= now).sort((a, b) => st[a.id].due - st[b.id].due);
 }
-// Ein fälliges Thema kommt immer ganz ans Ende der Tagesrunde.
+// Ein fälliges Thema kommt ans Ende der Tagesrunde: ohne Fragenpool ganz, mit Fragenpool nur die fälligen Fehlerquellen.
 function grammarItems() {
   const t = gDue()[0]; if (!t) return [];
-  return gPick(t).map(i => `g|${t.id}|${i}`);
+  return (t.catOf ? gPickDue(t) : gPick(t)).map(i => `g|${t.id}|${i}`);
 }
-// Themen mit Fragenpool (cats/bank): pro Runde 10–15 Fragen, jede Kategorie mindestens einmal,
-// Kategorien mit Fehlern bekommen eine zweite Frage. Fehlerwert je Kategorie in S.gcat (0 … 1, halbiert sich bei jeder richtigen Antwort).
-const G_MIN = 10, G_MAX = 15;
-function gCatStore(id) { const a = S.gcat || (S.gcat = {}), b = a[S.cur] || (a[S.cur] = {}); return b[id] || (b[id] = {}); }
-function gCatNote(t, i, ok) {
-  if (!t.catOf) return; const k = t.catOf[i], cs = gCatStore(t.id);
-  cs[k] = (cs[k] || 0) * .5 + (ok ? 0 : 1);
+// ---------- Fehlerquellen-Kasten ----------
+// Themen mit Fragenpool (cats/bank): Jede Fehlerquelle hat eine eigene Stufe 1–5 (0 = noch nicht geprüft) und einen eigenen Termin.
+// Stufen sagen ehrlich, was die App weiß: wie lange nach dem letzten Üben die Fehlerquelle noch richtig war.
+const G_MIN = 10, G_MAX = 15, G_EXTRA = 2;
+const GL_IVL = [0, 1, 3, 7, 16, 35];   // Tage bis zur nächsten Prüfung je Stufe
+const GL_NAME = ["Noch nicht geprüft", "Noch unsicher", "Wackelt noch", "Klappt", "Sicher", "Langfristig sicher"];
+const GL_WHY = ["Kam noch nicht dran.", "Zuletzt falsch. Kommt morgen wieder.", "Richtig, aber noch nicht nach ein paar Tagen bestätigt.",
+  "Auch nach ein paar Tagen richtig.", "Auch nach über einer Woche richtig.", "Auch nach über zwei Wochen richtig."];
+function gCatStore(id) {
+  const a = S.gcat || (S.gcat = {}), b = a[S.cur] || (a[S.cur] = {}), c = b[id] || (b[id] = {});
+  Object.keys(c).forEach(k => { if (typeof c[k] === "number") c[k] = { lv: 0, due: 0, seen: [] }; });   // alte Fehlerwerte (Testpaket v52)
+  return c;
 }
-function gWeak(t) { const cs = gCatStore(t.id); return Object.keys(t.cats || {}).filter(k => (cs[k] || 0) >= .4); }
+function gCat(t, k) { const cs = gCatStore(t.id); return cs[k] || (cs[k] = { lv: 0, due: 0, seen: [] }); }
+function gWeak(t) { return Object.keys(t.cats || {}).filter(k => { const c = gCat(t, k); return c.lv > 0 && c.lv <= 2; }); }
+function gByCat(t) { const by = {}; t.catOf.forEach((k, i) => (by[k] = by[k] || []).push(i)); return by; }
+// Frage einer Fehlerquelle wählen: zuerst eine, die zuletzt nicht dran war
+function gFresh(t, k, used) {
+  const all = gByCat(t)[k] || [], seen = gCat(t, k).seen || [];
+  const free = all.filter(i => !used.has(i)), fresh = free.filter(i => !seen.includes(i));
+  const pool = fresh.length ? fresh : free; return pool.length ? pool[Math.floor(Math.random() * pool.length)] : -1;
+}
+// Einzelübung: jede Fehlerquelle mindestens einmal, wacklige doppelt, 10–15 Fragen
 function gPick(t) {
   if (!t.catOf) return shuffle(t.tasks.map((_, i) => i));
-  const by = {}; t.catOf.forEach((k, i) => (by[k] = by[k] || []).push(i));
-  Object.values(by).forEach(a => shuffle(a));
-  const weak = gWeak(t), cats = shuffle(Object.keys(by)).sort((a, b) => weak.includes(b) - weak.includes(a));
-  const n = Math.min(G_MAX, Math.max(G_MIN, cats.length + weak.length)), pick = [];
-  cats.forEach(k => { if (pick.length < n) pick.push(by[k].shift()); });
-  weak.forEach(k => { if (pick.length < n && by[k] && by[k].length) pick.push(by[k].shift()); });
-  const rest = shuffle(Object.values(by).flat()); while (pick.length < n && rest.length) pick.push(rest.shift());
-  return shuffle(pick);
+  const used = new Set(), weak = gWeak(t), cats = shuffle(Object.keys(gByCat(t))).sort((a, b) => weak.includes(b) - weak.includes(a));
+  const n = Math.min(G_MAX, Math.max(G_MIN, cats.length + weak.length)), take = k => { const i = gFresh(t, k, used); if (i >= 0) used.add(i); return i >= 0; };
+  cats.forEach(k => { if (used.size < n) take(k); });
+  weak.forEach(k => { if (used.size < n) take(k); });
+  for (let guard = 0; used.size < n && guard < 99; guard++) take(cats[guard % cats.length]);
+  return shuffle([...used]);
+}
+// Tagesrunde: nur fällige Fehlerquellen, je eine Frage (höchstens 8)
+function gPickDue(t) {
+  const now = Date.now(), used = new Set();
+  const due = Object.keys(t.cats).filter(k => gCat(t, k).due <= now).sort((a, b) => gCat(t, a).lv - gCat(t, b).lv).slice(0, 8);
+  due.forEach(k => { const i = gFresh(t, k, used); if (i >= 0) used.add(i); });
+  return used.size ? shuffle([...used]) : gPick(t).slice(0, 8);
+}
+// Antwort auswerten. rc = Rundenstand je Fehlerquelle. Rückgabe: Index einer neuen Frage derselben Fehlerquelle (Beweisfrage) oder -1.
+function gCatAnswer(rc, t, i, ok, used) {
+  if (!t.catOf) return -1;
+  const k = t.catOf[i], c = gCat(t, k), r = rc[k];
+  c.seen = [i, ...(c.seen || []).filter(x => x !== i)].slice(0, 6);
+  let need = false;
+  if (!r) { rc[k] = { res: ok ? "ok" : "bad", extra: 0 }; need = !ok; }
+  else if (r.res === "bad") { if (ok) r.res = "fixed"; else need = true; }
+  else if (!ok) { r.res = "bad"; need = true; }
+  if (!need || rc[k].extra >= G_EXTRA) return -1;
+  const j = gFresh(t, k, used); if (j < 0) return -1;
+  rc[k].extra++; used.add(j); return j;
+}
+// Rundenende: Stufen setzen. Gleich richtig → eine Stufe hoch (wenn fällig oder noch unter Stufe 2),
+// erst mit neuer Frage verbessert → eine Stufe runter (mindestens 1), auch die neue Frage falsch → Stufe 1.
+function gCatFinish(t, rc) {
+  if (!t.cats) return [];
+  const now = Date.now(), moved = [];
+  Object.entries(rc || {}).forEach(([k, r]) => {
+    const c = gCat(t, k), lv0 = c.lv;
+    if (r.res === "ok") { if (c.due <= now || c.lv < 2) c.lv = Math.min(5, Math.max(2, c.lv + 1)); }
+    else if (r.res === "fixed") c.lv = Math.max(1, Math.min(c.lv, 3) - 1);
+    else c.lv = 1;
+    if (c.lv !== lv0 || c.due <= now) c.due = today() + GL_IVL[c.lv] * DAY;
+    moved.push([k, lv0, c.lv]);
+  });
+  // Thema im Kasten: Fach = Durchschnitt der Stufen, fällig = früheste Fehlerquelle
+  const st = gStore(), ks = Object.keys(t.cats), lvs = ks.map(k => gCat(t, k).lv).filter(Boolean);
+  if (st[t.id] && lvs.length) { st[t.id].box = Math.max(1, Math.round(lvs.reduce((a, b) => a + b, 0) / lvs.length)); st[t.id].due = Math.min(...ks.map(k => gCat(t, k).due)); }
+  return moved;
 }
 function gTip(t, i) { const c = t.catOf && t.cats && t.cats[t.catOf[i]]; return c ? `<p class="small gtip"><b>${esc(c.n)}:</b> ${gmark(c.tip)}</p>` : ""; }
+function glDots(lv) { return `<span class="gldots" aria-label="Stufe ${lv} von 5">${[1, 2, 3, 4, 5].map(n => `<i class="${n <= lv ? `on l${lv}` : ""}"></i>`).join("")}</span>`; }
 // Ins nächste Fach geht es erst nach der ganzen Runde, mit höchstens einem Fehler beim ersten Versuch.
 const G_MAX_ERR = 1;
 function gMove(id, ok) {
@@ -2355,6 +2414,24 @@ function playMnemo(root) {
     step();
   });
 }
+// Lernstand je Thema: jede Fehlerquelle mit Stufe 1–5, Erklärung der Stufe und nächstem Termin
+function renderLernstand(id) {
+  const d = gData(), t = d.topics.find(x => x.id === id), now = Date.now();
+  const ks = Object.keys(t.cats).sort((a, b) => gCat(t, a).lv - gCat(t, b).lv);
+  const when = c => !c.lv ? "" : c.due <= now ? "heute dran" : (n => n === 1 ? "morgen dran" : `in ${n} Tagen dran`)(Math.round((c.due - today()) / DAY));
+  app.replaceChildren(h(`
+    <div class="progress"><button class="iconbtn" id="back" aria-label="Zurück">${ICON.back}</button><span class="eyebrow">Lernstand</span></div>
+    <header><h1>${esc(t.t)}</h1><p class="muted">${ks.length} Fehlerquellen · Stufe 1 bis 5</p></header>
+    <div class="glist">${ks.map(k => { const c = gCat(t, k); return `<details class="panel glrow"><summary><span><b>${esc(t.cats[k].n)}</b>
+        <span class="muted small">${GL_NAME[c.lv]}${when(c) ? " · " + when(c) : ""}</span></span>${glDots(c.lv)}</summary>
+        <p class="small muted">${GL_WHY[c.lv]}</p><p class="small">${gmark(t.cats[k].tip)}</p></details>`; }).join("")}</div>
+    <details class="panel"><summary><b>Was bedeuten die Stufen?</b></summary>${GL_NAME.slice(1).map((n, i) => `<p class="small">${glDots(i + 1)} <b>${n}</b>: ${GL_WHY[i + 1]}</p>`).join("")}
+      <p class="small muted">Eine Stufe steigt nur, wenn die Fehlerquelle beim ersten Versuch richtig war und schon wieder dran war. Nach einem Fehler kommt die gleiche Frage nochmal und eine neue. Klappt die neue, sinkt die Stufe nur um eins.</p></details>
+    <button class="btn wide" id="go">Jetzt üben</button>`));
+  $("#back").onclick = () => renderTopic(t.id);
+  $("#go").onclick = () => startGrammar(t);
+  window.scrollTo(0, 0);
+}
 function renderTopic(id) {
   const d = gData(), t = d.topics.find(x => x.id === id), band = d.bands.find(b => b.id === t.band);
   const r = gStore()[t.id];
@@ -2364,16 +2441,18 @@ function renderTopic(id) {
     <section class="panel">${explainHtml(t)}</section>
     ${t.rez ? `<p class="muted small">Dieses Thema sollst du laut Bildungsplan vor allem erkennen. Die Aufgaben sind deshalb zum Auswählen.</p>` : ""}
     <button class="btn wide" id="go">Üben: ${t.catOf ? `${G_MIN}–${G_MAX} Aufgaben` : `${t.tasks.length} Aufgaben`}</button>
-    ${t.catOf ? `<p class="muted small" style="text-align:center">Jede Runde mischt neu aus ${t.tasks.length} Fragen zu ${Object.keys(t.cats).length} Fehlerquellen. Was dir schwerfällt, kommt öfter.</p>` : ""}
+    ${t.catOf ? `<p class="muted small" style="text-align:center">Jede Runde mischt neu aus ${t.tasks.length} Fragen zu ${Object.keys(t.cats).length} Fehlerquellen. Was dir schwerfällt, kommt öfter.</p>
+    <button class="btn ghost wide" id="lstand">Mein Lernstand</button>` : ""}
     ${r ? `<p class="muted small" style="text-align:center">Beste Runde: ${Math.round(r.best * 100)} % ${gStars(r)}</p>` : ""}`));
   $("#back").onclick = renderGrammar;
   $("#go").onclick = () => startGrammar(t);
+  if ($("#lstand")) $("#lstand").onclick = () => renderLernstand(t.id);
   bindSay();
   window.scrollTo(0, 0);
 }
 function startGrammar(t) {
   const q = gPick(t);
-  G = { t, queue: q, total: q.length, done: new Set(), first: {}, good: 0, last: Date.now(), newBadges: [], miss: new Set() };
+  G = { t, queue: q, total: q.length, done: new Set(), first: {}, good: 0, last: Date.now(), newBadges: [], miss: new Set(), rc: {}, used: new Set(q) };
   renderTask();
 }
 // Vergleich ohne Groß-/Kleinschreibung, Satzzeichen am Ende und mit einheitlichen Apostrophen.
@@ -2494,7 +2573,8 @@ function gAnswered(ok, full, why) {
   tick();
   const i = G.queue.shift(), firstTime = !(i in G.first);
   dayLog().gram++;
-  if (firstTime) { G.first[i] = ok; if (ok) G.good++; gCatNote(G.t, i, ok); if (!ok && G.t.catOf) G.miss.add(G.t.catOf[i]); }
+  if (firstTime) { G.first[i] = ok; if (ok) G.good++; if (!ok && G.t.catOf) G.miss.add(G.t.catOf[i]); }
+  if (firstTime && G.t.catOf) { const j = gCatAnswer(G.rc, G.t, i, ok, G.used); if (j >= 0) { G.queue.splice(Math.min(G.queue.length + (ok ? 0 : 1), 5), 0, j); G.total++; } }
   if (ok) G.done.add(i); else G.queue.splice(Math.min(G.queue.length, 3), 0, i);
   sound(ok ? "good" : "bad");
   $("#fb").replaceChildren(h(taskFeedback(ok, full, why) + (ok ? "" : gTip(G.t, i))));
@@ -2509,7 +2589,9 @@ function renderGSummary() {
   tick();
   const t = G.t, n = G.total, g = G.good, st = gStore(), old = st[t.id], ok = n - g <= G_MAX_ERR;
   st[t.id] = { best: Math.max(old ? old.best : 0, g / n), last: dayKey(), n: (old ? old.n : 0) + 1, box: old && old.box || 0, due: old ? old.due : 0 };
-  if (!old || !old.box) { st[t.id].box = ok ? 2 : 1; st[t.id].due = today() + INTERVAL[st[t.id].box] * DAY; }
+  let moved = null;
+  if (t.cats) moved = gCatFinish(t, G.rc);
+  else if (!old || !old.box) { st[t.id].box = ok ? 2 : 1; st[t.id].due = today() + INTERVAL[st[t.id].box] * DAY; }
   else gMove(t.id, ok);
   G.finished = true; checkBadges();
   save();
@@ -2520,6 +2602,7 @@ function renderGSummary() {
     <p>${g === n ? (S.name ? `Stark, ${esc(S.name)}! Alles beim ersten Versuch richtig.` : "Alles beim ersten Versuch richtig.") : "beim ersten Versuch richtig. Die anderen hast du am Ende auch geschafft."}</p>
     <p class="gstars big" aria-label="Sterne">${gStars(st[t.id])}</p>
     ${G.miss && G.miss.size ? `<div class="panel gfocus"><p class="eyebrow">Darauf achtest du nächstes Mal</p>${[...G.miss].map(k => `<p class="small"><b>${esc(t.cats[k].n)}:</b> ${gmark(t.cats[k].tip)}</p>`).join("")}</div>` : ""}
+    ${moved && moved.length ? `<button class="btn ghost" id="lstand">Mein Lernstand: ${moved.filter(m => m[2] > m[1]).length} Fehlerquellen gestiegen</button>` : ""}
     <p class="small">Im Grammatik-Kasten liegt das Thema jetzt in Fach ${box} und meldet sich ${FACH_IN[box]} in deiner Tagesrunde.</p>
     ${G.newBadges && G.newBadges.length ? `<div class="newbadges">${G.newBadges.map(b => `<div class="badge got"><span>${b.icon}</span><b>${esc(b.name)}</b></div>`).join("")}</div>` : ""}
     <button class="streak" id="toCal">${ICON.flame}<span>${liveStreak()} ${liveStreak() === 1 ? "Tag" : "Tage"} am Stück · heute ${fmtMin(dayLog().sec)}</span></button>
@@ -2528,6 +2611,7 @@ function renderGSummary() {
   </div>`));
   if (g === n) confetti();
   $("#again").onclick = () => startGrammar(t);
+  if ($("#lstand")) $("#lstand").onclick = () => { G = null; renderLernstand(t.id); };
   if (next) $("#next").onclick = () => { G = null; renderTopic(next.id); };
   $("#list").onclick = () => { G = null; renderGrammar(); };
   $("#toCal").onclick = () => { G = null; renderCalendar(); scrollTo(0, 0); };
