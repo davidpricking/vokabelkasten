@@ -148,7 +148,9 @@ async function copyText(text) {
 function norm(s) {
   return String(s).toLowerCase().replace(/[’‘`´]/g, "'").replace(/\s+[-–—]\s+|\s*[–—]\s*/g, " ").replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
 }
+// Komma, Schrägstrich, Semikolon trennen gleichwertige Antworten (can't, cannot). Nicht bei Sätzen: „Hello, I'm ...“ heißt nicht „hello“.
 function alts(s) { return String(s).split(/\s*[,/;]\s*/).map(norm).filter(Boolean); }
+function altsCheck(s) { return /[?!.…]/.test(String(s).replace(/\([^)]*\)/g, "")) ? [] : alts(s); }
 function variants(a) { if (!isEn()) return [a]; return a.startsWith("to ") ? [a, a.slice(3)] : [a, "to " + a]; }
 function lev(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 9;
@@ -156,12 +158,34 @@ function lev(a, b) {
   for (let i = 1; i <= m; i++) { const c = [i]; for (let j = 1; j <= n; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
   return p[n];
 }
+// Für Sätze: Satzzeichen, Gedankenstriche und Groß-/Kleinschreibung zählen nicht, Kurz- und Langform sind gleich (I'm = I am, don't = do not).
+// 'd kann would oder had sein, 's nach Pronomen is oder has: beide Lesarten gelten.
+const CONTR = [[/\bcan't\b/g, "can not"], [/\bcannot\b/g, "can not"], [/\bwon't\b/g, "will not"], [/\bshan't\b/g, "shall not"], [/\bain't\b/g, "am not"],
+  [/n't\b/g, " not"], [/'m\b/g, " am"], [/'re\b/g, " are"], [/'ll\b/g, " will"], [/'ve\b/g, " have"], [/\blet's\b/g, "let us"]];
+const S_PRON = /\b(he|she|it|that|what|where|who|there|here|how|when|why|this|everything|nothing|something)'s\b/g;
+function canonKeys(s) {
+  let t = String(s).toLowerCase().replace(/[’‘`´]/g, "'");
+  CONTR.forEach(([r, w]) => t = t.replace(r, w));
+  const out = [];
+  [["is", "would"], ["has", "had"]].forEach(([sv, dv]) => {
+    const u = t.replace(S_PRON, `$1 ${sv}`).replace(/\b(i|you|he|she|it|we|they|that|there|who)'d\b/g, `$1 ${dv}`)
+      .replace(/[^\p{L}\d' ]+/gu, " ").replace(/'/g, "").replace(/\s+/g, " ").trim();
+    out.push(u);
+  });
+  return [...new Set(out)];
+}
 // "good" | "near" (ein Tippfehler) | "bad"
 function check(input, solution) {
   const x = norm(input); if (!x) return "bad";
-  const options = [norm(solution), ...alts(solution)];
+  const options = [norm(solution), ...altsCheck(solution)];
   for (const o of options) if (variants(o).includes(x)) return "good";
+  // Ganze Sätze und Wendungen: tolerant vergleichen (Kurzformen, Satzzeichen, Gedankenstrich)
+  // Klammern im Buch: „Where's ...? (= Where is ...?)“ – mit und ohne Klammer und der Inhalt nach „=“ gelten
+  const bare = String(solution).replace(/\([^)]*\)/g, " ").trim(), inner = [...String(solution).matchAll(/\(\s*=?\s*([^)]*)\)/g)].map(m => m[1]);
+  const xk = canonKeys(input), ok = [solution, bare, ...inner, ...altsCheck(solution), ...altsCheck(bare)].filter(Boolean).flatMap(o => variants(norm(o)).flatMap(canonKeys));
+  if (xk.some(k => k && ok.includes(k))) return "good";
   for (const o of options) for (const v of variants(o)) if (v.length >= 4 && lev(x, v) === 1) return "near";
+  for (const k of xk) for (const o of ok) if (o.length >= 4 && lev(k, o) <= (o.length >= 20 ? 2 : 1)) return "near";
   return "bad";
 }
 
@@ -743,7 +767,7 @@ function startRound(unit) {
     pick = shuffle(cardsL().filter(c => (c.tags || []).includes(t) && (c.level || !isPaused(c)))).sort((a, b) => a.level - b.level).slice(0, 20);
     pick = shuffle(pick).slice(0, ROUND_SIZE);
   } else if (unit) {
-    pick = shuffle(cardsL().filter(c => c.unit === unit)).slice(0, 20);
+    pick = shuffle(cardsL().filter(c => c.unit === unit && (c.level || !isPaused(c)))).slice(0, 20);   // nur, was in der Schule schon dran war
   } else {
     pick = dueToday().slice(0, ROUND_SIZE);
     if (pick.length < ROUND_SIZE) pick = pick.concat(newCards().slice(0, Math.min(newAllowed(), ROUND_SIZE - pick.length)));
@@ -2836,7 +2860,7 @@ function renderDuelSetup() {
   $("#back").onclick = renderHome;
   $("#duelStart").onclick = () => {
     const o = $("#duelOther").value.trim() || "Papa"; S.duelOther = o; save();
-    const all = cardsL().filter(c => c.en && c.de);
+    const all = cardsL().filter(c => c.en && c.de && (c.level || !isPaused(c)));
     const pick = [...shuffle(all.filter(c => c.level > 0)), ...shuffle(all.filter(c => !c.level))].slice(0, DUEL_N);
     D = { m: "duel", p: [newPlayer(me), newPlayer(o === me ? o + " 2" : o)], cur: 0, i: 0, q: makeQuestions(pick) };
     duelHandover();
