@@ -1940,11 +1940,15 @@ function gmark(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>").r
 function gStars(r) { if (!r) return ""; const n = r.best >= 1 ? 3 : r.best >= .75 ? 2 : 1; return "★".repeat(n) + "☆".repeat(3 - n); }
 // Grammatik-Kasten: Geübte Themen bekommen ein Fach und melden sich in wachsenden Abständen in der Tagesrunde.
 // Haken für „Wir sind bei“ (Lernlogik): gesperrte Themen kommen nicht in die Tagesrunde.
-// Grammatik aus Camden Town 5 (band ct-N) kommt erst, wenn Theme N im Buch erreicht ist („Wir sind bei“).
+// Grammatik aus Camden Town 5 (band ct-N) und 6 (band ct6-N) kommt erst, wenn Theme N im Buch erreicht ist („Wir sind bei“).
+// Mit part ("A"/"B") erst, wenn dieser Part erreicht ist.
 function gUnlocked(t) {
-  const m = /^ct-(\d+)$/.exec(t.band || ""); if (!m) return true;
-  const re = new RegExp(`^Theme ${m[1]}\\b`), cs = cardsL().filter(c => /^Camden Town 5/.test(c.book || "") && re.test(c.unit));
-  return !cs.length || cs.some(c => !isPaused(c));
+  const m = /^ct(6)?-(\d+)$/.exec(t.band || ""); if (!m) return true;
+  const bk = new RegExp(`^Camden Town ${m[1] || 5}`), re = new RegExp(`^Theme ${m[2]}\\b`);
+  const cs = cardsL().filter(c => bk.test(c.book || "") && re.test(c.unit));
+  if (!cs.length) return true;
+  const ps = t.part ? cs.filter(c => String(c.part || "").startsWith(t.part)) : cs;
+  return (ps.length ? ps : cs).some(c => !isPaused(c));
 }
 function gDue() {
   const d = gData(); if (!d) return [];

@@ -1,6 +1,7 @@
 // Grammatik-Themen nach dem Bildungsplan Baden-Württemberg (Gymnasium, G9, Fassung V3.0 vom 23. März 2026).
 // Der Bildungsplan nennt nur Doppelklassen (5/6, 7/8 …). Klasse 5 folgt der Reihenfolge des Lehrwerks
-// Camden Town 5 (Gymnasium), Theme 1 bis 6. Die übrigen Themen von 5/6 stehen vorläufig unter Klasse 6.
+// Camden Town 5 (Gymnasium), Theme 1 bis 6, Klasse 6 der Reihenfolge von Camden Town 6 (Inhaltsverzeichnis).
+// part: "A"/"B" = Part im Theme; das Thema kommt in die Tagesrunde, sobald dieser Part bei „Wir sind bei“ erreicht ist.
 // Die Zuordnung lässt sich pro Thema über "band" ändern.
 //
 // Aufbau eines Themas:
@@ -65,6 +66,13 @@ window.GRAMMAR = {
       { id: "ct-5", group: "Klasse 5 · Camden Town", label: "Theme 5 · Pets and animals" },
       { id: "ct-6", group: "Klasse 5 · Camden Town", label: "Theme 6 · Holidays in Britain", note: "Im Buch freiwillig. Keine neue Grammatik, nur Wiederholung",
         review: ["simplepresent", "presentprog", "questions", "bequestions"] },
+      { id: "ct6-1", group: "Klasse 6 · Camden Town", label: "Theme 1 · Back to Camden Town" },
+      { id: "ct6-2", group: "Klasse 6 · Camden Town", label: "Theme 2 · Celebrations" },
+      { id: "ct6-3", group: "Klasse 6 · Camden Town", label: "Theme 3 · London" },
+      { id: "ct6-4", group: "Klasse 6 · Camden Town", label: "Theme 4 · School clubs" },
+      { id: "ct6-5", group: "Klasse 6 · Camden Town", label: "Theme 5 · Out and about" },
+      { id: "ct6-6", group: "Klasse 6 · Camden Town", label: "Theme 6 · Summer in the city", note: "Im Buch freiwillig. Keine neue Grammatik, nur Wiederholung",
+        review: ["simplepast", "questions"] },
       { id: "6", label: "Klasse 6", note: "Bildungsplan Klassen 5/6, Reihenfolge ist ein Vorschlag" },
       { id: "7/8", label: "Klassen 7/8" },
       { id: "9/10", label: "Klassen 9/10" },
@@ -488,8 +496,8 @@ window.GRAMMAR = {
           ["pick", "I like ___ T-shirt. (dieses hier)", ["this", "these", "that"]],
           ["pick", "___ are my friends Tom and Ben. (diese hier)", ["These", "This", "That"]]
         ] },
-      // ---------- Klasse 6 ----------
-      { id: "simplepast", band: "6", t: "Simple past", de: "Was früher passiert ist",
+      // ---------- Klasse 6, Camden Town 6 (Reihenfolge wie im Buch) ----------
+      { id: "simplepast", band: "ct6-1", part: "A", t: "Simple past", de: "Was früher passiert ist",
         explain: [
           "Mit dem simple past erzählst du, was in der Vergangenheit passiert und abgeschlossen ist. Signalwörter: yesterday, last week, two days ago, in 2020.",
           "Regelmäßige Verben bekommen **-ed**: play → play**ed**, live → live**d**, stop → sto**pped**, cry → cr**ied**.",
@@ -507,25 +515,24 @@ window.GRAMMAR = {
           ["pick", "We didn't ___ the bus.", ["catch", "caught", "catched"], "Nach didn't steht die Grundform."],
           ["gap", "They ___ at home last weekend. (nicht sein)", "weren't|were not", "they → were, verneint weren't.", ["wasn't", "didn't be"]]
         ] },
-      { id: "countable", band: "6", t: "Countable and uncountable nouns", de: "Zählbar oder nicht",
+      { id: "goingto", band: "ct6-2", part: "A", t: "going to-future", de: "Pläne und Absichten",
         explain: [
-          "Zählbare Nomen kannst du zählen: one apple, two apples.",
-          "Nicht zählbare Nomen haben **keine Mehrzahl** und **kein a/an**: water, milk, money, bread, information, homework, advice, furniture, news.",
-          "Achtung: Manches ist im Deutschen zählbar, im Englischen nicht. Informationen → **information**, Hausaufgaben → **homework**, Ratschläge → **advice**.",
-          "Wenn du doch zählen willst: **a piece of** cake, **a bottle of** water, **a glass of** milk."
+          "Mit **going to** sprichst du über **Pläne**: I**'m going to** visit my aunt next week.",
+          "Und über etwas, das man **schon kommen sieht**: Look at the clouds! It**'s going to** rain.",
+          "Form: **am/is/are + going to + Grundform**."
         ],
-        ex: [["My **homework is** easy today.", "Meine Hausaufgaben sind heute leicht."], ["Can I have **a glass of** milk?", "Kann ich ein Glas Milch haben?"]],
+        ex: [["I**'m going to** learn the guitar.", "Ich werde Gitarre lernen."], ["Watch out! You**'re going to** fall!", "Pass auf! Du fällst gleich!"]],
         tasks: [
-          ["pick", "My ___ is too difficult.", ["homework", "homeworks"], "homework hat keine Mehrzahl."],
-          ["pick", "Can you give me some ___?", ["advice", "advices"], "advice hat keine Mehrzahl."],
-          ["pick", "I'd like ___ water.", ["a glass of", "a", "an"], "water ist nicht zählbar."],
-          ["pick", "The furniture in my room ___ new.", ["is", "are"], "furniture ist nicht zählbar, also is."],
-          ["pick", "There ___ two apples on the table.", ["are", "is"], "apples ist zählbar und Mehrzahl."],
-          ["gap", "Can I have a ___ of cake? (Stück)", "piece", "", ["much", "many"]],
-          ["pick", "I need some ___ about the trip.", ["information", "informations"], "information hat keine Mehrzahl."],
-          ["pick", "I've got ___ good news!", ["some", "a"], "news ist nicht zählbar."]
+          ["gap", "I ___ going to buy a new bike.", "am|'m", "", ["is", "are"]],
+          ["gap", "My sister ___ going to learn Spanish.", "is|'s", "", ["are", "am"]],
+          ["pick", "We are going to ___ a party.", ["have", "having", "has"], "Nach going to steht die Grundform."],
+          ["gap", "Look at that boy! He ___ fall! (going to)", "is going to|'s going to", "", ["will going to", "is go to"]],
+          ["pick", "___ you going to watch the match?", ["Are", "Do", "Will"], "Frage: Are you going to … ?"],
+          ["order", "I am going to visit my grandma."],
+          ["pick", "They ___ going to stay at home.", ["are", "is"]],
+          ["gap", "What ___ you going to do this weekend?", "are", "", ["is", "do"]]
         ] },
-      { id: "quantifiers", band: "6", t: "Quantifiers", de: "much, many, a little, a few",
+      { id: "quantifiers", band: "ct6-2", part: "A", t: "Quantifiers", de: "much, many, a little, a few",
         explain: [
           "**many** und **a few** stehen bei zählbaren Nomen in der Mehrzahl: many friends, a few apples.",
           "**much** und **a little** stehen bei nicht zählbaren Nomen: much money, a little milk.",
@@ -543,60 +550,25 @@ window.GRAMMAR = {
           ["pick", "There are ___ people at the party.", ["a lot of", "much"], "a lot of passt zu allem."],
           ["gap", "How ___ is the T-shirt? – It's £10.", "much", "", ["many", "more"]]
         ] },
-      { id: "presentperfect", band: "6", t: "Present perfect simple", de: "Schon passiert, wichtig für jetzt",
+      { id: "countable", band: "ct6-2", part: "A", t: "Countable and uncountable nouns", de: "Zählbar oder nicht",
         explain: [
-          "Mit dem present perfect sagst du, dass etwas **schon passiert ist** und für **jetzt** wichtig ist. Wann genau, ist egal. Signalwörter: already, ever, never, just, yet.",
-          "Form: **have/has + 3. Form** des Verbs: I **have finished**. She **has seen** it.",
-          "Regelmäßige Verben: -ed (played). Unregelmäßige aus der Tabelle: go – went – **gone**, see – saw – **seen**, eat – ate – **eaten**.",
-          "Kurzformen: I**'ve**, she**'s**, I **haven't**, he **hasn't**."
+          "Zählbare Nomen kannst du zählen: one apple, two apples.",
+          "Nicht zählbare Nomen haben **keine Mehrzahl** und **kein a/an**: water, milk, money, bread, information, homework, advice, furniture, news.",
+          "Achtung: Manches ist im Deutschen zählbar, im Englischen nicht. Informationen → **information**, Hausaufgaben → **homework**, Ratschläge → **advice**.",
+          "Wenn du doch zählen willst: **a piece of** cake, **a bottle of** water, **a glass of** milk."
         ],
-        ex: [["I **have** just **finished** my homework.", "Ich habe gerade meine Hausaufgaben fertig gemacht."], ["**Have** you ever **been** to London?", "Warst du schon einmal in London?"]],
+        ex: [["My **homework is** easy today.", "Meine Hausaufgaben sind heute leicht."], ["Can I have **a glass of** milk?", "Kann ich ein Glas Milch haben?"]],
         tasks: [
-          ["gap", "I ___ my homework. (finish)", "have finished|'ve finished", "", ["finished", "have finish"]],
-          ["gap", "She ___ this film three times. (see)", "has seen|'s seen", "see – saw – seen.", ["has saw", "have seen"]],
-          ["pick", "Have you ___ been to London?", ["ever", "yet"], "Schon einmal = ever."],
-          ["gap", "We have just ___ lunch. (eat)", "eaten", "eat – ate – eaten.", ["ate", "eat"]],
-          ["pick", "Tom ___ lost his key.", ["has", "have"], "Tom = he, also has."],
-          ["pick", "They have ___ to the beach.", ["gone", "went", "go"], "Nach have steht die 3. Form."],
-          ["pick", "I have never ___ a horse.", ["ridden", "rode", "ride"], "ride – rode – ridden."],
-          ["gap", "My parents ___ a new car. (buy)", "have bought|'ve bought", "buy – bought – bought.", ["have buyed", "bought"]]
+          ["pick", "My ___ is too difficult.", ["homework", "homeworks"], "homework hat keine Mehrzahl."],
+          ["pick", "Can you give me some ___?", ["advice", "advices"], "advice hat keine Mehrzahl."],
+          ["pick", "I'd like ___ water.", ["a glass of", "a", "an"], "water ist nicht zählbar."],
+          ["pick", "The furniture in my room ___ new.", ["is", "are"], "furniture ist nicht zählbar, also is."],
+          ["pick", "There ___ two apples on the table.", ["are", "is"], "apples ist zählbar und Mehrzahl."],
+          ["gap", "Can I have a ___ of cake? (Stück)", "piece", "", ["much", "many"]],
+          ["pick", "I need some ___ about the trip.", ["information", "informations"], "information hat keine Mehrzahl."],
+          ["pick", "I've got ___ good news!", ["some", "a"], "news ist nicht zählbar."]
         ] },
-      { id: "goingto", band: "6", t: "going to-future", de: "Pläne und Absichten",
-        explain: [
-          "Mit **going to** sprichst du über **Pläne**: I**'m going to** visit my aunt next week.",
-          "Und über etwas, das man **schon kommen sieht**: Look at the clouds! It**'s going to** rain.",
-          "Form: **am/is/are + going to + Grundform**."
-        ],
-        ex: [["I**'m going to** learn the guitar.", "Ich werde Gitarre lernen."], ["Watch out! You**'re going to** fall!", "Pass auf! Du fällst gleich!"]],
-        tasks: [
-          ["gap", "I ___ going to buy a new bike.", "am|'m", "", ["is", "are"]],
-          ["gap", "My sister ___ going to learn Spanish.", "is|'s", "", ["are", "am"]],
-          ["pick", "We are going to ___ a party.", ["have", "having", "has"], "Nach going to steht die Grundform."],
-          ["gap", "Look at that boy! He ___ fall! (going to)", "is going to|'s going to", "", ["will going to", "is go to"]],
-          ["pick", "___ you going to watch the match?", ["Are", "Do", "Will"], "Frage: Are you going to … ?"],
-          ["order", "I am going to visit my grandma."],
-          ["pick", "They ___ going to stay at home.", ["are", "is"]],
-          ["gap", "What ___ you going to do this weekend?", "are", "", ["is", "do"]]
-        ] },
-      { id: "will", band: "6", t: "will-future", de: "Vorhersagen und spontane Entschlüsse",
-        explain: [
-          "Mit **will** sagst du voraus, was passieren wird: I think it **will** rain tomorrow.",
-          "Auch für spontane Entschlüsse: The phone is ringing. – I**'ll** get it!",
-          "Form: **will + Grundform**, für alle Personen gleich. Kurz: I'll, she'll. Verneint: **won't** (will not).",
-          "Achtung, falscher Freund: I will = ich **werde**, nicht ich will. Ich will = I **want**."
-        ],
-        ex: [["Maybe we **will** live on Mars one day.", "Vielleicht werden wir eines Tages auf dem Mars leben."], ["I **won't** tell anyone.", "Ich werde es niemandem sagen."]],
-        tasks: [
-          ["gap", "I think it ___ snow tomorrow.", "will|'ll", "", ["is", "going"]],
-          ["pick", "She will ___ you later.", ["call", "calls", "to call"], "Nach will steht die Grundform."],
-          ["gap", "Don't worry, I ___ tell anyone. (nicht werden)", "won't|will not", "", ["don't", "not will"]],
-          ["pick", "„Ich will ein Eis.“ heißt auf Englisch:", ["I want an ice cream.", "I will an ice cream."], "ich will = I want."],
-          ["pick", "Maybe we ___ live on Mars one day.", ["will", "are"]],
-          ["order", "I think you will like the film."],
-          ["pick", "It's cold in here. – OK, I ___ close the window.", ["'ll", "am"], "Spontaner Entschluss: I'll."],
-          ["gap", "___ you help me, please? (werden)", "Will", "", ["Do", "Are"]]
-        ] },
-      { id: "comparison", band: "6", t: "Comparison of adjectives", de: "Steigerung und Vergleich",
+      { id: "comparison", band: "ct6-2", part: "B", t: "Comparison of adjectives", de: "Steigerung und Vergleich",
         explain: [
           "Kurze Adjektive und solche auf -y: **-er** und **the -est**: small – small**er** – the small**est**, happy – happ**ier** – the happ**iest**, big – bi**gg**er – the bi**gg**est.",
           "Lange Adjektive: **more** und **the most**: interesting – **more** interesting – **the most** interesting.",
@@ -614,7 +586,46 @@ window.GRAMMAR = {
           ["pick", "My bike is as fast ___ yours.", ["as", "than"], "as … as."],
           ["gap", "This is the ___ mountain in England. (high)", "highest", "", ["higher", "most high"]]
         ] },
-      { id: "adverbsmanner", band: "6", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
+      { id: "presentperfect", band: "ct6-3", part: "A", t: "Present perfect simple", de: "Schon passiert, wichtig für jetzt",
+        explain: [
+          "Mit dem present perfect sagst du, dass etwas **schon passiert ist** und für **jetzt** wichtig ist. Wann genau, ist egal. Signalwörter: already, ever, never, just, yet.",
+          "Form: **have/has + 3. Form** des Verbs: I **have finished**. She **has seen** it.",
+          "Regelmäßige Verben: -ed (played). Unregelmäßige aus der Tabelle: go – went – **gone**, see – saw – **seen**, eat – ate – **eaten**.",
+          "Kurzformen: I**'ve**, she**'s**, I **haven't**, he **hasn't**."
+        ],
+        ex: [["I **have** just **finished** my homework.", "Ich habe gerade meine Hausaufgaben fertig gemacht."], ["**Have** you ever **been** to London?", "Warst du schon einmal in London?"]],
+        tasks: [
+          ["gap", "I ___ my homework. (finish)", "have finished|'ve finished", "", ["finished", "have finish"]],
+          ["gap", "She ___ this film three times. (see)", "has seen|'s seen", "see – saw – seen.", ["has saw", "have seen"]],
+          ["pick", "Have you ___ been to London?", ["ever", "yet"], "Schon einmal = ever."],
+          ["gap", "We have just ___ lunch. (eat)", "eaten", "eat – ate – eaten.", ["ate", "eat"]],
+          ["pick", "Tom ___ lost his key.", ["has", "have"], "Tom = he, also has."],
+          ["pick", "They have ___ to the beach.", ["gone", "went", "go"], "Nach have steht die 3. Form."],
+          ["pick", "I have never ___ a horse.", ["ridden", "rode", "ride"], "ride – rode – ridden."],
+          ["gap", "My parents ___ a new car. (buy)", "have bought|'ve bought", "buy – bought – bought.", ["have buyed", "bought"]]
+        ] },
+      { id: "ppsp", band: "ct6-3", part: "B", t: "Present perfect or simple past", de: "Welche Zeit passt?" },
+      { id: "qtags", band: "ct6-3", part: "B", t: "Question tags", de: "…, oder? / …, nicht wahr?" },
+      { id: "posspron", band: "ct6-3", part: "B", t: "Possessive pronouns", de: "mine, yours, his …" },
+      { id: "will", band: "ct6-4", part: "A", t: "will-future", de: "Vorhersagen und spontane Entschlüsse",
+        explain: [
+          "Mit **will** sagst du voraus, was passieren wird: I think it **will** rain tomorrow.",
+          "Auch für spontane Entschlüsse: The phone is ringing. – I**'ll** get it!",
+          "Form: **will + Grundform**, für alle Personen gleich. Kurz: I'll, she'll. Verneint: **won't** (will not).",
+          "Achtung, falscher Freund: I will = ich **werde**, nicht ich will. Ich will = I **want**."
+        ],
+        ex: [["Maybe we **will** live on Mars one day.", "Vielleicht werden wir eines Tages auf dem Mars leben."], ["I **won't** tell anyone.", "Ich werde es niemandem sagen."]],
+        tasks: [
+          ["gap", "I think it ___ snow tomorrow.", "will|'ll", "", ["is", "going"]],
+          ["pick", "She will ___ you later.", ["call", "calls", "to call"], "Nach will steht die Grundform."],
+          ["gap", "Don't worry, I ___ tell anyone. (nicht werden)", "won't|will not", "", ["don't", "not will"]],
+          ["pick", "„Ich will ein Eis.“ heißt auf Englisch:", ["I want an ice cream.", "I will an ice cream."], "ich will = I want."],
+          ["pick", "Maybe we ___ live on Mars one day.", ["will", "are"]],
+          ["order", "I think you will like the film."],
+          ["pick", "It's cold in here. – OK, I ___ close the window.", ["'ll", "am"], "Spontaner Entschluss: I'll."],
+          ["gap", "___ you help me, please? (werden)", "Will", "", ["Do", "Are"]]
+        ] },
+      { id: "adverbsmanner", band: "ct6-4", part: "B", rez: true, t: "Adverbs of manner", de: "Wie jemand etwas tut",
         explain: [
           "Ein Adjektiv beschreibt ein Nomen: a **quiet** girl. Ein Adverb beschreibt, **wie** jemand etwas tut: She speaks **quietly**.",
           "Meist hängt man **-ly** an: slow → slow**ly**, careful → careful**ly**, happy → happ**ily**.",
@@ -633,18 +644,18 @@ window.GRAMMAR = {
           ["pick", "Lisa works ___. She is always busy.", ["hard", "hardly"], "hard bleibt hard. hardly heißt kaum."]
         ] },
 
+      { id: "modalsubst", band: "ct6-5", part: "A", t: "Modal verbs and substitutes", de: "have to, be able to, be allowed to" },
+      { id: "if12", band: "ct6-5", part: "B", t: "Conditional clauses I and II", de: "if-Sätze Typ 1 und 2" },
+      { id: "adverbscomp", band: "ct6-5", part: "B", t: "Comparison of adverbs", de: "Handlungen vergleichen" },
       // ---------- Klassen 7/8 (Übungen folgen) ----------
       { id: "zeroarticle1", band: "7/8", t: "(Zero) article", de: "Artikel bei Gebäuden, Institutionen, Namen" },
-      { id: "if12", band: "7/8", t: "Conditional clauses I and II", de: "if-Sätze Typ 1 und 2" },
       { id: "adverbialclauses", band: "7/8", t: "Adverbial clauses", de: "Nebensätze für Zeit, Grund, Folge, Zweck, Gegensatz" },
       { id: "relative", band: "7/8", t: "Relative clauses", de: "Relativsätze mit who, which, that, whose" },
-      { id: "ppsp", band: "7/8", t: "Present perfect / simple past", de: "Die beiden Zeiten im Vergleich" },
       { id: "ppprog", band: "7/8", t: "Present perfect progressive", de: "Seit wann etwas andauert" },
       { id: "pastprog", band: "7/8", t: "Past progressive", de: "Was gerade passierte, als …" },
       { id: "pastperfect", band: "7/8", t: "Past perfect", de: "Vorvergangenheit" },
       { id: "pastperfectprog", band: "7/8", rez: true, t: "Past perfect progressive", de: "Verlaufsform der Vorvergangenheit" },
       { id: "adverbsdegree", band: "7/8", t: "Adverbs of manner and degree", de: "Adverbien bilden und steigern" },
-      { id: "adverbscomp", band: "7/8", t: "Comparison of adverbs", de: "Handlungen vergleichen" },
       { id: "passive1", band: "7/8", rez: true, t: "Passive voice", de: "Passiv mit und ohne by" },
       { id: "reported", band: "7/8", t: "Reported speech", de: "Indirekte Rede mit Zeitverschiebung, Fragen und Aufforderungen" },
 
