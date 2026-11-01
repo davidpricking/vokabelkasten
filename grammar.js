@@ -1539,3 +1539,135 @@ window.GRAMMAR = {
   };
   window.GRAMMAR.Englisch.topics.forEach(t => { if (V[t.id]) { t.vgl = V[t.id]; t.vglEx = E[t.id] || []; } if (AUS[t.id]) t.aus = AUS[t.id]; });
 })();
+
+// Fehlerkategorien + Fragenpool (Testpaket simple past)
+// cats: { schlüssel: { n: Name der Kategorie, tip: Merksatz für die Rückmeldung } }
+// bank: { schlüssel: [Aufgaben im gewohnten Format] }; die App zieht pro Runde 10–15 Fragen, jede Kategorie mindestens einmal.
+(function () {
+  const put = (id, extra) => Object.assign(window.GRAMMAR.Englisch.topics.find(t => t.id === id), extra);
+  put("simplepast", {
+    cats: {
+      ed: { n: "Regelmäßige Verben mit -ed", tip: "Regelmäßige Verben bekommen in der Vergangenheit **-ed**: play → play**ed**." },
+      spell: { n: "Schreibung bei -ed", tip: "Auf -e nur **-d** (live**d**), Konsonant + y → **-ied** (cr**ied**), kurzer Vokal + ein Konsonant → verdoppeln (sto**pp**ed), Vokal + y bleibt (play**ed**)." },
+      irr: { n: "Unregelmäßige Verben", tip: "Unregelmäßige Verben haben eine eigene Form: go → **went**, see → **saw**. Nie ~~goed~~." },
+      nos: { n: "Kein -s bei he/she/it", tip: "Im simple past ist die Form für alle Personen gleich: he **went**, nicht ~~wents~~." },
+      wasw: { n: "was oder were", tip: "I/he/she/it → **was**, you/we/they → **were**." },
+      neg: { n: "Verneinung mit didn't", tip: "**didn't + Grundform**: I didn't **go**. Nicht ~~didn't went~~, weil didn't die Vergangenheit schon trägt." },
+      negbe: { n: "Verneinung bei was/were", tip: "Bei be kein did: **wasn't**, **weren't**. Nicht ~~didn't be~~." },
+      signal: { n: "Zeit wählen: yesterday, ago, last …", tip: "Steht ein Zeitpunkt in der Vergangenheit dabei (yesterday, last …, … ago), nimmst du **simple past**, nie ~~have played~~." }
+    },
+    bank: {
+      ed: [
+        ["pick", "Yesterday we ___ football in the park. (play)", ["played", "play", "plays"], "yesterday = Vergangenheit: play + -ed."],
+        ["pick", "I ___ my grandma last Sunday. (visit)", ["visited", "visit", "visits"], "last Sunday = Vergangenheit: visit + -ed."],
+        ["pick", "We ___ to music after dinner yesterday. (listen)", ["listened", "listen", "listening"], "Vergangenheit: listen + -ed."],
+        ["pick", "The film ___ at eight o'clock last night. (start)", ["started", "start", "starts"], "last night = Vergangenheit: start + -ed."]
+      ],
+      spell: [
+        ["pick", "The bus ___ in front of the school. (stop)", ["stopped", "stoped", "stopt"], "Kurzer Vokal + ein Konsonant: verdoppeln: stopped."],
+        ["pick", "The baby ___ all night. (cry)", ["cried", "cryed", "cryd"], "Konsonant + y wird zu -ied."],
+        ["pick", "We ___ in Manchester when I was little. (live)", ["lived", "liveed", "livd"], "Endet das Verb auf -e, kommt nur -d dazu."],
+        ["pick", "They ___ cards all evening. (play)", ["played", "plaied", "playd"], "Vokal + y bleibt: played."],
+        ["pick", "I ___ the heavy box to the car. (carry)", ["carried", "carryed", "carred"], "Konsonant + y wird zu -ied."]
+      ],
+      irr: [
+        ["pick", "Last summer I ___ to Spain. (go)", ["went", "goed", "go"], "go ist unregelmäßig: went."],
+        ["pick", "She ___ a fox in the garden. (see)", ["saw", "seed", "seen"], "see – saw. seen ist die 3. Form, die braucht have."],
+        ["pick", "We ___ pizza for dinner yesterday. (have)", ["had", "haved", "has"], "have – had."],
+        ["pick", "Tom ___ home at six. (come)", ["came", "comed", "come"], "come – came."],
+        ["pick", "I ___ a new book last week. (buy)", ["bought", "buyed", "buy"], "buy – bought."],
+        ["pick", "My dad ___ me a postcard from London. (send)", ["sent", "sended", "send"], "send – sent."]
+      ],
+      nos: [
+        ["pick", "Yesterday my brother ___ to the cinema.", ["went", "wents", "goes"], "Im simple past gibt es kein -s bei he/she/it."],
+        ["pick", "Last night she ___ a long email.", ["wrote", "wrotes", "writes"], "write – wrote, für alle Personen gleich."],
+        ["pick", "Emma ___ her bike to school yesterday.", ["rode", "rodes", "rides"], "ride – rode, ohne -s."]
+      ],
+      wasw: [
+        ["pick", "I ___ tired after the trip.", ["was", "were", "am"], "I → was."],
+        ["pick", "We ___ at the beach all day yesterday.", ["were", "was", "are"], "we → were."],
+        ["pick", "The weather ___ great last weekend.", ["was", "were", "is"], "the weather = it → was."],
+        ["pick", "My cousins ___ very nice to me last summer.", ["were", "was", "are"], "my cousins = they → were."]
+      ],
+      neg: [
+        ["pick", "I didn't ___ my homework.", ["do", "did", "does"], "Nach didn't steht die Grundform."],
+        ["pick", "We ___ the bus. We walked. (nicht nehmen)", ["didn't take", "didn't took", "not took"], "didn't + Grundform: didn't take."],
+        ["pick", "She ___ the film. (nicht mögen)", ["didn't like", "didn't liked", "doesn't liked"], "didn't + Grundform: didn't like."],
+        ["pick", "„Ich habe ihn nicht gesehen.“ heißt:", ["I didn't see him.", "I didn't saw him.", "I saw him not."], "Verneinung mit didn't + Grundform, nicht wie im Deutschen nachgestellt."]
+      ],
+      negbe: [
+        ["pick", "It ___ cold yesterday. (war nicht)", ["wasn't", "didn't be", "weren't"], "Bei be kein did: it → wasn't."],
+        ["pick", "They ___ at home last weekend. (waren nicht)", ["weren't", "wasn't", "didn't be"], "they → weren't."],
+        ["pick", "The test ___ difficult. It was easy.", ["wasn't", "didn't", "weren't"], "the test = it → wasn't."]
+      ],
+      signal: [
+        ["pick", "I ___ my aunt two days ago.", ["visited", "have visited", "visit"], "two days ago = Zeitpunkt in der Vergangenheit: simple past."],
+        ["pick", "Yesterday we ___ a great film.", ["watched", "have watched", "watch"], "Mit yesterday nie have + 3. Form."],
+        ["pick", "I usually walk to school, but yesterday I ___ the bus.", ["took", "take", "have taken"], "yesterday: simple past."],
+        ["pick", "„Letzten Sommer bin ich nach Wales gefahren.“ heißt:", ["Last summer I went to Wales.", "Last summer I have gone to Wales.", "Last summer I am gone to Wales."], "Wir erzählen im Perfekt, Englisch im simple past."]
+      ]
+    }
+  });
+  put("pastquestions", {
+    cats: {
+      did: { n: "Ja/Nein-Fragen mit Did", tip: "Fragen in der Vergangenheit beginnen mit **Did**: **Did** you …? Nicht umstellen wie im Deutschen (~~Went you …?~~)." },
+      base: { n: "Grundform nach did", tip: "Nach did steht die **Grundform**: Did you **go**? Nicht ~~Did you went?~~" },
+      short: { n: "Kurzantworten", tip: "Yes, I **did**. / No, I **didn't**. Das Verb wird nicht wiederholt." },
+      wh: { n: "Fragen mit Fragewort", tip: "**Fragewort + did + Person + Grundform**: Where **did** you **go**? Nicht ~~Where you went?~~" },
+      be: { n: "Fragen mit was/were/could (ohne did)", tip: "Bei was/were und could kein did, nur umstellen: **Were** you tired? **Could** you see it?" },
+      subj: { n: "Fragen nach dem, der etwas tat", tip: "Fragt who/what nach dem, der etwas tat, gibt es kein did: **Who won**? **What happened**?" },
+      dodid: { n: "do/does oder did?", tip: "Vergangenheit (yesterday, last …) → **did**. Gewohnheit jetzt (every day, now) → **do/does**." }
+    },
+    bank: {
+      did: [
+        ["pick", "___ you watch the match last night?", ["Did", "Do", "Were"], "Frage in der Vergangenheit: Did."],
+        ["pick", "___ Tom call you yesterday?", ["Did", "Does", "Was"], "yesterday: Did."],
+        ["pick", "„Hast du gestern gelesen?“ heißt:", ["Did you read yesterday?", "Read you yesterday?", "Have you read yesterday?"], "Englisch braucht did, kein Umstellen wie im Deutschen."],
+        ["pick", "___ they enjoy the party?", ["Did", "Were", "Have"], "Frage mit einem normalen Verb (enjoy) in der Vergangenheit: Did."]
+      ],
+      base: [
+        ["pick", "Did she ___ to the party?", ["go", "went", "goes"], "Nach did steht die Grundform."],
+        ["pick", "Did you ___ the new film?", ["see", "saw", "seen"], "Nach did die Grundform: see."],
+        ["pick", "Did your dad ___ dinner yesterday?", ["cook", "cooked", "cooks"], "Nach did die Grundform: cook."],
+        ["pick", "Wie fragst du richtig?", ["Did you buy a T-shirt?", "Did you bought a T-shirt?", "Did you buyed a T-shirt?"], "did trägt die Vergangenheit, das Verb bleibt Grundform."]
+      ],
+      short: [
+        ["pick", "Did you like the film? – Yes, I ___.", ["did", "liked", "do"], "Kurzantwort: Yes, I did."],
+        ["pick", "Did Tom call you? – No, he ___.", ["didn't", "doesn't", "wasn't"], "Verneint: No, he didn't."],
+        ["pick", "Did they win? – Yes, they ___.", ["did", "won", "do"], "Kurzantwort mit did, nicht mit dem Verb."],
+        ["pick", "Did it rain yesterday? – No, it ___.", ["didn't", "wasn't", "doesn't"], "Frage mit did → Antwort mit didn't."]
+      ],
+      wh: [
+        ["pick", "Where ___ you go on holiday last summer?", ["did", "were", "do"], "last summer: Fragewort, dann did."],
+        ["pick", "Wie fragst du richtig?", ["What did you buy?", "What you bought?", "What did you bought?"], "Fragewort – did – Person – Grundform."],
+        ["pick", "When ___ you get home last night?", ["did", "were", "have"], "Fragewort + did."],
+        ["pick", "Why ___ she leave early yesterday?", ["did", "was", "does"], "yesterday: Why did …?"],
+        ["order", "What time did the film start?", "Fragewort (What time), dann did, dann the film, dann start."]
+      ],
+      be: [
+        ["pick", "___ you tired after the trip?", ["Were", "Did", "Was"], "Bei be kein did: Were you …?"],
+        ["pick", "___ it cold in Scotland?", ["Was", "Did", "Were"], "it → Was, ohne did."],
+        ["pick", "Where ___ you yesterday afternoon?", ["were", "did", "was"], "Wo warst du? = Where were you?"],
+        ["pick", "„Konntest du die Bühne sehen?“ heißt:", ["Could you see the stage?", "Did you could see the stage?", "Could you saw the stage?"], "could ohne did, danach die Grundform."],
+        ["pick", "Was the party good? – Yes, it ___.", ["was", "did", "were"], "Frage mit was → Antwort mit was."]
+      ],
+      subj: [
+        ["pick", "Who ___ the match?", ["won", "did win", "did won"], "Who fragt nach dem Gewinner: kein did."],
+        ["pick", "What ___ at school today?", ["happened", "did happen", "did happened"], "What fragt nach dem, was passiert ist: kein did."],
+        ["pick", "„Wer hat das Fenster kaputt gemacht?“ heißt:", ["Who broke the window?", "Who did break the window?", "Who did broke the window?"], "Frage nach dem Täter: kein did."]
+      ],
+      dodid: [
+        ["pick", "___ you play tennis last Saturday?", ["Did", "Do", "Does"], "last Saturday: did."],
+        ["pick", "___ you play tennis every Saturday?", ["Do", "Did", "Are"], "every Saturday = Gewohnheit: do."],
+        ["pick", "What ___ you do yesterday evening?", ["did", "do", "does"], "yesterday: did."],
+        ["pick", "Where ___ your grandma live now?", ["does", "did", "do"], "now = Gegenwart, she → does."]
+      ]
+    }
+  });
+  // Pool flach machen: tasks = alle Fragen, catOf[i] = Kategorie der Frage i
+  window.GRAMMAR.Englisch.topics.forEach(t => {
+    if (!t.bank) return;
+    t.tasks = []; t.catOf = [];
+    Object.entries(t.bank).forEach(([k, ts]) => ts.forEach(x => { t.tasks.push(x); t.catOf.push(k); }));
+  });
+})();
