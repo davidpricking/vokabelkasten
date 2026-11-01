@@ -57,7 +57,8 @@ window.GRAMMAR = {
       "apologise": "sich entschuldigen", "novel": "Roman", "heat": "erhitzen, Hitze", "melt": "schmelzen", "pass": "bestehen", "study": "lernen", "tall": "groß (Körper)",
       "travel": "reisen", "lottery": "Lotterie", "earlier": "früher", "hurt": "weh tun", "match": "Spiel", "parent": "Elternteil",
       "brother": "Bruder", "allowed": "erlaubt (be allowed to = dürfen)", "able": "fähig (be able to = können)", "could": "konnte, könnte",
-      "twice": "zweimal", "as": "so … wie (as … as)", "uniform": "Uniform", "museum": "Museum", "photos": "Fotos", "wait": "warten",
+      "twice": "zweimal", "whose": "wessen, wem gehört", "mine": "meins", "yours": "deins, eures", "hers": "ihres", "ours": "unseres", "theirs": "ihres (Mehrzahl)",
+      "carefully": "vorsichtig", "slowly": "langsam", "faster": "schneller", "fault": "Schuld", "wrong": "falsch", "arrive": "ankommen", "as": "so … wie (as … as)", "uniform": "Uniform", "museum": "Museum", "photos": "Fotos", "wait": "warten",
       "early": "früh", "light": "Ampel, Licht", "road": "Straße", "cross": "überqueren"
     },
     bands: [
@@ -118,6 +119,24 @@ window.GRAMMAR = {
           ["pick", "I've got a cat and a dog. ___ cat is black.", ["The", "A", "An"], "Die Katze kennt man schon, also the."],
           ["pick", "I've got ___ idea!", ["an", "a"], "idea fängt mit einem Vokal-Laut an."],
           ["pick", "There's ___ elephant in the zoo.", ["an", "a"], "elephant fängt mit einem Vokal-Laut an."]
+        ] },
+      { id: "thereis", band: "ct-1", t: "There is / there are", de: "Es gibt …",
+        explain: [
+          "Mit **there is** und **there are** sagst du, was es irgendwo gibt oder was zu sehen ist.",
+          "**There is** (kurz: there's) steht vor der Einzahl: There's a desk in my room.",
+          "**There are** steht vor der Mehrzahl: There are two windows.",
+          "Verneint: There **isn't** a TV. There **aren't** any chairs. Fragen: **Is there** a cat? **Are there** any books?"
+        ],
+        ex: [["**There is** a pink school bag on the desk.", "Auf dem Tisch liegt eine pinke Schultasche."], ["**There are** twenty kids in my class.", "In meiner Klasse sind zwanzig Kinder."]],
+        tasks: [
+          ["pick", "___ a cat in the garden.", ["There is", "There are"], "a cat ist Einzahl."],
+          ["pick", "___ three books on the shelf.", ["There are", "There is"], "three books ist Mehrzahl."],
+          ["gap", "There ___ a big tree in our park.", "is|'s", "", ["are", "be"]],
+          ["gap", "There ___ lots of shops in Camden.", "are", "", ["is", "be"]],
+          ["pick", "___ there a bathroom upstairs?", ["Is", "Are"], "a bathroom ist Einzahl."],
+          ["pick", "There ___ any chairs in the room.", ["aren't", "isn't"], "chairs ist Mehrzahl."],
+          ["order", "There are two beds in my room."],
+          ["pick", "Are there any apples? – Yes, there ___.", ["are", "is"]]
         ] },
       { id: "tobe", part: "A", band: "ct-1", t: "Personal pronouns and to be", de: "ich, du, er … und sein",
         explain: [
@@ -182,24 +201,6 @@ window.GRAMMAR = {
           ["pick", "Where ___ my shoes?", ["are", "is", "am"], "my shoes = Mehrzahl, also are."],
           ["pick", "Wie fragst du richtig?", ["Where is the cat?", "Where the cat is?", "Where is cat the?"], "Fragewort, dann is, dann the cat."],
           ["order", "What colour is your bike?", "Fragewort (What colour), dann is, dann your bike."]
-        ] },
-      { id: "thereis", band: "ct-1", t: "There is / there are", de: "Es gibt …",
-        explain: [
-          "Mit **there is** und **there are** sagst du, was es irgendwo gibt oder was zu sehen ist.",
-          "**There is** (kurz: there's) steht vor der Einzahl: There's a desk in my room.",
-          "**There are** steht vor der Mehrzahl: There are two windows.",
-          "Verneint: There **isn't** a TV. There **aren't** any chairs. Fragen: **Is there** a cat? **Are there** any books?"
-        ],
-        ex: [["**There is** a pink school bag on the desk.", "Auf dem Tisch liegt eine pinke Schultasche."], ["**There are** twenty kids in my class.", "In meiner Klasse sind zwanzig Kinder."]],
-        tasks: [
-          ["pick", "___ a cat in the garden.", ["There is", "There are"], "a cat ist Einzahl."],
-          ["pick", "___ three books on the shelf.", ["There are", "There is"], "three books ist Mehrzahl."],
-          ["gap", "There ___ a big tree in our park.", "is|'s", "", ["are", "be"]],
-          ["gap", "There ___ lots of shops in Camden.", "are", "", ["is", "be"]],
-          ["pick", "___ there a bathroom upstairs?", ["Is", "Are"], "a bathroom ist Einzahl."],
-          ["pick", "There ___ any chairs in the room.", ["aren't", "isn't"], "chairs ist Mehrzahl."],
-          ["order", "There are two beds in my room."],
-          ["pick", "Are there any apples? – Yes, there ___.", ["are", "is"]]
         ] },
       { id: "prepositions", part: "B", band: "ct-1", t: "Prepositions of place", de: "Wo ist etwas?",
         explain: [
@@ -291,7 +292,7 @@ window.GRAMMAR = {
           ["order", "Have you got a pencil?"],
           ["pick", "My cat ___ got green eyes.", ["has", "have"], "my cat = it, also has."]
         ] },
-      { id: "genitive", band: "ct-2", t: "Genitive", de: "Wem gehört was?",
+      { id: "genitive", part: "B", band: "ct-2", t: "Genitive", de: "Wem gehört was?",
         explain: [
           "Wem etwas gehört, zeigst du mit **'s**: Tom**'s** bike = das Fahrrad von Tom.",
           "Endet die Mehrzahl auf -s, hängst du nur den Apostroph an: my parent**s'** car = das Auto meiner Eltern.",
@@ -513,7 +514,7 @@ window.GRAMMAR = {
           ["pick", "She is happy because ___.", ["she has got a new bike", "has she got a new bike", "she a new bike has got"], "Nach because: Subjekt – Verb – Objekt."]
         ] },
       // ---------- Klasse 5, Theme 5 ----------
-      { id: "objectpronouns", band: "ct-5", t: "Object pronouns", de: "mich, dich, ihn …",
+      { id: "objectpronouns", part: "A", band: "ct-5", t: "Object pronouns", de: "mich, dich, ihn …",
         explain: [
           "Objektpronomen stehen nach dem Verb oder nach einer Präposition: **me, you, him, her, it, us, you, them**.",
           "I → **me**, he → **him**, she → **her**, we → **us**, they → **them**. you und it bleiben gleich.",
@@ -780,9 +781,94 @@ window.GRAMMAR = {
           ["pick", "Wie fragst du richtig?", ["Have you ever ridden a horse?", "Do you have ever ridden a horse?", "Have you ever rode a horse?"], "have vorn, dann ever, dann die 3. Form ridden."],
           ["order", "Has your brother ever been to Scotland?", "Has, dann die Person, dann ever, dann been."]
         ] },
-      { id: "ppsp", band: "ct6-3", part: "B", t: "Present perfect or simple past", de: "Welche Zeit passt?" },
-      { id: "qtags", band: "ct6-3", part: "B", t: "Question tags", de: "…, oder? / …, nicht wahr?" },
-      { id: "posspron", band: "ct6-3", part: "B", t: "Possessive pronouns", de: "mine, yours, his …" },
+      { id: "ppsp", band: "ct6-3", part: "B", t: "Present perfect or simple past?", de: "Welche Zeit passt?",
+        vgl: [
+          "Im Deutschen sagen wir für beides meist das Perfekt: „Ich **habe** den Film **gesehen**.“ Egal ob gestern oder irgendwann.",
+          "Englisch trennt genau: Steht ein **fertiger Zeitpunkt** dabei (yesterday, last week, in 2020, two days ago, when I was six), dann **simple past**: I **saw** the film yesterday.",
+          "Ist das **Wann egal** und zählt nur, dass es schon passiert ist (ever, never, already, just, yet), dann **present perfect**: I **have seen** the film.",
+          "Typischer Fehler, weil wir es im Deutschen so sagen: ~~I have seen the film yesterday.~~"
+        ],
+        vglEx: [["I **saw** the film **yesterday**.", "Ich **habe** den Film **gestern** gesehen."], ["I**'ve** already **seen** the film.", "Ich **habe** den Film schon gesehen."], ["**When did** you **see** it?", "**Wann hast** du ihn gesehen?"]],
+        anim: [{ a: "I have seen the film.", b: "I saw the film yesterday.", hint: "Kommt ein **Zeitpunkt** dazu (yesterday), wird es **simple past**." }],
+        explain: [
+          "**Simple past**: abgeschlossen, mit Zeitpunkt in der Vergangenheit. Signalwörter: **yesterday, last …, … ago, in 2020, when …**",
+          "**Present perfect**: schon passiert, Zeitpunkt egal oder bis jetzt. Signalwörter: **ever, never, already, just, yet, so far**.",
+          "Oft beginnt ein Gespräch im present perfect und erzählt dann im simple past: **Have** you ever **been** to London? – Yes, I **went** there last summer.",
+          "Fragen mit **When** stehen immer im simple past: **When did** you **arrive**?"
+        ],
+        aus: [
+          "**today** und **this week** passen zu beiden: I've seen him today (der Tag ist noch nicht vorbei). I saw him this morning (der Morgen ist vorbei).",
+          "Frage nie ~~When have you …?~~ Richtig: **When did** you …?"
+        ],
+        ex: [["**Have** you ever **been** to London? – Yes, I **went** there last summer.", "Warst du schon mal in London? – Ja, letzten Sommer."], ["She **has** just **left**.", "Sie ist gerade gegangen."], ["We **visited** the Tower two days ago.", "Wir haben vor zwei Tagen den Tower besucht."]],
+        tasks: [
+          ["pick", "I ___ the film yesterday.", ["saw", "have seen", "have saw"], "yesterday = fertiger Zeitpunkt: simple past."],
+          ["pick", "I ___ that film three times. It's great!", ["have seen", "saw", "see"], "Wann ist egal, wie oft bis jetzt: present perfect."],
+          ["pick", "We ___ to London last summer.", ["went", "have gone", "have been"], "last summer = Zeitpunkt: simple past."],
+          ["pick", "___ you ever been to Scotland?", ["Have", "Did", "Were"], "ever: present perfect."],
+          ["pick", "When ___ you arrive?", ["did", "have", "has"], "Fragen mit When: simple past."],
+          ["pick", "Tom ___ his homework yet.", ["hasn't finished", "didn't finish", "doesn't finish"], "yet: present perfect."],
+          ["pick", "Have you been to Brighton? – Yes, we ___ there two years ago.", ["went", "have gone", "have been"], "two years ago = Zeitpunkt: simple past."],
+          ["pick", "Oh no! I ___ my key. I can't find it.", ["have lost", "lost", "lose"], "Folge für jetzt (ich finde ihn nicht), kein Zeitpunkt: present perfect."]
+        ] },
+      { id: "qtags", band: "ct6-3", part: "B", t: "Question tags", de: "…, oder? / …, nicht wahr?",
+        vgl: [
+          "Im Deutschen hängen wir einfach „**oder?**“ oder „**nicht wahr?**“ an. Das passt immer.",
+          "Im Englischen baut man den Anhang aus dem Satz selbst: **gleiches Hilfsverb + Person**, und die Richtung dreht sich um: bejaht → verneinter Anhang. It's cold, **isn't it**?",
+          "Verneinter Satz → bejahter Anhang: You aren't hungry, **are you**?"
+        ],
+        vglEx: [["It's cold, **isn't it**?", "Es ist kalt, **oder**?"], ["You can swim, **can't you**?", "Du kannst schwimmen, **nicht wahr**?"], ["She likes pizza, **doesn't she**?", "Sie mag Pizza, **oder**?"]],
+        anim: [{ a: "It is cold.", b: "It is cold, isn't it?", hint: "**is** wird umgedreht zu **isn't**, die Person **it** kommt mit." }],
+        explain: [
+          "Bauplan: Satz + **Komma** + **Hilfsverb** + **Person** (als Pronomen) + ?",
+          "**Bejahter Satz → verneinter Anhang**: You're new, **aren't you**? Tom can sing, **can't he**?",
+          "**Verneinter Satz → bejahter Anhang**: It isn't far, **is it**? They haven't got a dog, **have they**?",
+          "Ohne Hilfsverb im Satz (simple present, simple past) springt **do/does/did** ein: You live here, **don't you**? She went home, **didn't she**?"
+        ],
+        aus: [
+          "Bei **I am** heißt der Anhang **aren't I**: I'm right, **aren't I**? Falsch ist ~~amn't I~~.",
+          "Im Anhang steht immer ein Pronomen, kein Name: Emma is nice, isn't **she**? Falsch ist ~~isn't Emma~~."
+        ],
+        ex: [["You're from Leeds, **aren't you**?", "Du kommst aus Leeds, oder?"], ["It wasn't your fault, **was it**?", "Das war nicht deine Schuld, oder?"], ["We went the wrong way, **didn't we**?", "Wir sind falsch gegangen, oder?"]],
+        tasks: [
+          ["pick", "It's cold today, ___?", ["isn't it", "is it", "doesn't it"], "Bejaht mit is → isn't it."],
+          ["pick", "You aren't hungry, ___?", ["are you", "aren't you", "do you"], "Verneint → bejahter Anhang."],
+          ["pick", "Tom can swim, ___?", ["can't he", "can he", "doesn't he"], "can → can't, Tom = he."],
+          ["pick", "You live in Camden, ___?", ["don't you", "aren't you", "do you"], "Kein Hilfsverb: do springt ein, verneint."],
+          ["pick", "She went to the party, ___?", ["didn't she", "wasn't she", "did she"], "simple past: didn't."],
+          ["pick", "Emma likes dogs, ___?", ["doesn't she", "isn't she", "don't she"], "she → does, verneint doesn't."],
+          ["pick", "They haven't got a cat, ___?", ["have they", "haven't they", "do they"], "Verneint mit have → have they."],
+          ["pick", "I'm late, ___?", ["aren't I", "amn't I", "am I"], "Ausnahme: aren't I."]
+        ] },
+      { id: "posspron", band: "ct6-3", part: "B", t: "Possessive pronouns", de: "mine, yours, his …",
+        vgl: [
+          "Im Deutschen: „Das ist **mein** Rad.“ und „Das Rad ist **meins**.“ Zwei Formen, je nachdem, ob ein Nomen folgt.",
+          "Englisch genauso: **my** bike, aber: The bike is **mine**. Steht kein Nomen dahinter, nimmst du die lange Form.",
+          "Typischer Fehler: ~~It's my.~~ oder ~~mine bike~~."
+        ],
+        vglEx: [["It's **my** bike.", "Das ist **mein** Rad."], ["The bike is **mine**.", "Das Rad ist **meins**."], ["Is this pen **yours**?", "Ist das **dein** Stift?"]],
+        anim: [{ a: "It's my bike.", b: "The bike is mine.", hint: "Kein Nomen dahinter? Dann **my → mine**." }],
+        explain: [
+          "Mit Nomen: **my, your, his, her, our, their**. Ohne Nomen: **mine, yours, his, hers, ours, theirs**.",
+          "Fast alle bekommen ein **-s**: your → your**s**, her → her**s**, our → our**s**, their → their**s**.",
+          "Nur **mine** ist anders, und **his** bleibt gleich.",
+          "Frage dazu: **Whose** … is this? (Wem gehört …?) – It's **mine**."
+        ],
+        aus: [
+          "Nie mit Apostroph: **yours, hers, ours, theirs**. Falsch ist ~~your's~~, ~~her's~~.",
+          "**its** gibt es nur mit Nomen (its tail), ohne Nomen sagt man es fast nie."
+        ],
+        ex: [["Whose bag is this? – It's **mine**.", "Wem gehört die Tasche? – Mir."], ["This isn't your phone. It's **hers**.", "Das ist nicht dein Handy. Es ist ihres."], ["Our house is small. **Theirs** is big.", "Unser Haus ist klein. Ihres ist groß."]],
+        tasks: [
+          ["pick", "This bike is ___. (meins)", ["mine", "my", "mines"], "Ohne Nomen: mine."],
+          ["pick", "Is this pen ___? (deiner)", ["yours", "your", "your's"], "Ohne Nomen: yours, ohne Apostroph."],
+          ["pick", "That's Emma's bag. It's ___.", ["hers", "her", "she's"], "Ohne Nomen: hers."],
+          ["pick", "That isn't Tom's phone. ___ is black.", ["His", "He", "Him"], "his bleibt gleich."],
+          ["pick", "This is ___ house.", ["our", "ours", "us"], "Mit Nomen (house): our."],
+          ["pick", "Whose dog is this? – It's ___.", ["theirs", "their", "their's"], "Ohne Nomen: theirs."],
+          ["pick", "My room is small, but ___ is big. (deins)", ["yours", "your", "you"], "Ohne Nomen: yours."],
+          ["pick", "___ shoes are these? – They're mine.", ["Whose", "Who", "Who's"], "Wem gehört …? = Whose."]
+        ] },
       { id: "will", band: "ct6-4", part: "A", t: "will-future", de: "Vorhersagen und spontane Entschlüsse",
         explain: [
           "Mit **will** sagst du voraus, was passieren wird: I think it **will** rain tomorrow.",
@@ -880,7 +966,35 @@ window.GRAMMAR = {
           ["pick", "Yesterday I ___ wait for the bus. My dad picked me up.", ["didn't have to", "mustn't", "wasn't allowed to"], "Keine Pflicht in der Vergangenheit: didn't have to."]
         ] },
       { id: "if12", band: "ct6-5", part: "B", t: "Conditional clauses I and II", de: "if-Sätze Typ 1 und 2" },
-      { id: "adverbscomp", band: "ct6-5", part: "B", t: "Comparison of adverbs", de: "Handlungen vergleichen" },
+      { id: "adverbscomp", band: "ct6-5", part: "B", t: "Comparison of adverbs", de: "schneller laufen, vorsichtiger fahren",
+        vgl: [
+          "Im Deutschen sieht das Adverb aus wie das Adjektiv: Er läuft **schnell**, **schneller**, am **schnellsten**.",
+          "Im Englischen steigerst du das Adverb wie das Adjektiv: Adverbien auf **-ly** mit **more/most**: carefully → **more carefully**. Kurze ohne -ly mit **-er/-est**: fast → **faster**, hard → **harder**.",
+          "Typischer Fehler: ~~carefullier~~ oder ~~more fast~~."
+        ],
+        vglEx: [["Ben runs **faster than** Tom.", "Ben läuft **schneller als** Tom."], ["Please drive **more carefully**!", "Fahr bitte **vorsichtiger**!"], ["She sings **better than** me.", "Sie singt **besser als** ich."]],
+        anim: [{ a: "Ben runs fast.", b: "Ben runs faster than Tom.", hint: "Kurzes Adverb: **-er** + **than**." }],
+        explain: [
+          "Adverbien auf **-ly**: **more** und **most**: quietly → **more quietly** → **most quietly**.",
+          "Kurze Adverbien ohne -ly (**fast, hard, early, late, high**): **-er** und **-est**: fast → **faster** → **fastest**.",
+          "Unregelmäßig: **well → better → best**, **badly → worse → worst**.",
+          "Vergleichen wie beim Adjektiv: **than** und **as … as**: She speaks English **as well as** her mum."
+        ],
+        aus: [
+          "**early** wird zu **earlier**, obwohl es auf -ly endet, weil es kein -ly-Adverb ist (es ist auch ein Adjektiv).",
+          "**well** ist das Adverb zu good: She plays **well**. Gesteigert: **better**, nicht ~~more well~~."
+        ],
+        ex: [["Can you speak **more slowly**, please?", "Kannst du bitte langsamer sprechen?"], ["Lisa works **harder than** her brother.", "Lisa arbeitet fleißiger als ihr Bruder."], ["Who can jump **highest**?", "Wer kann am höchsten springen?"]],
+        tasks: [
+          ["pick", "Ben runs ___ than Tom.", ["faster", "more fast", "more faster"], "Kurzes Adverb: -er."],
+          ["pick", "Please drive ___!", ["more carefully", "carefullier", "more careful"], "-ly-Adverb: more carefully."],
+          ["pick", "She sings ___ than me.", ["better", "weller", "more well"], "well → better."],
+          ["pick", "Can you speak ___, please?", ["more slowly", "slowlier", "more slow"], "-ly-Adverb: more slowly."],
+          ["pick", "I got up ___ than my sister.", ["earlier", "more early", "more earlier"], "early → earlier."],
+          ["pick", "Who works ___ in your class?", ["hardest", "most hard", "hardly"], "hard → hardest."],
+          ["pick", "He played ___ than last week. We lost.", ["worse", "badder", "more badly"], "badly → worse."],
+          ["pick", "Mia speaks English as ___ as her mum.", ["well", "better", "good"], "Bei as … as die Grundform: well."]
+        ] },
       // ---------- Klassen 7/8 (Übungen folgen) ----------
       { id: "zeroarticle1", band: "7/8", t: "(Zero) article", de: "Artikel bei Gebäuden, Institutionen, Namen" },
       { id: "adverbialclauses", band: "7/8", t: "Adverbial clauses", de: "Nebensätze für Zeit, Grund, Folge, Zweck, Gegensatz" },
