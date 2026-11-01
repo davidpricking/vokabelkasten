@@ -626,3 +626,8 @@ body.weltopen .confetti{z-index:60}
 .linkbtn{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}
 .gtip{margin-top:8px;padding:8px 10px;border-left:3px solid var(--line);background:color-mix(in srgb,var(--card) 85%,var(--line))}
 .gfocus{text-align:left}
+.gldots{display:inline-flex;gap:3px;flex:none}.gldots i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.gldots i.on.l1{background:#e5534b}.gldots i.on.l2{background:#f0a030}.gldots i.on.l3{background:#e6c229}.gldots i.on.l4{background:#7cc36b}.gldots i.on.l5{background:#2e9e5b}
+.glist{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.glrow>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;list-style:none}
+.glrow>summary::-webkit-details-marker{display:none}.glrow>summary>span{display:flex;flex-direction:column;gap:2px;min-width:0}
