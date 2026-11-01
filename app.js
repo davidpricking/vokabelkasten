@@ -2638,8 +2638,14 @@ function renderSettings(msg) {
       <p class="small">Die Spracheingabe nutzt die Spracherkennung deines Browsers. Bei Chrome läuft sie über Server von Google, bei Safari über Apple.</p>
       <p class="small muted">Beim Laden der Seite sieht der Webserver (GitHub Pages) technisch bedingt deine IP-Adresse.</p>
     </section>
-    <div class="footer small muted"><span>Vokabelkasten</span><a href="https://github.com/davidpricking/vokabelkasten" target="_blank" rel="noopener">Quellcode</a></div>
+    <div class="footer small muted"><span>Vokabelkasten <span id="appVer"></span> · <button class="linkbtn" id="updCheck">Auf Update prüfen</button></span><a href="https://github.com/davidpricking/vokabelkasten" target="_blank" rel="noopener">Quellcode</a></div>
   `));
+  // Version = Name des Offline-Caches aus sw.js (VERSION)
+  if (window.caches) caches.keys().then(ks => { const v = ks.filter(k => /^v\d+$/.test(k)).sort((a, b) => b.slice(1) - a.slice(1))[0]; if (v && $("#appVer")) $("#appVer").textContent = "· Version " + v.slice(1); }).catch(() => {});
+  $("#updCheck").onclick = () => {
+    if (!navigator.serviceWorker) { toast("Updates gibt es hier nicht"); return; }
+    navigator.serviceWorker.getRegistration().then(r => r ? r.update().then(() => toast(r.installing || r.waiting ? "Update wird geladen, die App startet gleich neu" : "Du hast die neueste Version")) : toast("Kein Update möglich")).catch(() => toast("Keine Verbindung"));
+  };
   $("#back").onclick = () => { confirmLangDelete = null; renderHome(); };
   if ($("#install")) $("#install").onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => {}); deferredInstall = null; renderSettings(); };
   $$("[data-npd]").forEach(b => b.onclick = () => { S.newPerDay = +b.dataset.npd; save(); keepScroll(renderSettings); });
