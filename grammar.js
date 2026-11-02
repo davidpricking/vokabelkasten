@@ -75,7 +75,7 @@ window.GRAMMAR = {
       { id: "ct6-4", group: "Klasse 6 · Camden Town", label: "Theme 4 · School clubs" },
       { id: "ct6-5", group: "Klasse 6 · Camden Town", label: "Theme 5 · Out and about" },
       { id: "ct6-6", group: "Klasse 6 · Camden Town", label: "Theme 6 · Summer in the city", note: "Im Buch freiwillig. Keine neue Grammatik, nur Wiederholung",
-        review: ["simplepast", "pastquestions", "whquestions"] },
+        review: ["simplepast", "pastspell", "pastirr", "pastneg", "pastquestions", "whquestions"] },
       { id: "6", label: "Klasse 6", note: "Bildungsplan Klassen 5/6, Reihenfolge ist ein Vorschlag" },
       { id: "7/8", label: "Klassen 7/8" },
       { id: "9/10", label: "Klassen 9/10" },
@@ -586,24 +586,57 @@ window.GRAMMAR = {
           ["pick", "___ are my friends Tom and Ben. (diese hier)", ["These", "This", "That"]]
         ] },
       // ---------- Klasse 6, Camden Town 6 (Reihenfolge wie im Buch) ----------
-      { id: "simplepast", band: "ct6-1", part: "A", t: "Simple past", de: "Was früher passiert ist", video: "videos/simple-past.mp4",
+      { id: "simplepast", band: "ct6-1", part: "A", t: "Simple past: Verb + ed", de: "Was vorbei ist: play → played", video: "videos/simple-past.mp4",
         explain: [
-          "Mit dem simple past erzählst du, was in der Vergangenheit passiert und abgeschlossen ist. Signalwörter: yesterday, last week, two days ago, in 2020.",
-          "Regelmäßige Verben bekommen **-ed**: play → play**ed**, live → live**d**, stop → sto**pped**, cry → cr**ied**.",
-          "Unregelmäßige Verben lernst du auswendig: go → **went**, see → **saw**, have → **had**, be → **was/were**.",
-          "Verneinung mit **didn't** und der Grundform: I **didn't see** it. She **didn't go**. Bei was/were: I **wasn't**, they **weren't**."
+          "Mit dem simple past erzählst du, was vorbei und abgeschlossen ist. Signalwörter: yesterday, last week, two days ago, in 2020.",
+          "Regelmäßige Verben bekommen **-ed**: play → play**ed**, watch → watch**ed**, help → help**ed**.",
+          "Die Form ist für alle gleich: I play**ed**, she play**ed**, they play**ed**. Kein -s bei he/she/it.",
+          "Steht yesterday oder last … dabei, kommt **kein have** dazu: Yesterday I **played** football. Nicht ~~I have played~~.",
+          "Das ist noch nicht alles: Es gibt noch **Schreib-Ausnahmen** (lived, stopped, cried) und **wilde Verben** (go → went). Die kommen in den nächsten Kapiteln."
         ],
-        ex: [["Yesterday we **played** football.", "Gestern haben wir Fußball gespielt."], ["Last summer I **went** to Spain.", "Letzten Sommer bin ich nach Spanien gefahren."], ["I **didn't like** the film.", "Der Film hat mir nicht gefallen."]],
-        tasks: [
-          ["gap", "Yesterday we ___ football. (play)", "played", "", ["play", "plaied"]],
-          ["gap", "Last summer I ___ to Spain. (go)", "went", "go ist unregelmäßig: went.", ["goed", "go"]],
-          ["gap", "She ___ a fox in the park. (see)", "saw", "see ist unregelmäßig: saw.", ["seed", "see"]],
-          ["gap", "The baby ___ all night. (cry)", "cried", "Konsonant + y wird zu -ied.", ["cryed", "crys"]],
-          ["pick", "I ___ tired yesterday.", ["was", "were", "am"], "I → was."],
-          ["pick", "She didn't ___ her homework.", ["do", "did", "does"], "Nach didn't steht die Grundform."],
-          ["pick", "We didn't ___ the bus.", ["catch", "caught", "catched"], "Nach didn't steht die Grundform."],
-          ["gap", "They ___ at home last weekend. (nicht sein)", "weren't|were not", "they → were, verneint weren't.", ["wasn't", "didn't be"]]
-        ] },
+        ex: [["Yesterday we **played** football.", "Gestern haben wir Fußball gespielt."], ["I **visited** my grandma last Sunday.", "Letzten Sonntag habe ich meine Oma besucht."], ["She **watched** a film last night.", "Gestern Abend hat sie einen Film angeschaut."]] },
+      { id: "pastspell", band: "ct6-1", part: "A", t: "Simple past: Schreibregeln", de: "lived, stopped, cried",
+        vgl: [
+          "Im Deutschen hängst du einfach **-te** an: leben → leb**te**. Im Englischen ändert sich bei manchen Verben die **Schreibung**, bevor -ed drankommt.",
+          "Das sind nur vier kleine Regeln. Alles andere bleibt: Verb + ed."
+        ],
+        explain: [
+          "Endet das Verb auf **-e**, kommt nur **-d** dazu: live → live**d**, like → like**d**.",
+          "Kurzes Verb mit kurzem Vokal und einem Konsonanten am Ende: **verdoppeln**: stop → sto**pp**ed, plan → pla**nn**ed.",
+          "**Konsonant + y** wird zu **-ied**: cry → cr**ied**, try → tr**ied**.",
+          "Aber **Vokal + y** bleibt: play → play**ed**, stay → stay**ed**.",
+          "Aussprache: Nach **t** und **d** sprichst du -ed als eigene Silbe: visit**ed**, start**ed**. Sonst nicht: play**ed**, watch**ed**."
+        ],
+        aus: ["Britisches Englisch verdoppelt auch das l: travel → trave**ll**ed."],
+        ex: [["We **lived** in Leeds.", "Wir haben in Leeds gewohnt."], ["The bus **stopped**.", "Der Bus hielt an."], ["The baby **cried**.", "Das Baby weinte."], ["They **stayed** at home.", "Sie blieben zu Hause."]] },
+      { id: "pastirr", band: "ct6-1", part: "A", t: "Simple past: wilde Verben", de: "go → went, see → saw, be → was/were",
+        vgl: [
+          "Das kennst du aus dem Deutschen: Wir sagen nicht ~~ich gehte~~, sondern **ich ging**. Solche Verben gibt es im Englischen auch: go → **went**.",
+          "Bei diesen wilden Verben darf **kein -ed** dran. Du lernst sie wie Vokabeln, am besten in Gruppen, die ähnlich klingen."
+        ],
+        explain: [
+          "Wilde Verben haben eine eigene Form: go → **went**, see → **saw**, have → **had**, come → **came**.",
+          "Lern sie in Klanggruppen: buy → b**ought**, think → th**ought**, bring → br**ought**. Oder: sing → s**a**ng, drink → dr**a**nk, swim → sw**a**m.",
+          "**be** hat zwei Formen: I/he/she/it **was**, you/we/they **were**.",
+          "Auch die wilden Formen sind für alle gleich: he **went**, nicht ~~wents~~."
+        ],
+        aus: ["Manche wilden Verben bleiben gleich: put → **put**, cut → **cut**, let → **let**, hit → **hit**."],
+        ex: [["Last summer I **went** to Spain.", "Letzten Sommer bin ich nach Spanien gefahren."], ["She **saw** a fox.", "Sie hat einen Fuchs gesehen."], ["We **were** at the beach.", "Wir waren am Strand."], ["I **bought** a book.", "Ich habe ein Buch gekauft."]] },
+      { id: "pastneg", band: "ct6-1", part: "A", t: "Simple past: Verneinung", de: "I didn't go – nicht ~~didn't went~~",
+        vgl: [
+          "Im Deutschen hängen wir einfach **nicht** an: Ich ging **nicht**. Englisch braucht ein Hilfswort: **didn't**.",
+          "**didn't** trägt die Vergangenheit schon. Darum steht das Verb danach in der **Grundform**: I didn't **go**. Nicht ~~I didn't went~~.",
+          "Typischer Fehler wie im Deutschen: ~~I went not~~. So verneint man im Englischen nicht."
+        ],
+        vglEx: [["I **didn't go** to the party.", "Ich bin nicht zur Party gegangen."], ["She **didn't like** the film.", "Der Film hat ihr nicht gefallen."], ["It **wasn't** cold.", "Es war nicht kalt."]],
+        anim: [{ a: "I went to the party.", b: "I didn't go to the party.", hint: "**didn't** nimmt sich die Vergangenheit: aus went wird wieder **go**." }],
+        explain: [
+          "Verneinung: **didn't + Grundform**: I didn't **play**. She didn't **go**. They didn't **see** it.",
+          "didn't ist kurz für **did not** und bleibt für alle gleich.",
+          "Ausnahme **be**: kein did, sondern **wasn't** (I/he/she/it) und **weren't** (you/we/they): It **wasn't** cold. We **weren't** at home."
+        ],
+        aus: ["Falsch: ~~I didn't was tired.~~ Richtig: I **wasn't** tired."],
+        ex: [["We **didn't take** the bus.", "Wir haben nicht den Bus genommen."], ["He **didn't do** his homework.", "Er hat seine Hausaufgaben nicht gemacht."], ["They **weren't** at school.", "Sie waren nicht in der Schule."]] },
       { id: "pastquestions", band: "ct6-1", part: "B", t: "Simple past: questions", de: "Fragen mit did",
         vgl: [
           "Im Deutschen tauschen wir nur: Du spieltest. → **Spieltest du**? Oder wir sagen: **Hast du** gespielt?",
@@ -1285,11 +1318,10 @@ window.GRAMMAR = {
       "Typischer Fehler: ~~this shoes~~. Mehrere Dinge, also **these** shoes."
     ],
     simplepast: [
-      "**Gibt es das im Deutschen?** Ja, das ist unser **Präteritum**: ich spiel**te**, ich **ging**. Gebaut wird es fast wie bei uns, aus einem Wort: Regelmäßig mit Endung (spiel**te** → play**ed**), unregelmäßig mit einem neuen Wort (ging → **went**, sah → **saw**).",
+      "**Gibt es das im Deutschen?** Ja, das ist unser **Präteritum**: ich spiel**te**. Gebaut wird es wie bei uns aus einem Wort mit Endung: spiel**te** → play**ed**.",
       "**Der große Unterschied:** Wenn wir erzählen, sagen wir meist das Perfekt: Ich **habe** gestern Fußball **gespielt**. Englisch nimmt dafür das simple past: Yesterday I **played** football.",
       "**Merke:** Steht eine Zeit in der Vergangenheit dabei (yesterday, last week, two days ago, in 2020), dann nimmst du **immer** das simple past.",
-      "**Verneinung:** Wir sagen „Ich spielte nicht“. Englisch braucht **didn't**: I **didn't** play. Das Verb steht danach in der Grundform, weil didn't die Vergangenheit schon trägt.",
-      "Typische Fehler: ~~I didn't played.~~ und ~~Yesterday I have played.~~"
+      "Typischer Fehler: ~~Yesterday I have played.~~"
     ],
     countable: [
       "Manche Wörter haben im Deutschen eine Mehrzahl, im Englischen aber nicht: die Informationen → **information**, die Hausaufgaben → **homework**, Ratschläge → **advice**, Möbel → **furniture**.",
@@ -1451,12 +1483,6 @@ window.GRAMMAR = {
       "**this morning** = heute Morgen, **this week** = diese Woche.",
       "Am Telefon: **This is** Tom. (Hier ist Tom.)"
     ],
-    simplepast: [
-      "Schreibung: **-e** bekommt nur **-d**: live → live**d**. Kurzer Vokal + ein Konsonant: verdoppeln: stop → sto**pp**ed. Konsonant + y: **-ied**: cry → cr**ied**. Aber Vokal + y: play → play**ed**.",
-      "Britisches Englisch verdoppelt das l: travel → trave**ll**ed.",
-      "Manche unregelmäßigen Verben bleiben gleich: put → **put**, cut → **cut**, let → **let**, hit → **hit**.",
-      "Bei be gibt es zwei Formen: I/he/she/it **was**, you/we/they **were**."
-    ],
     countable: [
       "**hair** ist nicht zählbar: My hair **is** long. (Meine Haare sind lang.)",
       "**news** endet auf -s, ist aber Einzahl: The news **is** good.",
@@ -1526,7 +1552,7 @@ window.GRAMMAR = {
     modals: [["You **must** go home now.", "Du **musst** jetzt nach Hause gehen."], ["You **mustn't** run here.", "Du **darfst** hier **nicht** rennen."], ["You **should** ask your teacher.", "Du **solltest** deine Lehrerin fragen."], ["You **shouldn't** eat so many sweets.", "Du **solltest nicht** so viele Süßigkeiten essen."]],
     wordorder: [["**Today I play** football.", "**Heute spiele ich** Fußball."], ["**On Saturday we go** to the cinema.", "**Am Samstag gehen wir** ins Kino."], ["I like Tom because **he is** funny.", "Ich mag Tom, weil **er** lustig **ist**."], ["She meets her friends **in the park after school**.", "Sie trifft ihre Freunde **nach der Schule im Park**."]],
     thisthat: [["**This** dog here is mine.", "**Dieser** Hund **hier** ist meiner."], ["Look at **that** house!", "Schau dir **das** Haus **dort** an!"], ["**These** shoes are new.", "**Diese** Schuhe (hier) sind neu."], ["Who are **those** girls?", "Wer sind **die** Mädchen **dort**?"]],
-    simplepast: [["Yesterday I **played** football.", "Gestern **habe** ich Fußball **gespielt**."], ["Last summer we **went** to Spain.", "Letzten Sommer **sind** wir nach Spanien **gefahren**."], ["She **saw** a fox in the park.", "Sie **hat** im Park einen Fuchs **gesehen**."], ["**Did** you **like** the film?", "**Hat** dir der Film **gefallen**?"]],
+    simplepast: [["Yesterday I **played** football.", "Gestern **habe** ich Fußball **gespielt**."], ["Last week we **visited** London.", "Letzte Woche **haben** wir London **besucht**."], ["She **watched** TV.", "Sie **sah** fern."]],
     countable: [["My homework **is** easy.", "Meine Hausaufgaben **sind** leicht."], ["I need some **information**.", "Ich brauche ein paar **Informationen**."], ["Can you give me some **advice**?", "Kannst du mir ein paar **Ratschläge** geben?"], ["Can I have **a piece of** cake?", "Kann ich **ein Stück** Kuchen haben?"]],
     quantifiers: [["How **much** money have you got?", "Wie **viel** Geld hast du?"], ["How **many** friends have you got?", "Wie **viele** Freunde hast du?"], ["Can I have **a little** milk?", "Kann ich **ein bisschen** Milch haben?"], ["I've got **a few** friends in Berlin.", "Ich habe **ein paar** Freunde in Berlin."]],
     presentperfect: [["I **have lost** my key.", "Ich **habe** meinen Schlüssel **verloren**. (Er ist immer noch weg.)"], ["**Have** you ever **been** to London?", "**Warst** du schon einmal in London?"], ["I **lost** my key **yesterday**.", "Ich **habe gestern** meinen Schlüssel **verloren**."], ["She **has** just **finished** her homework.", "Sie **ist** gerade mit den Hausaufgaben **fertig geworden**."]],
@@ -1547,41 +1573,98 @@ window.GRAMMAR = {
   const put = (id, extra) => Object.assign(window.GRAMMAR.Englisch.topics.find(t => t.id === id), extra);
   put("simplepast", {
     cats: {
-      ed: { n: "Regelmäßige Verben mit -ed", tip: "Regelmäßige Verben bekommen in der Vergangenheit **-ed**: play → play**ed**." },
-      spell: { n: "Schreibung bei -ed", tip: "Auf -e nur **-d** (live**d**), Konsonant + y → **-ied** (cr**ied**), kurzer Vokal + ein Konsonant → verdoppeln (sto**pp**ed), Vokal + y bleibt (play**ed**)." },
-      irr: { n: "Unregelmäßige Verben", tip: "Unregelmäßige Verben haben eine eigene Form: go → **went**, see → **saw**. Nie ~~goed~~." },
-      nos: { n: "Kein -s bei he/she/it", tip: "Im simple past ist die Form für alle Personen gleich: he **went**, nicht ~~wents~~." },
-      wasw: { n: "was oder were", tip: "I/he/she/it → **was**, you/we/they → **were**." },
-      neg: { n: "Verneinung mit didn't", tip: "**didn't + Grundform**: I didn't **go**. Nicht ~~didn't went~~, weil didn't die Vergangenheit schon trägt." },
-      negbe: { n: "Verneinung bei was/were", tip: "Bei be kein did: **wasn't**, **weren't**. Nicht ~~didn't be~~." },
-      signal: { n: "Zeit wählen: yesterday, ago, last …", tip: "Steht ein Zeitpunkt in der Vergangenheit dabei (yesterday, last …, … ago), nimmst du **simple past**, nie ~~have played~~." }
+      ed: { n: "Verb + ed", tip: "Ist es vorbei, kommt **-ed** dran: play → play**ed**." },
+      nos: { n: "Kein -s bei he/she/it", tip: "Im simple past ist die Form für alle gleich: she play**ed**, nicht ~~playeds~~." },
+      signal: { n: "Kein have bei yesterday, last …", tip: "Steht ein Zeitpunkt in der Vergangenheit dabei, nimmst du **simple past**, nie ~~have played~~." }
     },
     bank: {
       ed: [
         ["pick", "Yesterday we ___ football in the park. (play)", ["played", "play", "plays"], "yesterday = Vergangenheit: play + -ed."],
         ["pick", "I ___ my grandma last Sunday. (visit)", ["visited", "visit", "visits"], "last Sunday = Vergangenheit: visit + -ed."],
         ["pick", "We ___ to music after dinner yesterday. (listen)", ["listened", "listen", "listening"], "Vergangenheit: listen + -ed."],
-        ["pick", "The film ___ at eight o'clock last night. (start)", ["started", "start", "starts"], "last night = Vergangenheit: start + -ed."]
+        ["pick", "The film ___ at eight o'clock last night. (start)", ["started", "start", "starts"], "last night = Vergangenheit: start + -ed."],
+        ["pick", "My mum ___ me with my homework yesterday. (help)", ["helped", "help", "helps"], "Vergangenheit: help + -ed."],
+        ["pick", "„Gestern haben wir einen Film angeschaut.“", ["Yesterday we watched a film.", "Yesterday we watch a film.", "Yesterday we have watch a film."], "Vergangenheit: watch + -ed."]
+      ],
+      nos: [
+        ["pick", "Yesterday my brother ___ his room. (clean)", ["cleaned", "cleaneds", "cleans"], "Im simple past gibt es kein -s bei he/she/it."],
+        ["pick", "Last night Emma ___ to the radio. (listen)", ["listened", "listeneds", "listens"], "Für alle gleich: she listened."],
+        ["pick", "Ben ___ the dog in the park yesterday. (walk)", ["walked", "walkeds", "walks"], "Für alle gleich: he walked."]
+      ],
+      signal: [
+        ["pick", "I ___ my aunt two days ago. (visit)", ["visited", "have visited", "visit"], "two days ago = Zeitpunkt in der Vergangenheit: simple past."],
+        ["pick", "Yesterday we ___ a great film. (watch)", ["watched", "have watched", "watch"], "Mit yesterday nie have + Verb."],
+        ["pick", "Last week they ___ basketball. (play)", ["played", "have played", "play"], "last week: simple past, kein have."],
+        ["pick", "„Letzten Sommer habe ich Fußball gespielt.“", ["Last summer I played football.", "Last summer I have played football.", "Last summer I have play football."], "Wir erzählen im Perfekt, Englisch nimmt bei last summer das simple past."]
+      ]
+    }
+  });
+  put("pastspell", {
+    cats: {
+      ed: { n: "Verb + ed", tip: "Ist es vorbei, kommt **-ed** dran: play → play**ed**." },
+      e: { n: "Auf -e nur -d", tip: "Endet das Verb auf -e, kommt nur **-d** dazu: live → live**d**." },
+      dbl: { n: "Verdoppeln", tip: "Kurzer Vokal + ein Konsonant: **verdoppeln**: stop → sto**pp**ed." },
+      y: { n: "Konsonant + y → ied", tip: "Konsonant + y wird **-ied**: cry → cr**ied**. Aber Vokal + y bleibt: play**ed**." }
+    },
+    bank: {
+      ed: [
+        ["pick", "Yesterday we ___ football in the park. (play)", ["played", "play", "plays"], "yesterday = Vergangenheit: play + -ed."],
+        ["pick", "I ___ my grandma last Sunday. (visit)", ["visited", "visit", "visits"], "last Sunday = Vergangenheit: visit + -ed."],
+        ["pick", "We ___ to music after dinner yesterday. (listen)", ["listened", "listen", "listening"], "Vergangenheit: listen + -ed."],
+        ["pick", "The film ___ at eight o'clock last night. (start)", ["started", "start", "starts"], "last night = Vergangenheit: start + -ed."],
+        ["pick", "My mum ___ me with my homework yesterday. (help)", ["helped", "help", "helps"], "Vergangenheit: help + -ed."],
+        ["pick", "„Gestern haben wir einen Film angeschaut.“", ["Yesterday we watched a film.", "Yesterday we watch a film.", "Yesterday we have watch a film."], "Vergangenheit: watch + -ed."]
+      ],
+      e: [
+        ["pick", "We ___ in Manchester when I was little. (live)", ["lived", "liveed", "livd"], "Endet das Verb auf -e, kommt nur -d dazu."],
+        ["pick", "I ___ the pizza a lot. (like)", ["liked", "likeed", "likd"], "like + d = liked."],
+        ["pick", "She ___ at the funny dog. (smile)", ["smiled", "smileed", "smilled"], "smile + d = smiled."],
+        ["pick", "They ___ a cake for my birthday. (bake)", ["baked", "bakeed", "bakked"], "bake + d = baked."]
+      ],
+      dbl: [
+        ["pick", "The bus ___ in front of the school. (stop)", ["stopped", "stoped", "stopt"], "Kurzer Vokal + ein Konsonant: verdoppeln: stopped."],
+        ["pick", "We ___ a party for Saturday. (plan)", ["planned", "planed", "plannd"], "plan: kurzes a + n → planned."],
+        ["pick", "The rabbit ___ over the fence. (hop)", ["hopped", "hoped", "hopt"], "hop: kurzes o + p → hopped."],
+        ["pick", "I ___ my bag on the floor. (drop)", ["dropped", "droped", "dropd"], "drop: kurzes o + p → dropped."]
+      ],
+      y: [
+        ["pick", "The baby ___ all night. (cry)", ["cried", "cryed", "cryd"], "Konsonant + y wird zu -ied."],
+        ["pick", "I ___ the heavy box to the car. (carry)", ["carried", "carryed", "carred"], "Konsonant + y wird zu -ied."],
+        ["pick", "They ___ cards all evening. (play)", ["played", "plaied", "playd"], "Vokal + y bleibt: played."],
+        ["pick", "We ___ at a nice hotel. (stay)", ["stayed", "staied", "stayd"], "Vokal + y bleibt: stayed."],
+        ["pick", "He ___ to open the door. (try)", ["tried", "tryed", "trid"], "Konsonant + y wird zu -ied."]
+      ]
+    }
+  });
+  put("pastirr", {
+    cats: {
+      ed: { n: "Verb + ed", tip: "Regelmäßige Verben: **-ed**: play → play**ed**." },
+      spell: { n: "Schreibregeln", tip: "live**d**, sto**pp**ed, cr**ied**, aber play**ed**." },
+      irr: { n: "Wilde Verben", tip: "Wilde Verben haben eine eigene Form: go → **went**, see → **saw**. Nie ~~goed~~." },
+      wasw: { n: "was oder were", tip: "I/he/she/it → **was**, you/we/they → **were**." },
+      nos: { n: "Kein -s bei he/she/it", tip: "Auch wilde Formen sind für alle gleich: he **went**, nicht ~~wents~~." }
+    },
+    bank: {
+      ed: [
+        ["pick", "Yesterday we ___ football in the park. (play)", ["played", "play", "plays"], "Regelmäßig: play + -ed."],
+        ["pick", "I ___ my grandma last Sunday. (visit)", ["visited", "visit", "visits"], "Regelmäßig: visit + -ed."],
+        ["pick", "My mum ___ me with my homework yesterday. (help)", ["helped", "help", "helps"], "Regelmäßig: help + -ed."]
       ],
       spell: [
-        ["pick", "The bus ___ in front of the school. (stop)", ["stopped", "stoped", "stopt"], "Kurzer Vokal + ein Konsonant: verdoppeln: stopped."],
+        ["pick", "The bus ___ at the station. (stop)", ["stopped", "stoped", "stopt"], "Verdoppeln: stopped."],
         ["pick", "The baby ___ all night. (cry)", ["cried", "cryed", "cryd"], "Konsonant + y wird zu -ied."],
-        ["pick", "We ___ in Manchester when I was little. (live)", ["lived", "liveed", "livd"], "Endet das Verb auf -e, kommt nur -d dazu."],
-        ["pick", "They ___ cards all evening. (play)", ["played", "plaied", "playd"], "Vokal + y bleibt: played."],
-        ["pick", "I ___ the heavy box to the car. (carry)", ["carried", "carryed", "carred"], "Konsonant + y wird zu -ied."]
+        ["pick", "We ___ in Leeds. (live)", ["lived", "liveed", "livd"], "Auf -e nur -d."]
       ],
       irr: [
-        ["pick", "Last summer I ___ to Spain. (go)", ["went", "goed", "go"], "go ist unregelmäßig: went."],
+        ["pick", "Last summer I ___ to Spain. (go)", ["went", "goed", "go"], "go ist wild: went."],
         ["pick", "She ___ a fox in the garden. (see)", ["saw", "seed", "seen"], "see – saw. seen ist die 3. Form, die braucht have."],
         ["pick", "We ___ pizza for dinner yesterday. (have)", ["had", "haved", "has"], "have – had."],
         ["pick", "Tom ___ home at six. (come)", ["came", "comed", "come"], "come – came."],
         ["pick", "I ___ a new book last week. (buy)", ["bought", "buyed", "buy"], "buy – bought."],
-        ["pick", "My dad ___ me a postcard from London. (send)", ["sent", "sended", "send"], "send – sent."]
-      ],
-      nos: [
-        ["pick", "Yesterday my brother ___ to the cinema.", ["went", "wents", "goes"], "Im simple past gibt es kein -s bei he/she/it."],
-        ["pick", "Last night she ___ a long email.", ["wrote", "wrotes", "writes"], "write – wrote, für alle Personen gleich."],
-        ["pick", "Emma ___ her bike to school yesterday.", ["rode", "rodes", "rides"], "ride – rode, ohne -s."]
+        ["pick", "I ___ about you yesterday. (think)", ["thought", "thinked", "think"], "think – thought, wie buy – bought."],
+        ["pick", "My dad ___ me a postcard from London. (send)", ["sent", "sended", "send"], "send – sent."],
+        ["pick", "We ___ lots of songs at the party. (sing)", ["sang", "singed", "sing"], "sing – sang, wie drink – drank."],
+        ["pick", "I ___ my book on the table. (put)", ["put", "putted", "puts"], "put bleibt put."]
       ],
       wasw: [
         ["pick", "I ___ tired after the trip.", ["was", "were", "am"], "I → was."],
@@ -1589,22 +1672,43 @@ window.GRAMMAR = {
         ["pick", "The weather ___ great last weekend.", ["was", "were", "is"], "the weather = it → was."],
         ["pick", "My cousins ___ very nice to me last summer.", ["were", "was", "are"], "my cousins = they → were."]
       ],
+      nos: [
+        ["pick", "Yesterday my brother ___ to the cinema.", ["went", "wents", "goes"], "Im simple past gibt es kein -s bei he/she/it."],
+        ["pick", "Last night she ___ a long email.", ["wrote", "wrotes", "writes"], "write – wrote, für alle gleich."],
+        ["pick", "Emma ___ her bike to school yesterday.", ["rode", "rodes", "rides"], "ride – rode, ohne -s."]
+      ]
+    }
+  });
+  put("pastneg", {
+    cats: {
+      neg: { n: "didn't + Grundform", tip: "**didn't + Grundform**: I didn't **go**. Nicht ~~didn't went~~, weil didn't die Vergangenheit schon trägt." },
+      order: { n: "didn't vor das Verb", tip: "Nicht wie im Deutschen hinten: I **didn't see** him, nicht ~~I saw him not~~." },
+      negbe: { n: "wasn't / weren't", tip: "Bei be kein did: **wasn't**, **weren't**. Nicht ~~didn't be~~." },
+      mix: { n: "Ja-Satz oder Verneinung", tip: "Ja-Satz: Vergangenheitsform (went). Verneinung: **didn't + Grundform** (didn't go)." }
+    },
+    bank: {
       neg: [
         ["pick", "I didn't ___ my homework.", ["do", "did", "does"], "Nach didn't steht die Grundform."],
         ["pick", "We ___ the bus. We walked. (nicht nehmen)", ["didn't take", "didn't took", "not took"], "didn't + Grundform: didn't take."],
         ["pick", "She ___ the film. (nicht mögen)", ["didn't like", "didn't liked", "doesn't liked"], "didn't + Grundform: didn't like."],
-        ["pick", "„Ich habe ihn nicht gesehen.“ heißt:", ["I didn't see him.", "I didn't saw him.", "I saw him not."], "Verneinung mit didn't + Grundform, nicht wie im Deutschen nachgestellt."]
+        ["pick", "Tom didn't ___ to school yesterday.", ["go", "went", "goes"], "Nach didn't: go, nicht went."],
+        ["pick", "They didn't ___ the match. (gewinnen)", ["win", "won", "wins"], "Nach didn't: Grundform win."]
+      ],
+      order: [
+        ["pick", "„Ich habe ihn nicht gesehen.“", ["I didn't see him.", "I didn't saw him.", "I saw him not."], "didn't + Grundform, nicht nachgestellt."],
+        ["pick", "„Wir haben nicht Fußball gespielt.“", ["We didn't play football.", "We played not football.", "We not played football."], "didn't steht vor dem Verb."],
+        ["order", "She didn't call me yesterday.", "Person, dann didn't, dann Grundform."]
       ],
       negbe: [
         ["pick", "It ___ cold yesterday. (war nicht)", ["wasn't", "didn't be", "weren't"], "Bei be kein did: it → wasn't."],
         ["pick", "They ___ at home last weekend. (waren nicht)", ["weren't", "wasn't", "didn't be"], "they → weren't."],
-        ["pick", "The test ___ difficult. It was easy.", ["wasn't", "didn't", "weren't"], "the test = it → wasn't."]
+        ["pick", "The test ___ difficult. It was easy.", ["wasn't", "didn't", "weren't"], "the test = it → wasn't."],
+        ["pick", "I ___ tired. (war nicht)", ["wasn't", "weren't", "didn't was"], "I → wasn't."]
       ],
-      signal: [
-        ["pick", "I ___ my aunt two days ago.", ["visited", "have visited", "visit"], "two days ago = Zeitpunkt in der Vergangenheit: simple past."],
-        ["pick", "Yesterday we ___ a great film.", ["watched", "have watched", "watch"], "Mit yesterday nie have + 3. Form."],
-        ["pick", "I usually walk to school, but yesterday I ___ the bus.", ["took", "take", "have taken"], "yesterday: simple past."],
-        ["pick", "„Letzten Sommer bin ich nach Wales gefahren.“ heißt:", ["Last summer I went to Wales.", "Last summer I have gone to Wales.", "Last summer I am gone to Wales."], "Wir erzählen im Perfekt, Englisch im simple past."]
+      mix: [
+        ["pick", "Yesterday I ___ to the park, but I didn't play football.", ["went", "go", "didn't went"], "Ja-Satz: Vergangenheitsform went."],
+        ["pick", "We watched TV, but we didn't ___ the news.", ["watch", "watched", "watches"], "Nach didn't: Grundform."],
+        ["pick", "She ___ her friend, but she didn't see her teacher. (see)", ["saw", "see", "didn't saw"], "Ja-Satz: see – saw."]
       ]
     }
   });
